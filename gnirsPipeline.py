@@ -155,8 +155,6 @@ def start():
     logging.info("")
     
     # Load pipeline configuration from /recipes/defaultConfig.cfg that is used by this script.
-    config = ConfigParser.RawConfigParser()
-    config.read(RECIPES_PATH + 'defaultConfig.cfg')
     manualMode = config.get('defaults','manualMode')
 
     # Load pipeline specific config.

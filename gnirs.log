@@ -69,3 +69,145 @@ Parameters for this data reduction as read from recipes/defaultConfig.cfg:
 2019/07/09 16:15:47  combineordersstart 1
 2019/07/09 16:15:47  combineordersstop 6
 2019/07/09 16:15:47  
+2019/07/09 17:09:23  
+####################################
+2019/07/09 17:09:23  #                                  #
+2019/07/09 17:09:23  #             NIFTY                #
+2019/07/09 17:09:23  #  GNIRS Data Reduction Pipeline   #
+2019/07/09 17:09:23  #         Version 1.0.1            #
+2019/07/09 17:09:23  #         July 25th, 2017          #
+2019/07/09 17:09:23  #     Marie Lemoine-Busserolle     #
+2019/07/09 17:09:23  # Gemini Observatory, Hilo, Hawaii #
+2019/07/09 17:09:23  #                                  #
+2019/07/09 17:09:23  ####################################
+
+2019/07/09 17:09:23  The log file is gnirs.log.
+2019/07/09 17:09:23  
+Parameters for this data reduction as read from recipes/defaultConfig.cfg:
+
+2019/07/09 17:09:23  niftyversion '1.0.1'
+2019/07/09 17:09:23  manualmode False
+2019/07/09 17:09:23  overwrite False
+2019/07/09 17:09:23  scienceonedextraction True
+2019/07/09 17:09:23  sciencedirectorylist []
+2019/07/09 17:09:23  telluricdirectorylist []
+2019/07/09 17:09:23  calibrationdirectorylist []
+2019/07/09 17:09:23  sort True
+2019/07/09 17:09:23  calibrationreduction True
+2019/07/09 17:09:23  telluricreduction True
+2019/07/09 17:09:23  sciencereduction True
+2019/07/09 17:09:23  telluriccorrection True
+2019/07/09 17:09:23  fluxcalibration True
+2019/07/09 17:09:23  combineorders True
+2019/07/09 17:09:23  telluriccorrectionmethod 'gnirs'
+2019/07/09 17:09:23  fluxcalibrationmethod 'gnirs'
+2019/07/09 17:09:23  rawpath ''
+2019/07/09 17:09:23  program ''
+2019/07/09 17:09:23  proprietarycookie ''
+2019/07/09 17:09:23  skythreshold 3.5
+2019/07/09 17:09:23  sorttellurics True
+2019/07/09 17:09:23  tellurictimethreshold 5400
+2019/07/09 17:09:23  start 1
+2019/07/09 17:09:23  stop 4
+2019/07/09 17:09:23  cleanir_arcs False
+2019/07/09 17:09:23  cleanir_irflats False
+2019/07/09 17:09:23  cleanir_qhflats False
+2019/07/09 17:09:23  cleanir_pinholes False
+2019/07/09 17:09:23  start 1
+2019/07/09 17:09:23  stop 5
+2019/07/09 17:09:23  cleanir False
+2019/07/09 17:09:23  skysubtraction True
+2019/07/09 17:09:23  extraction_aperture_radius 4
+2019/07/09 17:09:23  extraction_stepsize 6
+2019/07/09 17:09:23  start 1
+2019/07/09 17:09:23  stop 5
+2019/07/09 17:09:23  skysubtraction True
+2019/07/09 17:09:23  cleanir False
+2019/07/09 17:09:23  start 1
+2019/07/09 17:09:23  stop 9
+2019/07/09 17:09:23  hlinemethod 'vega'
+2019/07/09 17:09:23  hlineinter False
+2019/07/09 17:09:23  continuuminter False
+2019/07/09 17:09:23  telluricinter False
+2019/07/09 17:09:23  tempinter False
+2019/07/09 17:09:23  standardstarspectemperature ''
+2019/07/09 17:09:23  standardstarmagnitude ''
+2019/07/09 17:09:23  standardstarra ''
+2019/07/09 17:09:23  standardstardec ''
+2019/07/09 17:09:23  standardstarband ''
+2019/07/09 17:09:23  start 1
+2019/07/09 17:09:23  stop 6
+2019/07/09 17:09:23  start 1
+2019/07/09 17:09:23  stop 6
+2019/07/09 17:09:23  
+2019/07/09 17:09:52  
+####################################
+2019/07/09 17:09:52  #                                  #
+2019/07/09 17:09:52  #             NIFTY                #
+2019/07/09 17:09:52  #  GNIRS Data Reduction Pipeline   #
+2019/07/09 17:09:52  #         Version 1.0.1            #
+2019/07/09 17:09:52  #         July 25th, 2017          #
+2019/07/09 17:09:52  #     Marie Lemoine-Busserolle     #
+2019/07/09 17:09:52  # Gemini Observatory, Hilo, Hawaii #
+2019/07/09 17:09:52  #                                  #
+2019/07/09 17:09:52  ####################################
+
+2019/07/09 17:09:52  The log file is gnirs.log.
+2019/07/09 17:09:52  
+Parameters for this data reduction as read from recipes/defaultConfig.cfg:
+
+2019/07/09 17:09:52  niftyversion '1.0.1'
+2019/07/09 17:09:52  manualmode False
+2019/07/09 17:09:52  overwrite False
+2019/07/09 17:09:52  scienceonedextraction True
+2019/07/09 17:09:52  sciencedirectorylist []
+2019/07/09 17:09:52  telluricdirectorylist []
+2019/07/09 17:09:52  calibrationdirectorylist []
+2019/07/09 17:09:52  sort True
+2019/07/09 17:09:52  calibrationreduction True
+2019/07/09 17:09:52  telluricreduction True
+2019/07/09 17:09:52  sciencereduction True
+2019/07/09 17:09:52  telluriccorrection True
+2019/07/09 17:09:52  fluxcalibration True
+2019/07/09 17:09:52  combineorders True
+2019/07/09 17:09:52  telluriccorrectionmethod 'gnirs'
+2019/07/09 17:09:52  fluxcalibrationmethod 'gnirs'
+2019/07/09 17:09:52  rawpath ''
+2019/07/09 17:09:52  program ''
+2019/07/09 17:09:52  proprietarycookie ''
+2019/07/09 17:09:52  skythreshold 3.5
+2019/07/09 17:09:52  sorttellurics True
+2019/07/09 17:09:52  tellurictimethreshold 5400
+2019/07/09 17:09:52  start 1
+2019/07/09 17:09:52  stop 4
+2019/07/09 17:09:52  cleanir_arcs False
+2019/07/09 17:09:52  cleanir_irflats False
+2019/07/09 17:09:52  cleanir_qhflats False
+2019/07/09 17:09:52  cleanir_pinholes False
+2019/07/09 17:09:52  start 1
+2019/07/09 17:09:52  stop 5
+2019/07/09 17:09:52  cleanir False
+2019/07/09 17:09:52  skysubtraction True
+2019/07/09 17:09:52  extraction_aperture_radius 4
+2019/07/09 17:09:52  extraction_stepsize 6
+2019/07/09 17:09:52  start 1
+2019/07/09 17:09:52  stop 5
+2019/07/09 17:09:52  skysubtraction True
+2019/07/09 17:09:52  cleanir False
+2019/07/09 17:09:52  start 1
+2019/07/09 17:09:52  stop 9
+2019/07/09 17:09:52  hlinemethod 'vega'
+2019/07/09 17:09:52  hlineinter False
+2019/07/09 17:09:52  continuuminter False
+2019/07/09 17:09:52  telluricinter False
+2019/07/09 17:09:52  tempinter False
+2019/07/09 17:09:52  standardstarspectemperature ''
+2019/07/09 17:09:52  standardstarmagnitude ''
+2019/07/09 17:09:52  standardstarra ''
+2019/07/09 17:09:52  standardstardec ''
+2019/07/09 17:09:52  standardstarband ''
+2019/07/09 17:09:52  start 1
+2019/07/09 17:09:52  stop 6
+2019/07/09 17:09:52  start 1
+2019/07/09 17:09:52  stop 6
+2019/07/09 17:09:52  
