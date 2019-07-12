@@ -35,7 +35,7 @@ from datetime import datetime
 # LOCAL
 
 # Import major Nifty Steps.
-#import gnirsSort as gnirsSort
+import gnirsSort as gnirsSort
 #import gnirsBaselineCalibration as gnirsBaselineCalibration
 #import gnirsReduce as gnirsReduce
 #import gnirsTelluric as gnirsTelluric
@@ -83,6 +83,8 @@ __version__ = "1.0.1"
 # The time when Nifty was started is:
 startTime = str(datetime.now())
 
+## IMPORTANT NOTE:  The command line options are not available for GNIRS as of July 2019.
+
 def start():
     """
 
@@ -92,7 +94,7 @@ def start():
     to three "Steps".
 
     This script does two things. It:
-        - gets data reduction parameters; either from an interactive input session or
+        - gets data reduction parameters; either from an interactive input session (not adapted for GNIRS as of July 2019) or
           an input file, and
         - launches appropriate scripts to do the work. It can call up to 3 scripts directly:
                 1) gnirsSort.py
@@ -105,9 +107,9 @@ def start():
     print("IT WORKED!")
     # Get paths to built-in Nifty data. Special code in setup.py makes sure recipes/ and
     # runtimeData/ will be installed when someone installs Nifty, and accessible in this way.
-#    RECIPES_PATH = pkg_resources.resource_filename('GitHub', 'recipes/configuration/')
+#    RECIPES_PATH = pkg_resources.resource_filename('GitHub', 'recipes/')
     RECIPES_PATH = 'recipes/'
-#    RUNTIME_DATA_PATH = pkg_resources.resource_filename('GitHub', 'runtimeData/vega/')
+#    RUNTIME_DATA_PATH = pkg_resources.resource_filename('GitHub', 'runtimeData/')
     RUNTIME_DATA_PATH = 'runtimeData/'
 
     # Format logging options.
@@ -141,30 +143,28 @@ def start():
 
     # Read or write a configuration file, interactively, from defaults or from a provided file.
     # Second argument is the name of the current script. This could be used to get script-dependent configuration.
-#    GetConfig(args, "gnirsPipeline")  ## this is not adapted for GNIRS as of July 2019
+#    GetConfig(args, "gnirsPipeline")  ## this functionality is not adapted for GNIRS as of July 2019
 
-    # TODO(nat): fix this. It isn't recursively printing the dictionaries of values.
-    logging.info("\nParameters for this data reduction as read from recipes/defaultConfig.cfg:\n")
+    logging.info("\nParameters for this data reduction as read from " + str(RECIPES_PATH) + "defaultConfig.cfg:\n")
     config = ConfigParser.RawConfigParser()
     config.read(RECIPES_PATH + 'defaultConfig.cfg')
 
     for i in config.sections():
-#        if isinstance(config.get[i], dict):
         for k in config.options(i):
             logging.info(k + " " + config.get(i,k))
     logging.info("")
     
     # Load pipeline configuration from /recipes/defaultConfig.cfg that is used by this script.
-    manualMode = config.get('defaults','manualMode')
+    manualMode = config.getboolean('defaults','manualMode')
 
     # Load pipeline specific config.
-    sort = config.get('gnirsPipelineConfig','sort')
-    calibrationReduction = config.get('gnirsPipelineConfig','calibrationReduction')
-    telluricReduction = config.get('gnirsPipelineConfig','telluricReduction')
-    scienceReduction = config.get('gnirsPipelineConfig','scienceReduction')
-    telluricCorrection = config.get('gnirsPipelineConfig','telluricCorrection')
-    fluxCalibration = config.get('gnirsPipelineConfig','fluxCalibration')
-    combineOrders = config.get('gnirsPipelineConfig','combineOrders')
+    sort = bool(config.get('gnirsPipelineConfig','sort'))
+    calibrationReduction = bool(config.get('gnirsPipelineConfig','calibrationReduction'))
+    telluricReduction = bool(config.get('gnirsPipelineConfig','telluricReduction'))
+    scienceReduction = bool(config.get('gnirsPipelineConfig','scienceReduction'))
+    telluricCorrection = bool(config.get('gnirsPipelineConfig','telluricCorrection'))
+    fluxCalibration = bool(config.get('gnirsPipelineConfig','fluxCalibration'))
+    combineOrders = bool(config.get('gnirsPipelineConfig','combineOrders'))
 
     ###########################################################################
     ##                         SETUP COMPLETE                                ##
@@ -192,18 +192,18 @@ def start():
     ###########################################################################
     ##                      STEP 2: Sort the raw data.                       ##
     ###########################################################################
-    '''
+    
     if sort:
         if manualMode:
             a = raw_input('About to enter gnirsSort.')
         gnirsSort.start()
     # By now, we should have paths to the three types of raw data. Print them out.
-    printDirectoryLists()
+    #printDirectoryLists()
 
     ###########################################################################
     ##                STEP 3: Reduce baseline calibrations.                  ##
     ###########################################################################
-
+    '''
     if calibrationReduction:
         if manualMode:
             a = raw_input('About to enter gnirsBaselineCalibration.')
