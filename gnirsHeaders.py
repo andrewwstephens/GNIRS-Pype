@@ -12,9 +12,10 @@ def start(data_directory):
         f = filename[filename.rfind('/')+1:]
         info[f] = {}
         header = fits.open(filename)[0].header
-        for key in ['INSTRUME', 'PRISM', 'OBSTYPE', 'OBSID', 'OBSCLASS', 'OBJECT', 'DATE-OBS', 'TIME-OBS', 'CAMERA', 'DECKER', 'GRATING', 'SLIT', 'GRATWAVE', 'POFFSET', 'QOFFSET', 'GCALLAMP']:
+        for key in ['INSTRUME', 'PRISM', 'OBSTYPE', 'OBSID', 'OBSCLASS', 'OBJECT', 'DATE-OBS', 'TIME-OBS', 'CAMERA',
+                    'DECKER', 'GRATING', 'SLIT', 'GRATWAVE', 'POFFSET', 'QOFFSET', 'GCALLAMP']:
             try:
-                info[f][key] = header[key]
+                info[f][key] = header[key].strip() if isinstance(header[key],str) else header[key]
             except:
                 info[f][key] = None
         info[f]['DATETIME'] = dateutil.parser.parse(info[f]['DATE-OBS'] + ' ' + info[f]['TIME-OBS'])
