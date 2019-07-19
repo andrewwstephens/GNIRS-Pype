@@ -30,26 +30,18 @@
 # STDLIB
 
 from xml.dom.minidom import parseString
-import urllib
+import urllib, os, sys, shutil, glob, math, logging, pkg_resources, time, datetime, re, ConfigParser
 from pyraf import iraf
-import astropy.io.fits
-import os, sys, shutil, glob, math, logging, pkg_resources, time, datetime, re
+from astropy.io import fits
 import numpy as np
-# Import config parsing.
-#from ..configobj.configobj import ConfigObj
-import ConfigParser
 
 # LOCAL
 
 # Import custom Nifty functions.
 # TODO(nat): goodness, this is a lot of functions. It would be nice to split this up somehow.
-#from gnirsUtils import getUrlFiles, getFitsHeader, FitsKeyEntry, stripString, stripNumber, \
-#datefmt, checkOverCopy, checkQAPIreq, checkDate, writeList, checkEntry, timeCalc, checkSameLengthFlatLists, \
-#rewriteSciImageList
+#from gnirsUtils import getUrlFiles, getFitsHeader, FitsKeyEntry, stripString, stripNumber, datefmt, checkOverCopy, checkQAPIreq, checkDate, \
+#writelist, checkEntry, timeCalc, checkSameLengthFlatLists, #rewriteSciImageList
 from gnirsUtils import datefmt
-
-# Import NDMapper gemini data download, by James E.H. Turner.
-from downloadFromGeminiPublicArchive import download_query_gemini
 
 # Define constants
 # Paths to Nifty data.
@@ -60,12 +52,9 @@ RUNTIME_DATA_PATH = 'runtimeData/'
 
 ## IMPORTANT NOTE:  The command line options are not available for GNIRS as of July 2019.
 
-def start():
+def start(rawPath, info):
     """
-    gnirsSort
-
-    This module contains all the functions needed to copy and sort
-    the GNIRS raw data, where the data is located in a local directory.
+    This module contains all the functions needed to copy and sort the GNIRS raw data, where the data is located in a local directory.
 
     INPUT FILES:
     + rawPath files
@@ -74,6 +63,7 @@ def start():
       - Telluric frames
       - Acquisition frames (optional, but if data is copied from archive
         then acquisition frames will be copied and sorted)
+    - info
 
     OUTPUT:
       - Sorted data
@@ -84,15 +74,11 @@ def start():
     Gemini North internal network (used ONLY within Gemini).
 
     Args:
-        rawPath (string):   Local path to raw files directory. Specified with -q at command line.
-        overwrite (boolean): If True old files will be overwritten during data reduction. Specified
-                        with -o at command line. Default: False.
-        program (string): OT observation id (used only within Gemini network). Specified with
-                          -p at command line. "GN-2013B-Q-109".
+        rawPath (string): Local path to raw files directory. Specified with -q at command line.
+        info (dictionary): Dictionary of relevant header keywords read from all .fits files from rawPath.  
+        overwrite (boolean): If True old files will be overwritten during data reduction. Specified with -o at command line. Default: False.
 
-    TODO(nat): add a way to open .tar.bz gemini public archive data, unzip it, and verify the md5 of
-               each.
-
+    TODO(nat): add a way to open .tar.bz gemini public archive data, unzip it, and verify the md5 of each.
     """
 
     # Store current working directory for later use.
@@ -101,17 +87,6 @@ def start():
     # Format logging options.
     FORMAT = '%(asctime)s %(message)s'
     DATEFMT = datefmt()
-
-    '''# Set up the logging file.
-    logging.basicConfig(filename='Nifty.log',format=FORMAT,datefmt=DATEFMT,level=logging.DEBUG)
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    # This lets us logging.info(to stdout AND a logfile. Cool, huh?
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(message)s')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)'''
 
     # Set up the logging file.
     log = os.getcwd()+'/gnirs.log'
@@ -126,36 +101,13 @@ def start():
     config = ConfigParser.RawConfigParser()
     config.read(RECIPES_PATH + 'defaultConfig.cfg')
     # Read general config.
-    overwrite = config.getboolean('defaults','overwrite')
     manualMode = config.getboolean('defaults','manualMode')
+    overwrite = config.getboolean('defaults','overwrite')
     # Read sort specific config.
     rawPath = config.get('sortConfig','rawPath')
-    program = config.get('sortConfig','program')
     proprietaryCookie = config.get('sortConfig','proprietaryCookie')
-#    skyThreshold = float(config.get('sortConfig','skyThreshold'))
     sortTellurics = bool(config.get('sortConfig','sortTellurics'))
     telluricTimeThreshold = float(config.get('sortConfig','telluricTimeThreshold'))
-
-    # Check for invalid command line input. Cannot both copy from Gemini and sort local files.
-    # Exit if -q <path to raw frame files> and -c True are specified at command line (cannot copy from
-    # Gemini North internal network AND use local raw data).
-    if rawPath and program:
-        logging.info("\nError in sort: both a local path and a Gemini program ID (to download from Gemini Public Archive) were provided.\n")
-        raise SystemError
-
-    # Download data from gemini public archive to ./rawData/.
-    if program:
-        url = 'https://archive.gemini.edu/download/'+ program + '/notengineering/NotFail/present/canonical'
-        if not os.path.exists('./rawData'):
-            os.mkdir('./rawData')
-        logging.info('\nDownloading data from Gemini public archive to ./rawData. This will take a few minutes.')
-        logging.info('\nURL used for the download: \n' + str(url))
-        if proprietaryCookie:
-            download_query_gemini(url, './rawData', proprietaryCookie)
-        else:
-            download_query_gemini(url, './rawData')
-        rawPath = os.getcwd()+'/rawData'
-
 
     ############################################################################
     ############################################################################
@@ -169,30 +121,30 @@ def start():
     ############################################################################
     ############################################################################
 
-
     # IF a local raw directory path is provided, sort data.
     if rawPath:
         if manualMode:
             a = raw_input("About to enter makePythonLists().")
-        allfilelist, arclist, darklist, QHflatlist, IRflatlist, pinholelist, objectDateGratingList, skyFrameList, obsidDateList, sciImageList = makePythonLists(rawPath)
+        allfilelist, arclist, darklist, QHflatlist, IRflatlist, pinholelist, objectDateGratingList, skyFrameList, obsidDateList, sciImageList = makePythonLists(rawPath, info)
+        '''
         if manualMode:
             a = raw_input("About to enter sortScienceAndTelluric().")
-        objDirList, scienceDirectoryList, telluricDirectoryList = sortScienceAndTelluric(allfilelist, skyFrameList, sciImageList, rawPath)
+        objDirList, scienceDirectoryList, telluricDirectoryList = sortScienceAndTelluric(allfilelist, skyFrameList, sciImageList, rawPath, info)
         if manualMode:
             a = raw_input("About to enter sortCalibrations().")
-        calibrationDirectoryList = sortCalibrations(arclist, darklist, QHflatlist, IRflatlist, pinholelist, objectDateGratingList, objDirList, obsidDateList, sciImageList, rawPath, manualMode)
-        # If a telluric reduction will be performed sort the science and telluric images based on time between observations.
+        calibrationDirectoryList = sortCalibrations(arclist, darklist, QHflatlist, IRflatlist, pinholelist, objectDateGratingList, objDirList, obsidDateList, sciImageList, rawPath, info, manualMode)
+        # If a telluric reduction will be performed sort the science and telluric images based on time between observations. 
         # This will NOT be executed if -t False is specified at command line.
         if sortTellurics:
             if manualMode:
                 a = raw_input("About to enter matchTellurics().")
             matchTellurics(telluricDirectoryList, scienceDirectoryList, telluricTimeThreshold)
-
+        '''
     # Exit if no or incorrectly formatted input is given.
     else:
         logging.info("\nERROR in sort: Enter a program ID, observation date, or directory where the raw files are located.\n")
         raise SystemError
-
+    
     ############################################################################
     ############################################################################
     #                                                                          #
@@ -206,7 +158,8 @@ def start():
     ############################################################################
     ############################################################################
 
-    '''# TODO(nat): implement private gemini archive downloads.
+    '''
+    # TODO(nat): implement private gemini archive downloads.
     elif copy or program or date:
         try:
             import gemini_sort
@@ -223,9 +176,8 @@ def start():
             logging.info("#####################################################################\n")
             raise SystemExit
         else:
-            gemini_sort.start(overwite, copy, program, date)'''
-
-'''
+            gemini_sort.start(overwite, copy, program, date)
+    
     os.chdir(path)
 
     # Update runtimeData/config.cfg with the paths to each:
@@ -238,31 +190,28 @@ def start():
     config.set('defaults','calibrationDirectoryList') = calibrationDirectoryList
     with open('./config.cfg', 'w') as config_file:
         config.write(config_file)
-'''
+    '''
+
 ##################################################################################################################
 #                                                                                                                #
 #                                                   FUNCTIONS                                                    #
 #                                                                                                                #
 ##################################################################################################################
 
-def makePythonLists(rawPath):
-
-    """Creates python lists of file names by type. No directories are created and no files are copied in this step."""
-
+def makePythonLists(rawPath, info):
+    """
+    Creates python lists of file names by type. No directories are created and no files are copied in this step.
+    """
     allfilelist = [] # List of tellurics, science frames, aquisitions... But not calibrations!
     QHflatlist = [] # List of QHlamps on flat frames.
     IRflatlist = [] # List of IRlamps on flat frames.
     pinholelist = [] # List of pinhole flat frames.
     arclist = [] # List of arc frames.
     darklist = [] # List of dark frames.
-
-    objectDateGratingList = [] # 2D list of object (science or telluric) name, date pairs.
-
+    objectDateConfigurationList = [] # 2D list of object (science or telluric) name, date pairs.
     skyFrameList = [] # List of sky frames.
-
     obsidDateList = [] # 2D list of date, observation id pairs.
     sciDateList = [] # List of unique dates by science (including sky) frames.
-
     sciImageList = [] # List of science observation directories.
 
     # Store current working directory for later use.
@@ -274,171 +223,108 @@ def makePythonLists(rawPath):
     else:
         rawPath = path+'/rawPath'
 
-    # Change to raw files directory, copy and sort FILE NAMES into lists of each type (Eg: science frames, pinhole flat frames).
-    # Sort by opening the .fits headers, reading header data into variables and sorting based on those variables.
-    # DOES NOT COPY RAW .fits DATA IN THIS STEP
+    # Change to raw files directory, copy and sort FILE NAMES into lists of each type (Eg: science frames, pinhole flat frames). Sort by opening the 
+    # .fits headers, reading header data into variables and sorting based on those variables. DOES NOT COPY RAW .fits DATA IN THIS STEP.
     os.chdir(rawPath)
     logging.info("\nPath to raw file directory is: " + str(rawPath))
 
     logging.info("\nI am making lists of each type of file.")
 
     # Make a list of all the files in the rawPath directory.
-    rawfiles = glob.glob('N*.fits')
-    print(rawfiles); print(len(rawfiles))
+    rawfiles = sorted(glob.glob('N*.fits'))
 
     # Sort and copy each filename in the rawfiles directory into lists.
-    for entry in rawfiles:
-        print(entry)
-        # Open the .fits header.
-        header = astropy.io.fits.open(entry)[0].header
-        # Store information in variables.
-        instrument = header['INSTRUME'].strip()
-        if instrument != 'GNIRS':
+    for file in sorted(info.keys()):
+        print(file)
+        if info[file]['INSTRUME'] != 'GNIRS':
             # Only grab frames belonging to GNIRS raw data!
             continue
-        prism = header['PRISM']
-        prism = prism[prism.find('+')+1:prism.find('_')]
-        if prism != ('SXD' or 'LXD'):
+        if info[file]['PRISM'][info[file]['PRISM'].find('+')+1:info[file]['PRISM'].find('_')] != ('SXD' or 'LXD'):
             # Only grab frames taken in GNIRS XD mode!
             continue
-        obstype = header['OBSTYPE'].strip()
-        obsid = header['OBSID'].replace('-','_')
-        date = header['DATE'].strip().replace('-','')
-        obsclass = header['OBSCLASS'].strip()
-        # If object name isn't alphanumeric, make it alphanumeric.
-        objname = header['OBJECT']
-        objname = re.sub('[^a-zA-Z0-9\n\.]', '', objname)
-        camera = header['CAMERA']
-        camera = camera[:camera.find('_')]
-        decker = header['DECKER']
-        slit = header['SLIT']
-        slit = slit[:slit.find('_')]
-        grating = header['GRATING']
-        grating = grating[:grating.find('/')]
-        poff = header['POFFSET']
-        qoff = header['QOFFSET']
 
         # Make a list of science, telluric and acquisition frames.
         # Use the copied variable (1 not copied, 0 copied) to check later that the file was copied correctly. allfilelist is a 2D list of
         # [[filename1, copied, obsclass1], [filename2, copied, obsclass2]] pairs.
-        if obstype == 'OBJECT' and (obsclass == 'science' or obsclass == 'acq' or obsclass == 'acqCal' or obsclass == 'partnerCal'):
+        if info[file]['OBSTYPE'].strip() == 'OBJECT' and (info[file]['OBSCLASS'].strip() == 'science' or info[file]['OBSCLASS'].strip() == 'acq' or info[file]['OBSCLASS'].strip() == 'acqCal' or info[file]['OBSCLASS'].strip() == 'partnerCal'):
 
             # Append a list of [filename, copied, obsclass] to the list. copied is 1 if not copied, 0 if copied. obsclass is used later for checks.
-            templist = [entry, 1, obsclass]
+            templist = [file, 1, info[file]['OBSCLASS'].strip()]
             allfilelist.append(templist)
-            print(allfilelist)
+
             # Use the P and Q offsets of the last acquisition image in every science observation set to calculate the absolute P and Q offsets of all
             # science images in that set. The abolute P and Q offsets are then used to determine if the science target is in the slit or off slit.
             # First, fetch the index of the entry file in allfilelist.
-            file_index = allfilelist.index(entry)  ## ---------- SELF NOTE:  This line is not working.  Start troubleshooting from here. ----------
-            if file_index != 0:
-                previous_header = astropy.io.fits.open(allfilelist[file_index-1])[0].header
-                previous_obsclass = previous_header['OBSCLASS'].strip()
-                previous_decker = previous_header['DECKER']
-                previous_slit = previous_header['SLIT']
-                previous_slit = previous_slit[:previous_slit.find('_')]
-                previous_poff = previous_header['POFFSET']
-                previous_qoff = previous_header['QOFFSET']
+            if info[file]['OBSCLASS'].strip() == 'acq':
+                acq_poff = info[file]['POFFSET']
+                acq_qoff = info[file]['QOFFSET']
 
-            # Read the P and Q offsets of the last acquisition images in every observation set.
-            if previous_obsclass == 'acq' and obsclass == 'science':
-                last_acq_poff = previous_poff
-                last_acq_qoff = previous_qoff
+            if info[file]['OBSCLASS'].strip() == 'science':
+                sciImageList.append(file)
+                list1 = [re.sub('[^a-zA-Z0-9\n\.]', '', info[file]['OBJECT']), info[file]['DATE-OBS'].replace('-',''), info[file]['CAMERA'][:info[file]['CAMERA'].find('_')], info[file]['PRISM'][info[file]['PRISM'].find('+')+1:info[file]['PRISM'].find('_')], \
+                    info[file]['GRATING'][:info[file]['GRATING'].find('/')], info[file]['SLIT'][:info[file]['SLIT'].find('_')], info[file]['GRATWAVE'], info[file]['OBSID'].replace('-','_')]
+                # Append if list is empty or not a duplicate of last entry.
+                if not objectDateConfigurationList or not list1 in objectDateConfigurationList:
+                    objectDateConfigurationList.append(list1)
 
-            if obsclass == 'science':
-                # Calculate the length and width of the slit from the DECKER and SLIT keywords from the fits headers.
-                if 'SC' in decker and 'XD' in decker:
+                 # Calculate the length and width of the slit from the DECKER and SLIT keywords from the fits headers.
+                if 'SC' in info[file]['DECKER'] and 'XD' in info[file]['DECKER']:
                     slitlength = 7.
-                elif 'LC' in decker and 'XD' in decker:
+                elif 'LC' in info[file]['DECKER'] and 'XD' in info[file]['DECKER']:
                     slitlength = 5.
-                slitwidth = float(slit[:-6])
-                if abs(poff - last_acq_poff) > slitwidth/2. or (qoff - last_acq_qoff) > slitlength/2.:
-                    skyFrameList.append(entry)
+                slitwidth = float(info[file]['SLIT'][:info[file]['SLIT'].find('arcsec')])
+                print(slitwidth)
+                if abs(info[file]['POFFSET'] - acq_poff) > slitwidth/2. or abs(info[file]['QOFFSET'] - acq_qoff) > slitlength/2.:
+                    skyFrameList.append(file)
 
                 # Create sciDateList: list of unique dates of science observations.
-                # Append if list is empty or not a duplicate of last entry.
-                if not sciDateList or not sciDateList[-1]==date:
-                    sciDateList.append(date)
-                
+                # Append if list is empty or not a duplicate of last file.
+                if not sciDateList or not sciDateList[-1] == info[file]['DATE-OBS'].replace('-',''):
+                    sciDateList.append(info[file]['DATE-OBS'].replace('-',''))
+
         # Add arc frame names to arclist.
-        if obstype == 'ARC':
-            arclist.append(entry)
+        if info[file]['OBSTYPE'].strip() == 'ARC':
+            arclist.append(file)
 
         # Add arc dark frame names to arcdarklist.
-        if obstype == 'DARK':
-            darklist.append(entry)
+        if info[file]['OBSTYPE'].strip() == 'DARK':
+            darklist.append(file)
 
         # Add QHlamps on flat frames to QHflatlist, IRlamps on flat frames to IRflatlist, add pinhole flat frames to pinholelist.
         # QHlamps and pinhole flat frames are separated by the slit used. IRlamps use IRhigh GCAL lamp.
         # if slit is "LgPinholes", they are pinhole flat frames, else QHflats.
-        if obstype == 'FLAT':
-            
-            gcallamp = header['GCALLAMP'].strip()
+        if info[file]['OBSTYPE'].strip() == 'FLAT':
 
-            if gcallamp == 'QH':
-                if slit == 'LgPinholes':
-                    pinholelist.append(entry)
+            if info[file]['GCALLAMP'] == 'QH':
+                if info[file]['SLIT'][:info[file]['SLIT'].find('_')] == 'LgPinholes':
+                    pinholelist.append(file)
                 else:
-                    QHflatlist.append(entry)
+                    QHflatlist.append(file)
 
-            elif gcallamp == 'IRhigh':
-                IRflatlist.append(entry)
-
-    # Based on science (including sky) frames, make a list of unique [object, date] list pairs to be used later.
-    for i in range(len(rawfiles)):
-        header = astropy.io.fits.open(rawfiles[i])[0].header
-        # Store information in variables.
-        instrument = header['INSTRUME'].strip()
-        if instrument != 'GNIRS':
-            # Only grab frames belonging to GNIRS raw data!
-            continue
-        prism = header['PRISM']
-        prism = prism[prism.find('+')+1:prism.find('_')]
-        if prism != ('SXD' or 'LXD'):
-            # Only grab frames taken in GNIRS XD mode!
-            continue
-        date = header['DATE'].replace('-','')
-        obsclass = header['OBSCLASS'].strip()
-        objname = header['OBJECT']
-        objname = re.sub('[^a-zA-Z0-9\n\.]', '', objname)
-        obstype = header['OBSTYPE'].strip()
-        obsid = header['OBSID'].replace('-','_')
-        grating = header['GRATING']
-        grating = grating[:grating.find('/')]
-
-        if obsclass == 'science':
-            list1 = [objname, date, grating]
-            # Append if list is empty or not a duplicate of last entry.
-            if not objectDateGratingList or not list1 in objectDateGratingList:
-                objectDateGratingList.append(list1)
+            elif info[file]['GCALLAMP'] == 'IRhigh':
+                IRflatlist.append(file)
 
     # Make list of unique [date, obsid] pairs from FLATS. If flat was taken on the same day as a science frame, append that flat date. If not, append 
     # an arbitrary unique date from sciDateList. This is so we can sort calibrations later by date and obsid.
     n = 0
     for flat in QHflatlist:
-        header = astropy.io.fits.open(flat)[0].header
-        # Store information in variables.
-        instrument = header['INSTRUME'].strip()
-        if instrument != 'GNIRS':
-            # Only grab frames belonging to NIFS raw data!
+        if info[file]['INSTRUME'] != 'GNIRS':
+            # Only grab frames belonging to GNIRS raw data!
             continue
-        prism = header['PRISM']
-        prism = prism[prism.find('+')+1:prism.find('_')]
-        if prism != ('SXD' or 'LXD'):
+        if info[file]['PRISM'][info[file]['PRISM'].find('+')+1:info[file]['PRISM'].find('_')] != ('SXD' or 'LXD'):
             # Only grab frames taken in GNIRS XD mode!
             continue
-        obsid = header['OBSID'].replace('-','_')
-        date = header['DATE'].replace('-','')
+
         # Make sure no duplicate dates are being entered.
-        if QHflatlist.index(flat) == 0 or not oldobsid == obsid:
-            if date in sciDateList:
-                list1 = [date, obsid]
+        if QHflatlist.index(flat) == 0 or not oldobsid == info[file]['OBSID'].replace('-','_'):
+            if info[file]['DATE-OBS'].replace('-','') in sciDateList:
+                list1 = [info[file]['DATE-OBS'].replace('-',''), info[file]['OBSID'].replace('-','_')]
             else:
-                list1 = [sciDateList[n], obsid]
+                list1 = [sciDateList[n], info[file]['OBSID'].replace('-','_')]
             obsidDateList.append(list1)
             n += 1
-        oldobsid = obsid
-
+        oldobsid = info[file]['OBSID'].replace('-','_')
+    
     os.chdir(path)
 
     # Print information for user.
@@ -460,13 +346,12 @@ def makePythonLists(rawPath):
 
     logging.info("\nTotal number of frames to be copied: " + str(number_files_to_be_copied + number_calibration_files_to_be_copied))
 
-    return allfilelist, arclist, darklist, QHflatlist, IRflatlist, pinholelist, objectDateGratingList, skyFrameList, obsidDateList, sciImageList
-
-#----------------------------------------------------------------------------------------#
+    return allfilelist, arclist, darklist, QHflatlist, IRflatlist, pinholelist, objectDateConfigurationList, skyFrameList, obsidDateList, sciImageList
 '''
 def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageList, rawPath):
 
     """Sorts the science frames, tellurics and acquisitions into the appropriate directories based on date, grating, obsid, obsclass.
+    allfilelist = sorted list of all files?
     """
 
     # Store number of science, telluric, sky, telluric sky and acquisition frames in number_files_to_be_copied
@@ -479,7 +364,7 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
     logging.info("\n\nMaking new directories and copying files. In this step I will process " + str(number_files_to_be_copied) + " files.")
 
     # List of paths sorted by object and date. ['path/to/object1/date1', 'path/to/object1/date2'].
-    objDirList = []
+#    objDirList = []
     # Create a 2D list scienceDirList. Second part is a path to a science directory. First part is a list of calculated times of each frame in that
     # science directory. Eg: [[[5400,6500,7200], '/path/to/first/science'], [[3400,4300,5200], '/path/to/second/science']...]
     scienceDirList = []
@@ -519,13 +404,12 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
         grating = header['GRATING']
         grating = grating[:grating.find('/')]
 
-
-###  ---------- SELF NOTE:  Start editing from this point onward. ----------
-
-
         if obsclass=='science':
-            if not os.path.exists(path+'/'+objname):
-                os.mkdir(path+'/'+objname)
+            time = datetime.datetime()
+            datapath = path+'/'+objname+'/'+date+'/'+camera+'_'+prism+'_'+grating+'_'+slit+'_'+central_wave+'/obs'+obsid
+            if not os.path.exists(datapath):
+                os.makekdirs(datapath)
+            
             if not os.path.exists(path+'/'+objname+'/'+date):
                 os.mkdir(path+'/'+objname+'/'+date)
                 objDir = path+'/'+objname+'/'+date
@@ -535,7 +419,13 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
                 objDir = path+'/'+objname+'/'+date
                 if not objDirList or not objDirList[-1]==objDir:
                     objDirList.append(objDir)
+            
+            objDir = path+'/'+objname+'/'+date
+                if not objDirList or not objDirList[-1]==objDir:
+                    objDirList.append(objDir)
 
+            
+    
     # For each science frame, create a "science_object_name/date/grating/observationid/" directory in the current working directory.
     for entry in allfilelist:
         header = astropy.io.fits.open(rawPath+'/'+entry)[0].header
@@ -567,6 +457,12 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
             # Else if a new list or not a duplicate of the previous entry append time and directory name to scienceDirList.
             elif not scienceDirList or not scienceDirList[-1][1]==objDir+'/'+date+'/'+grat+'/obs'+obsid:
                 scienceDirList.append([[time], objDir+'/'+date+'/'+grat+'/obs'+obsid])
+    
+
+                scienceDirList.append([[time], datapath)
+            elif not scienceDirList or not scienceDirList[-1][1]==path+'/'+objname+'/'+date+'/'+camera+'_'+prism+'_'+grating+'_'+slit+'_'+central_wave+'/obs'+obsid:
+                scienceDirList.append([[time], path+'/'+objname+'/'+date+'/'+camera+'_'+prism+'_'+grating+'_'+slit+'_'+central_wave+'/obs'+obsid])
+
             # IF A DUPLICATE:
             # Append the time to an existing time list.
             #
@@ -576,7 +472,7 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
             #
             # [[[5400,6500,7200], '/path/to/first/science'], [[5200, NEWTIMEHERE], '/path/to/second/science']]
 
-            elif scienceDirList[-1][1] == objDir+'/'+date+'/'+grat+'/obs'+obsid:
+            elif scienceDirList[-1][1] == path+'/'+objname+'/'+date+'/'+camera+'_'+prism+'_'+grating+'_'+slit+'_'+central_wave+'/obs'+obsid:
                 scienceDirList[-1][0].append(time)
 
 
@@ -584,40 +480,53 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
     logging.info("\nCopying Science and Acquisitions.\nCopying science frames and science acquisitions.\nNow copying: ")
 
     for i in range(len(allfilelist)):
-        header = astropy.io.fits.open(rawPath+'/'+allfilelist[i][0])
-
-        obstype = header[0].header['OBSTYPE'].strip()
-        obsid = header[0].header['OBSID'][-3:].replace('-','')
-        grat = header[0].header['GRATING'][0:1]
-        date = header[0].header[ 'DATE'].replace('-','')
-        obsclass = header[0].header['OBSCLASS']
-        obj = header[0].header['OBJECT']
-        obj = re.sub('[^a-zA-Z0-9\n\.]', '', obj)
-
+        header = astropy.io.fits.open(rawPath+'/'+allfilelist[i][0])[0].header
+        prism = header['PRISM']
+        prism = prism[prism.find('+')+1:prism.find('_')]
+        
+        if prism != ('SXD' or 'LXD'):
+            # Only grab frames taken in GNIRS XD mode!
+            continue
+        
+        obstype = header['OBSTYPE'].strip()
+        obsid = header['OBSID'].replace('-','_')
+        date = header['DATE'].strip().replace('-','')
+        obsclass = header['OBSCLASS'].strip()
+        # If object name isn't alphanumeric, make it alphanumeric.
+        objname = header['OBJECT']
+        objname = re.sub('[^a-zA-Z0-9\n\.]', '', objname)
+        camera = header['CAMERA']
+        camera = camera[:camera.find('_')]
+        decker = header['DECKER']
+        slit = header['SLIT']
+        slit = slit[:slit.find('_')]
+        grating = header['GRATING']
+        grating = grating[:grating.find('/')]
+        
         # Only grab the most recent aquisition frame.
         if i!=len(allfilelist)-1:
             header2 = astropy.io.fits.open(rawPath+'/'+allfilelist[i+1][0])
             obsclass2 = header2[0].header['OBSCLASS']
             obj2 = header2[0].header['OBJECT']
             obj2 = re.sub('[^a-zA-Z0-9\n\.]', '', obj2)
-
+        
         # Copy sky and science frames to appropriate directories. Write two text files in
         # those directories that store the names of the science frames and sky frames for later
         # use by the pipeline.
         if obsclass=='science':
             logging.info(allfilelist[i][0])
-            objDir = path+'/'+obj
-            shutil.copy(rawPath+'/'+allfilelist[i][0], objDir+'/'+date+'/'+grat+'/obs'+obsid+'/')
+#            objDir = path+'/'+obj
+            shutil.copy(rawPath+'/'+allfilelist[i][0], path+'/'+objname+'/'+date+'/'+camera+'_'+prism+'_'+grating+'_'+slit+'_'+central_wave+'/obs'+obsid+'/')
             number_files_that_were_copied += 1
             # Update status flag to show entry was copied.
             allfilelist[i][1] = 0
             # Create an scienceFrameList in the relevant directory.
             if allfilelist[i][0] not in skyFrameList:
-                writeList(allfilelist[i][0], 'scienceFrameList', objDir+'/'+date+'/'+grat+'/obs'+obsid+'/')
+                writeList(allfilelist[i][0], 'scienceFrameList', path+'/'+objname+'/'+date+'/'+camera+'_'+prism+'_'+grating+'_'+slit+'_'+central_wave+'/obs'+obsid+'/')
             # Create a skyFrameList in the relevant directory.
             if allfilelist[i][0] in skyFrameList:
-                writeList(allfilelist[i][0], 'skyFrameList', objDir+'/'+date+'/'+grat+'/obs'+obsid+'/')
-
+                writeList(allfilelist[i][0], 'skyFrameList', path+'/'+objname+'/'+date+'/'+camera+'_'+prism+'_'+grating+'_'+slit+'_'+central_wave+'/obs'+obsid+'/')
+        
         # Copy the most recent acquisition in each set to a new directory to be optionally
         # used later by the user for checks (not used by the pipeline).
         if obsclass=='acq' and obsclass2=='science':
@@ -628,6 +537,7 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
             shutil.copy(rawPath+'/'+allfilelist[i][0], path+'/'+obj2+'/'+date+'/'+grat+'/Acquisitions/')
             number_files_that_were_copied += 1
             allfilelist[i][1] = 0
+        
 
     # Copy telluric frames to the appropriate folder.
     # Note: Because the 'OBJECT' of a telluric file header is different then the
@@ -635,14 +545,25 @@ def sortScienceAndTelluric(allfilelist, skyFrameList, telskyFrameList, sciImageL
     logging.info("\nCopying telluric frames.\nNow copying: ")
     for i in range(len(allfilelist)):
         header = astropy.io.fits.open(rawPath+'/'+allfilelist[i][0])
-
-        obstype = header[0].header['OBSTYPE'].strip()
-        obsid = header[0].header['OBSID'][-3:].replace('-','')
-        grat = header[0].header['GRATING'][0:1]
-        date = header[0].header[ 'DATE'].replace('-','')
-        obsclass = header[0].header['OBSCLASS']
-        obj = header[0].header['OBJECT']
-        obj = re.sub('[^a-zA-Z0-9\n\.]', '', obj)
+        prism = header['PRISM']
+        prism = prism[prism.find('+')+1:prism.find('_')]
+        if prism != ('SXD' or 'LXD'):
+            # Only grab frames taken in GNIRS XD mode!
+            continue
+        obstype = header['OBSTYPE'].strip()
+        obsid = header['OBSID'].replace('-','_')
+        date = header['DATE'].strip().replace('-','')
+        obsclass = header['OBSCLASS'].strip()
+        # If object name isn't alphanumeric, make it alphanumeric.
+        objname = header['OBJECT']
+        objname = re.sub('[^a-zA-Z0-9\n\.]', '', objname)
+        camera = header['CAMERA']
+        camera = camera[:camera.find('_')]
+        decker = header['DECKER']
+        slit = header['SLIT']
+        slit = slit[:slit.find('_')]
+        grating = header['GRATING']
+        grating = grating[:grating.find('/')]
         telluric_time = timeCalc(rawPath+'/'+allfilelist[i][0])
 
 
@@ -1562,8 +1483,8 @@ def matchTellurics(telDirList, obsDirList, telluricTimeThreshold):
     os.chdir(path)
     logging.info("\nI am finished matching science images with telluric frames.")
     return
-'''
 
+'''
 #--------------------------- End of Functions ---------------------------------#
 
 if __name__ == '__main__':

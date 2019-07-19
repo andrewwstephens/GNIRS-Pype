@@ -29,27 +29,24 @@
 
 # STDLIB
 
-import logging, os, sys, shutil, pkg_resources, argparse
-from datetime import datetime
+import logging, os, sys, shutil, pkg_resources, argparse, datetime, ConfigParser
 
 # LOCAL
 
 # Import major Nifty Steps.
+import gnirsData as gnirsData
+import gnirsHeaders as gnirsHeaders
 import gnirsSort as gnirsSort
 #import gnirsBaselineCalibration as gnirsBaselineCalibration
 #import gnirsReduce as gnirsReduce
 #import gnirsTelluric as gnirsTelluric
 #import gnirsFluxCalibrate as gnirsFluxCalibrate
-#import gnirsCombineOrders as gnirsCombineOrders
+#import gnirsCombineOrdersXD as gnirsCombineOrdersXD
 # Import gnirs utilities module.
-from gnirsUtils import datefmt as datefmt
-# Import configuration file parsing.
-#from configobj.configobj import ConfigObj
-import ConfigParser
+from gnirsUtils import datefmt
 # Import custom pipeline setup Class.
 #from objectoriented.GetConfig import GetConfig  ## this is not adapted for GNIRS as of July 2019
 # Conveniently import some utility functions so we don't have to type the full name.
-#from gnirsUtils import datefmt, printDirectoryLists, writeList, getParam  ## interactiveNIFSInput (this function is not adapted for GNIRS as of July 2019)
 
 #                                +
 #
@@ -81,35 +78,32 @@ import ConfigParser
 __version__ = "1.0.1"
 
 # The time when Nifty was started is:
-startTime = str(datetime.now())
+startTime = str(datetime.datetime.now())
+print(startTime)
 
 ## IMPORTANT NOTE:  The command line options are not available for GNIRS as of July 2019.
 
 def start():
     """
-
-    gnirsPipeline
-
-    This script is a full-featured GNIRS data reduction pipeline. It can call up
-    to three "Steps".
+    This script is a full-featured GNIRS data reduction pipeline. It can call up to five "Steps".
 
     This script does two things. It:
-        - gets data reduction parameters; either from an interactive input session (not adapted for GNIRS as of July 2019) or
-          an input file, and
-        - launches appropriate scripts to do the work. It can call up to 3 scripts directly:
-                1) gnirsSort.py
-                2) gnirsBaselineCalibration.py
-                3) gnirsReduce.py
-
+        - gets data reduction parameters; either from an interactive input session (not adapted for GNIRS as of July 2019) or an input file, and
+        - launches appropriate scripts to do the work. It can call up to five scripts directly:
+                1) gnirsData.py
+                2) gnirsHeaders.py
+                3) gnirsSort.py
+                4) gnirsBaselineCalibration.py
+                5) gnirsReduce.py
     """
     # Save starting path for later use and change one directory up.
     path = os.getcwd()
     print("IT WORKED!")
-    # Get paths to built-in Nifty data. Special code in setup.py makes sure recipes/ and
-    # runtimeData/ will be installed when someone installs Nifty, and accessible in this way.
-#    RECIPES_PATH = pkg_resources.resource_filename('GitHub', 'recipes/')
+    # Get paths to built-in Nifty data. Special code in setup.py makes sure recipes/ and runtimeData/ will be installed when someone installs Nifty, 
+    # and accessible in this way.
+#    RECIPES_PATH = pkg_resources.resource_filename('GitHub', 'recipes/')  ## this is not adapted for GNIRS as of July 2019
     RECIPES_PATH = 'recipes/'
-#    RUNTIME_DATA_PATH = pkg_resources.resource_filename('GitHub', 'runtimeData/')
+#    RUNTIME_DATA_PATH = pkg_resources.resource_filename('GitHub', 'runtimeData/')  ## this is not adapted for GNIRS as of July 2019
     RUNTIME_DATA_PATH = 'runtimeData/'
 
     # Format logging options.
@@ -157,51 +151,62 @@ def start():
     # Load pipeline configuration from /recipes/defaultConfig.cfg that is used by this script.
     manualMode = config.getboolean('defaults','manualMode')
 
-    # Load pipeline specific config.
+    # Load pipeline specific configuration.
+    data = bool(config.get('gnirsPipelineConfig','data'))
+    headers = bool(config.get('gnirsPipelineConfig','headers'))
     sort = bool(config.get('gnirsPipelineConfig','sort'))
     calibrationReduction = bool(config.get('gnirsPipelineConfig','calibrationReduction'))
     telluricReduction = bool(config.get('gnirsPipelineConfig','telluricReduction'))
     scienceReduction = bool(config.get('gnirsPipelineConfig','scienceReduction'))
     telluricCorrection = bool(config.get('gnirsPipelineConfig','telluricCorrection'))
     fluxCalibration = bool(config.get('gnirsPipelineConfig','fluxCalibration'))
-    combineOrders = bool(config.get('gnirsPipelineConfig','combineOrders'))
+    combineOrdersXD = bool(config.get('gnirsPipelineConfig','combineOrdersXD'))
 
     ###########################################################################
     ##                         SETUP COMPLETE                                ##
     ##                      BEGIN DATA REDUCTION                             ##
     ##                                                                       ##
-    ##        Four Main Steps:                                               ##
-    ##          1) Sort the Raw Data - gnirsSort.py                           ##
-    ##          2) Reduce baseline calibrations - gnirsBaselineCalibration.py ##
-    ##          3) Reduce telluric observations - gnirsReduce.py              ##
-    ##          4) Reduce science observations - gnirsReduce.py               ##
+    ##   Six Main Steps:                                                    ##  
+    ##       1) Get Data - gnirsData.py                                      ##
+    ##       2) Read Headers - gnirsHeaders.py                               ##
+    ##       2) Sort the Raw Data - gnirsSort.py                             ##
+    ##       3) Reduce baseline calibrations - gnirsBaselineCalibration.py   ##
+    ##       4) Reduce telluric observations - gnirsReduce.py                ##
+    ##       5) Reduce science observations - gnirsReduce.py                 ##
     ##                                                                       ##
     ###########################################################################
 
     ###########################################################################
-    ##                      STEP 1: Read the file headers.                   ##
+    ##                      STEP 1: Get the data.                            ##
     ###########################################################################
-    '''
-    if readHeaders:
+    
+    if data:
         if manualMode:
-            a = raw_input('About to enter gnirsReadHeaders.')
-        gnirsreadHeaders.start()
-    # By now, we should have paths to the three types of raw data. Print them out.
-    printDirectoryLists()
-    '''
+            a = raw_input('About to enter gnirsData.')
+        data_directory = gnirsData.start()
+
     ###########################################################################
-    ##                      STEP 2: Sort the raw data.                       ##
+    ##                      STEP 2: Read the file headers.                   ##
+    ###########################################################################
+    
+    if headers:
+        if manualMode:
+            a = raw_input('About to enter gnirsHeaders.')
+        headerinfo = gnirsHeaders.start(data_directory)
+    
+    ###########################################################################
+    ##                      STEP 3: Sort the raw data.                       ##
     ###########################################################################
     
     if sort:
         if manualMode:
             a = raw_input('About to enter gnirsSort.')
-        gnirsSort.start()
+        gnirsSort.start(data_directory, headerinfo)
     # By now, we should have paths to the three types of raw data. Print them out.
     #printDirectoryLists()
 
     ###########################################################################
-    ##                STEP 3: Reduce baseline calibrations.                  ##
+    ##                STEP 4: Reduce baseline calibrations.                  ##
     ###########################################################################
     '''
     if calibrationReduction:
@@ -210,7 +215,7 @@ def start():
         gnirsBaselineCalibration.start()
 
     ###########################################################################
-    ##                STEP 4: Reduce telluric observations.                  ##
+    ##                STEP 5: Reduce telluric observations.                  ##
     ###########################################################################
 
     if telluricReduction:
@@ -219,7 +224,7 @@ def start():
         gnirsReduce.start('Telluric')
 
     ###########################################################################
-    ##                 STEP 5: Reduce science observations.                  ##
+    ##                 STEP 6: Reduce science observations.                  ##
     ###########################################################################
 
     if scienceReduction:
