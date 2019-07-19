@@ -214,6 +214,8 @@ def makePythonLists(rawPath, info):
     sciDateList = [] # List of unique dates by science (including sky) frames.
     sciImageList = [] # List of science observation directories.
 
+    print "info =", info
+
     # Store current working directory for later use.
     path = os.getcwd()
 
@@ -239,8 +241,9 @@ def makePythonLists(rawPath, info):
         if info[file]['INSTRUME'] != 'GNIRS':
             # Only grab frames belonging to GNIRS raw data!
             continue
-        if info[file]['PRISM'][info[file]['PRISM'].find('+')+1:info[file]['PRISM'].find('_')] != ('SXD' or 'LXD'):
-            # Only grab frames taken in GNIRS XD mode!
+
+        # PRISM will be one of: SB+SXD_G5536, LB+LXD_G5535, MIR_G5511, SXD_G5509, ...
+        if 'SXD' not in info[file]['PRISM'] and 'LXD' not in info[file]['PRISM']: # Filter out not cross-dispersed data
             continue
 
         # Make a list of science, telluric and acquisition frames.
@@ -259,7 +262,7 @@ def makePythonLists(rawPath, info):
                 acq_poff = info[file]['POFFSET']
                 acq_qoff = info[file]['QOFFSET']
 
-            if info[file]['OBSCLASS'].strip() == 'science':
+            if info[file]['OBSCLASS'] == 'science':
                 sciImageList.append(file)
                 list1 = [re.sub('[^a-zA-Z0-9\n\.]', '', info[file]['OBJECT']), info[file]['DATE-OBS'].replace('-',''), info[file]['CAMERA'][:info[file]['CAMERA'].find('_')], info[file]['PRISM'][info[file]['PRISM'].find('+')+1:info[file]['PRISM'].find('_')], \
                     info[file]['GRATING'][:info[file]['GRATING'].find('/')], info[file]['SLIT'][:info[file]['SLIT'].find('_')], info[file]['GRATWAVE'], info[file]['OBSID'].replace('-','_')]
@@ -272,8 +275,16 @@ def makePythonLists(rawPath, info):
                     slitlength = 7.
                 elif 'LC' in info[file]['DECKER'] and 'XD' in info[file]['DECKER']:
                     slitlength = 5.
+                else:
+                    slitlength = None
+                print 'slitlength = ', slitlength
                 slitwidth = float(info[file]['SLIT'][:info[file]['SLIT'].find('arcsec')])
-                print(slitwidth)
+                print('slitwidth = ', slitwidth)
+
+                print 'FILE =', file
+                print 'POFFSET =', info[file]['POFFSET']
+                print 'QOFFSET =', info[file]['QOFFSET']
+
                 if abs(info[file]['POFFSET'] - acq_poff) > slitwidth/2. or abs(info[file]['QOFFSET'] - acq_qoff) > slitlength/2.:
                     skyFrameList.append(file)
 
@@ -329,8 +340,8 @@ def makePythonLists(rawPath, info):
 
     # Print information for user.
     logging.info("\nTotal number of files found by type.\n")
-    logging.info("Length allfilelist (science and telluric frames): " +  str(len(allfilelist)))
-    logging.info("Length sciImageList (science and science sky frames): " +  str(len(sciImageList)))
+    logging.info("Length allfilelist (science and telluric frames): %d", len(allfilelist))
+    logging.info("Length sciImageList (science and science sky frames): %d", len(sciImageList))
     logging.info("Length arclist (arc frames): " + str(len(arclist)))
     logging.info("Length darklist (dark frames): " + str(len(darklist)))
     logging.info("Length QHflatlist (QHlamps on flat frames): " + str(len(QHflatlist)))
