@@ -27,7 +27,9 @@ def start(data_directory):
         for f in info.keys():
             if info[f]['OBSID'] == o:
                 time.append(info[f]['DATETIME'])
-        info[f]['AVETIME'] = min(time) + datetime.timedelta(seconds=(max(time)-min(time)).total_seconds()/2.)
+        for f in info.keys():
+            if info[f]['OBSID'] == o:
+                info[f]['AVETIME'] = min(time) + datetime.timedelta(seconds=(max(time)-min(time)).total_seconds()/2.)
     
     return info
 

@@ -36,8 +36,8 @@ import logging, os, sys, shutil, pkg_resources, argparse, datetime, ConfigParser
 # Import major Nifty Steps.
 import gnirsData as gnirsData
 import gnirsHeaders as gnirsHeaders
-import gnirsSort as gnirsSort
-#import gnirsBaselineCalibration as gnirsBaselineCalibration
+#import gnirsSort as gnirsSort
+import gnirsBaselineCalibration as gnirsBaselineCalibration
 #import gnirsReduce as gnirsReduce
 #import gnirsTelluric as gnirsTelluric
 #import gnirsFluxCalibrate as gnirsFluxCalibrate
@@ -149,7 +149,7 @@ def start():
     logging.info("")
     
     # Load pipeline configuration from /recipes/defaultConfig.cfg that is used by this script.
-    manualMode = config.getboolean('defaults','manualMode')
+    manualMode = bool(config.get('defaults','manualMode'))
 
     # Load pipeline specific configuration.
     data = bool(config.get('gnirsPipelineConfig','data'))
@@ -197,23 +197,23 @@ def start():
     ###########################################################################
     ##                      STEP 3: Sort the raw data.                       ##
     ###########################################################################
-    
+    '''
     if sort:
         if manualMode:
             a = raw_input('About to enter gnirsSort.')
         gnirsSort.start(data_directory, headerinfo)
     # By now, we should have paths to the three types of raw data. Print them out.
     #printDirectoryLists()
-
+    '''
     ###########################################################################
     ##                STEP 4: Reduce baseline calibrations.                  ##
     ###########################################################################
-    '''
+    
     if calibrationReduction:
         if manualMode:
             a = raw_input('About to enter gnirsBaselineCalibration.')
         gnirsBaselineCalibration.start()
-
+    '''
     ###########################################################################
     ##                STEP 5: Reduce telluric observations.                  ##
     ###########################################################################
