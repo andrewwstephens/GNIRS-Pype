@@ -62,105 +62,78 @@ def start(info, config):
     logger.info("Path to raw file directory is: %s", rawPath)
     logger.info("Creating lists of each type of file.")
 
-    for file in sorted(info.keys()):
+    for filename in sorted(info.keys()):
 
-        if info[file]['INSTRUME'] != 'GNIRS':
-            logger.debug('Skipping %s from %s', file, info[file]['INSTRUME'])
-            continue
+        if info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] in ['science', 'acq', 'acqCal', 'partnerCal']:
 
-        # PRISM will be one of: SB+SXD_G5536, LB+LXD_G5535, MIR_G5511, SXD_G5509, ...
-        if 'SXD' not in info[file]['PRISM'] and 'LXD' not in info[file]['PRISM']:
-            logger.debug('Skipping %s which is not cross-dispersed', file)
-            continue
-
-        # Make a list of science, telluric and acquisition frames.
-        # Use the copied variable (1 not copied, 0 copied) to check later that the file was copied correctly.
-        # allfilelist is a 2D list of [[filename1, copied, obsclass1], [filename2, copied, obsclass2]] pairs.
-
-        if info[file]['OBSTYPE'] == 'OBJECT' and info[file]['OBSCLASS'] in ['science', 'acq', 'acqCal', 'partnerCal']:
-
-            # Append a list of [filename, copied, obsclass] to the list.  obsclass is used later for checks.
-            templist = [file, 1, info[file]['OBSCLASS']]
-            allfilelist.append(templist)
-
-            if info[file]['OBSCLASS'] == 'acq':
+            if info[filename]['OBSCLASS'] == 'acq':
                 # Use the P and Q offsets of the last acquisition image to calculate the absolute P and Q offsets.
                 # The absolute P and Q offsets are then used to determine if the science target is in the slit.
                 # This assumes that the acq and science frames are in order and uninterrupted!
-                acq_poff = info[file]['POFFSET']
-                acq_qoff = info[file]['QOFFSET']
+                acq_poff = info[filename]['POFFSET']
+                acq_qoff = info[filename]['QOFFSET']
 
-            elif info[file]['OBSCLASS'] == 'science':
-                logger.debug('Adding %s to the science list', file)
-                sciImageList.append(file)
+            elif info[filename]['OBSCLASS'] == 'science':
+                logger.debug('Adding %s to the science list', filename)
+                sciImageList.append(filename)
 
-                # create a summary of this file's configuration:
-                odc = [re.sub('[^a-zA-Z0-9]', '', info[file]['OBJECT']),  # remove irregular characters
-                       info[file]['DATE-OBS'].replace('-',''),
-                       info[file]['CAMERA'][:info[file]['CAMERA'].find('_')],
-                       info[file]['PRISM'][info[file]['PRISM'].find('+')+1:info[file]['PRISM'].find('_')],
-                       info[file]['GRATING'][:info[file]['GRATING'].find('/')],
-                       info[file]['SLIT'][:info[file]['SLIT'].find('_')],
-                       info[file]['GRATWAVE'], info[file]['OBSID'].replace('-','_')]
-                logger.debug('%s: %s', file, odc)
-
+                odc = [info[filename]['OBJECT'], info[filename]['DATE-OBS'], info[filename]['CONFIG'], info[filename]['OBSID']]
                 if odc not in objectDateConfigurationList:
                     objectDateConfigurationList.append(odc)
 
-                d = info[file]['DATE-OBS'].replace('-','')  # DATE-OBS has a format '2019-07-20'
-                if d not in sciDateList:
-                    sciDateList.append(d)
+                if info[filename]['DATE-OBS'] not in sciDateList:
+                    sciDateList.append(info[filename]['DATE-OBS'])
 
-                if 'SC' in info[file]['DECKER'] and 'XD' in info[file]['DECKER']:
+                if 'SC' in info[filename]['DECKER'] and 'XD' in info[filename]['DECKER']:
                     slitlength = 7.
-                elif 'LC' in info[file]['DECKER'] and 'XD' in info[file]['DECKER']:
+                elif 'LC' in info[filename]['DECKER'] and 'XD' in info[filename]['DECKER']:
                     slitlength = 5.
                 else:
                     slitlength = None
-                slitwidth = float(info[file]['SLIT'][:info[file]['SLIT'].find('arcsec')])
+                slitwidth = float(info[filename]['SLIT'][:info[filename]['SLIT'].find('arcsec')])
                 logger.debug('Slit size: %.1f x %.1f arcsec', slitwidth, slitlength)
 
-                if abs(info[file]['POFFSET'] - acq_poff) > slitwidth/2.0 or \
-                    abs(info[file]['QOFFSET'] - acq_qoff) > slitlength/2.0:
-                    logger.debug('Adding %s to the sky list', file)
-                    skyFrameList.append(file)
+                if abs(info[filename]['POFFSET'] - acq_poff) > slitwidth/2.0 or \
+                    abs(info[filename]['QOFFSET'] - acq_qoff) > slitlength/2.0:
+                    logger.debug('Adding %s to the sky list', filename)
+                    skyFrameList.append(filename)
 
             else:
-                logger.error('Unknown class for %s', file)
+                logger.error('Unknown class for %s', filename)
 
-        elif info[file]['OBSTYPE'] == 'ARC':
-            logger.debug('Adding %s to the arc list', file)
-            arclist.append(file)
+        elif info[filename]['OBSTYPE'] == 'ARC':
+            logger.debug('Adding %s to the arc list', filename)
+            arclist.append(filename)
 
-        elif info[file]['OBSTYPE'] == 'DARK':
-            logger.debug('Adding %s to the dark list', file)
-            darklist.append(file)
+        elif info[filename]['OBSTYPE'] == 'DARK':
+            logger.debug('Adding %s to the dark list', filename)
+            darklist.append(filename)
 
-        elif info[file]['OBSTYPE'] == 'FLAT':
+        elif info[filename]['OBSTYPE'] == 'FLAT':
 
-            if info[file]['GCALLAMP'] == 'QH' and 'Pinholes' in info[file]['SLIT']:
-                logger.debug('Adding %s to pinhole list', file)
-                pinholelist.append(file)
+            if info[filename]['GCALLAMP'] == 'QH' and 'Pinholes' in info[filename]['SLIT']:
+                logger.debug('Adding %s to pinhole list', filename)
+                pinholelist.append(filename)
 
-            elif info[file]['GCALLAMP'] == 'QH'and 'Pinholes' not in info[file]['SLIT']:
-                logger.debug('Adding %s to the QH flat list', file)
-                QHflatlist.append(file)
+            elif info[filename]['GCALLAMP'] == 'QH'and 'Pinholes' not in info[filename]['SLIT']:
+                logger.debug('Adding %s to the QH flat list', filename)
+                QHflatlist.append(filename)
 
-            elif info[file]['GCALLAMP'] == 'IRhigh':
-                logger.debug('Adding %s to the IR flat list', file)
-                IRflatlist.append(file)
+            elif info[filename]['GCALLAMP'] == 'IRhigh':
+                logger.debug('Adding %s to the IR flat list', filename)
+                IRflatlist.append(filename)
 
             else:
-                logger.error('Unknown flat configuration for %s', file)
+                logger.error('Unknown flat configuration for %s', filename)
         else:
-            logger.error('Unknown configuration for %s', file)
+            logger.error('Unknown configuration for %s', filename)
 
     # Make list of unique [date, obsid] pairs from FLATS.
     # If flat was taken on the same day as a science frame, append that flat date.
     # If not, append an arbitrary unique date from sciDateList.
     # This is so we can sort calibrations later by date and obsid.
-    #n = 0
-    #for flat in QHflatlist:
+    # n = 0
+    # for flat in QHflatlist:
     #    # Make sure no duplicate dates are being entered.
     #    if QHflatlist.index(flat) == 0 or not oldobsid == info[file]['OBSID'].replace('-','_'):
     #        if info[file]['DATE-OBS'].replace('-','') in sciDateList:
@@ -172,8 +145,8 @@ def start(info, config):
     #    oldobsid = info[file]['OBSID'].replace('-','_')
 
     # Andy doesn't understand this last section.  How about something like this?
-    for file in QHflatlist:
-        date_obsid = [info[file]['DATE-OBS'].replace('-',''), info[file]['OBSID'].replace('-','_')]
+    for f in QHflatlist:
+        date_obsid = [info[f]['DATE-OBS'].replace('-', ''), info[f]['OBSID'].replace('-', '_')]
         if date_obsid not in obsidDateList:
             obsidDateList.append(date_obsid)
 
@@ -197,18 +170,10 @@ def start(info, config):
     logger.info('Need to copy %d flats, arcs, and darks',
                 len(arclist) + len(darklist) + len(QHflatlist) + len(IRflatlist) + len(pinholelist))
 
-
-
-
-
-
-
     # ------------------------------------------------------------------------------------------------------------------
     # Copy the FITS files into the appropriate directories
 
     logger.info("Making new directories and copying files...")
-    number_files_to_be_copied = len(allfilelist)
-    number_files_that_were_copied = 0
 
     objDirList = []  # List of paths sorted by object and date. ['path/to/object1/date1', 'path/to/object1/date2'].
 
@@ -231,167 +196,75 @@ def start(info, config):
 
     for filename in sorted(info.keys()):
 
-        if info[file]['INSTRUME'] != 'GNIRS':
-            continue  # skip non-GNIRS files
+        logger.debug('%s: OBSCLASS:%s OBSTYPE:%s OBJECT:%s', filename, info[filename]['OBSCLASS'],
+                     info[filename]['OBSTYPE'], info[filename]['OBJECT'])
 
-        if 'SXD' not in info[filename]['PRISM'] and 'LXD' not in info[filename]['PRISM']:
-            continue  # skip non-XD data
+        if info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'science':
 
-        
-        if info[filename]['OBSCLASS'] == 'science':
+            newpath = path + '/' + \
+                info[filename]['OBJECT'] + '/' + \
+                info[filename]['DATE-OBS'] + '/' + \
+                info[filename]['CONFIG'] + '/' + \
+                info[filename]['OBSID']
+            logger.debug('newpath: %s', newpath)
 
-            objDir = path + '/' + info[filename]['DATE-OBS'].replace('-','') + '/' + \
-                      re.sub('[^a-zA-Z0-9]', '', info[filename]['OBJECT']) + '/' + \
-                      info[filename]['CONFIG'] + '_' + \
-                      info[filename]['OBSID'].replace('-','_')
-            logger.debug('objDir: %s', objDir)
-
-            if not os.path.exists(objDir):
-                logger.debug('Creating %s', objDir)
-                os.makedirs(objDir)
-                objDirList.append(objDir)
-            shutil.copy2(rawPath + '/' + filename, objDir)
+            if not os.path.exists(newpath):
+                logger.debug('Creating %s', newpath)
+                os.makedirs(newpath)
+                objDirList.append(newpath)
+            logger.debug('Copying %s to %s', filename, newpath)
+            shutil.copy2(rawPath + '/' + filename, newpath)
             # TODO:  Write text files with the names of the science frames and sky frames for later use by the pipeline.
 
-        elif info[filename]['OBSCLASS'] == 'partnerCal':
+        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'partnerCal':
 
-            # Associate this Telluric with all the science observations with the ame config within 1.5 hours
-            
+            # Associate this Telluric with all the science targets with the same config within 1.5 hours:
             matches = []
             for f in info.keys():
                 if info[f]['OBSCLASS'] == 'science' and \
-                       info[f]['CONFIG'] == info[filename]['CONFIG'] and \
-                       abs(info[f]['AVETIME'] - info[filename]['AVETIME']) < datetime.timedelta(hours=1.5) and \
-                       f not in matches:
-                    matches.append(f)
+                        info[f]['CONFIG'] == info[filename]['CONFIG'] and \
+                        abs(info[f]['AVETIME'] - info[filename]['AVETIME']) < datetime.timedelta(hours=1.5) and \
+                        info[f]['OBJECT'] not in matches:
+                    matches.append(info[f]['OBJECT'])
             logger.debug('This Telluric matches: %s', matches)
-                
+            for m in matches:
+                newpath = path + '/' + m + '/' + \
+                    info[filename]['DATE-OBS'] + '/' + \
+                    info[filename]['CONFIG'] + '/' + \
+                    'Tellurics/' + \
+                    info[filename]['OBSID']
+                logger.debug('newpath: %s', newpath)
+                if not os.path.exists(newpath):
+                    logger.debug('Creating %s', newpath)
+                    os.makedirs(newpath)
+                logger.debug('Copying %s to %s', filename, newpath)
+                shutil.copy2(rawPath + '/' + filename, newpath)
 
-            # step through all the files, find the science exposures with the same config, check the ave obs time
+        elif info[filename]['OBSTYPE'] in ['FLAT', 'ARC', 'DARK']:
 
-            
+            # Associate these calibrations with all the science targets on the same night with the same config
+            matches = []
+            for f in info.keys():
+                if info[f]['OBSCLASS'] == 'science' and \
+                        info[f]['CONFIG'] == info[filename]['CONFIG'] and \
+                        info[f]['DATE-OBS'] == info[filename]['DATE-OBS'] and \
+                        info[f]['OBJECT'] not in matches:
+                    matches.append(info[f]['OBJECT'])
+            logger.debug('This calibration matches: %s', matches)
+            for m in matches:
+                newpath = path + '/' + m + '/' + \
+                    info[filename]['DATE-OBS'] + '/' + \
+                    info[filename]['CONFIG'] + '/' + \
+                    'Calibrations'
+                logger.debug('newpath: %s', newpath)
+                if not os.path.exists(newpath):
+                    logger.debug('Creating %s', newpath)
+                    os.makedirs(newpath)
+                logger.debug('Copying %s to %s', filename, newpath)
+                shutil.copy2(rawPath + '/' + filename, newpath)
 
-            
-
-            raise SystemExit('WHOAH')
-
-
-
-
-
-
-    
-            timeList = []
-            for k in range(len(scienceDirList)):
-                # Make sure date and gratings match.
-                tempDir = scienceDirList[k][1].split(os.sep)
-                if date in tempDir and grat in tempDir:
-                    # Open the times of all science frames in science_directory.
-                    times = scienceDirList[k][0]
-                    # Find difference in each time from the telluric frame we're trying to sort.
-                    diffList = []
-                    for b in range(len(times)):
-                        difference = abs(telluric_time-scienceDirList[k][0][b])
-                        templist = []
-                        templist.append(difference)
-                        templist.append(scienceDirList[k][1])
-                        diffList.append(templist)
-                    # Find the science frame with the smallest difference.
-                    minDiff = min(diffList)
-                    # Pass that time and path out of the for loop.
-                    timeList.append(minDiff)
-            # Out of the for loop, compare min times from different directories.
-            if timeList:
-                closest_time = min(timeList)
-                # Copy the telluric frame to the path of that science frame.
-                path_to_science_dir = closest_time[1]
-                path_to_tellurics = os.path.split(path_to_science_dir)[0]
-
-                # Create a Tellurics directory in science_object_name/YYYYMMDD/grating.
-
-                if not os.path.exists(path_to_tellurics + '/Tellurics'):
-                    os.mkdir(path_to_tellurics + '/Tellurics')
-                # Create an obsid (eg. obs25) directory in the Tellurics directory.
-                if not os.path.exists(path_to_tellurics+'/Tellurics/obs'+obsid):
-                    os.mkdir(path_to_tellurics+'/Tellurics/obs'+obsid)
-                    telDirList.append(path_to_tellurics+'/Tellurics/obs'+obsid)
-                elif not telDirList or not telDirList[-1]==path_to_tellurics+'/Tellurics/obs'+obsid:
-                    telDirList.append(path_to_tellurics+'/Tellurics/obs'+obsid)
-                shutil.copy(rawPath+'/'+allfilelist[i][0], path_to_tellurics+'/Tellurics/obs'+obsid+'/')
-                number_files_that_were_copied += 1
-                allfilelist[i][1] = 0
-                # Create an scienceFrameList in the relevant directory.
-                if allfilelist[i][0] not in telskyFrameList:
-                    writeList(allfilelist[i][0], 'tellist', path_to_tellurics+'/Tellurics/obs'+obsid+'/')
-                # Create a skyFrameList in the relevant directory.
-                if allfilelist[i][0] in telskyFrameList:
-                    writeList(allfilelist[i][0], 'skyFrameList', path_to_tellurics+'/Tellurics/obs'+obsid+'/')
-
-    # Modify scienceDirList to a format telSort can use.
-    tempList = []
-    for i in range(len(scienceDirList)):
-        tempList.append(scienceDirList[i][1])
-    scienceDirList = tempList
-
-
-    # Check to see which files were not copied.
-    logger.info("\nChecking for non-copied science, tellurics and acquisitions.\n")
-    for i in range(len(allfilelist)):
-        # Check the copied flag. If not 0, logger.info("the entry.")
-        if allfilelist[i][1] != 0:
-            logger.info(str(allfilelist[i][0]) + " " + str(allfilelist[i][2]) + " was not copied.")
-    logger.info("\nEnd non-copied science, tellurics and acquisitions.\n")
-
-    # Check that all science frames and sky frames were copied.
-    count_from_raw_files = len(sciImageList) + len(skyFrameList)
-
-    count = 0
-    for science_directory in scienceDirList:
-        for file in os.listdir(science_directory):
-            if file.endswith('.fits'):
-                count += 1
-
-    if count_from_raw_files != count:
-        logger.info("\nWARNING: " + str(count_from_raw_files - count) + " science frames (or sky frames) \
-        were not copied.\n")
-    else:
-        logger.info("\nExpected number of science and sky frames copied.\n")
-
-    logger.info("\nDone sorting and copying science and tellurics. Moving on to Calibrations.\n")
-
-    # Test for telluric directories with mis-identified sky frames. For now, we identify sky frames
-    # based on absolute P and Q offsets, not relative to a zero point. This can cause problems.
-    # TODO(nat): look into if it is worth it to use relative P and Q offsets.
-    for telluric_directory in telDirList:
-        if os.path.exists(telluric_directory + '/skyFrameList') and not os.path.exists(telluric_directory + '/tellist'):
-            logger.info("\n#####################################################################")
-            logger.info("#####################################################################")
-            logger.info("")
-            logger.info("     WARNING in sort: a telluric directory exists that Nifty thinks ")
-            logger.info("                      contains only sky frames. Nifty uses absolute")
-            logger.info("                      P and Q offsets to identify sky frames; a target")
-            logger.info("                      not being at 0, 0 P and Q can cause this. If this is not")
-            logger.info("                      the case you can try adjusting the skyThreshold")
-            logger.info("                      parameter in Nifty's configuration.")
-            logger.info("")
-            logger.info("#####################################################################")
-            logger.info("#####################################################################\n")
-            os.chdir(telluric_directory)
-            rewriteSciImageList(2.0, "Telluric")
-            try:
-                sciImageList = open('tellist', "r").readlines()
-                logger.info("\nSucceeded; a telluric frame list exists in " + str(os.getcwd()))
-            except IOError:
-                logger.info("\nWARNING: no telluric frames found in " + str(os.getcwd()) + ". You may have to adjust the skyThreshold parameter.")
-                
-                #a = raw_input("Please make a tellist (list of telluric frames) in " + str(telluric_directory))
-                raise SystemError('No list of telluric frames found in ' + + str(telluric_directory))
-                
-            os.chdir(path)
-
-    os.chdir(path)
-
-    return
+        else:
+            logger.warning('Unhandlded file: %s', filename)
 
 
 
@@ -401,109 +274,16 @@ def start(info, config):
 
 
 
-
-
-
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
-def sortCalibrations(arcdarklist, arclist, flatlist, flatdarklist, ronchilist, objectDateGratingList, objDirList, obsidDateList, sciImageList, rawPath, manualMode):
-    """
-    Sort calibrations into appropriate directories based on date.
-    """
-    logger = log.getLogger('SortCals')
+    raise SystemExit('WHOAH')
 
     calDirList = []
     filelist = ['arclist', 'arcdarklist', 'flatlist', 'ronchilist', 'flatdarklist']
 
-    # Save path for later use. The rawPath part is for Gemini North network sorting.
-    path1 = os.getcwd()
-    if rawPath:
-        rawPath = rawPath
-    else:
-        rawPath = path1+'/rawPath'
+    # Create Calibrations directories in each of the observation date directories, e.g: YYYYMMDD/Calibrations
 
-    # Set up some tests and checks.
-    count = 0
-    expected_count = len(arcdarklist) + len(arclist) + len(flatlist)\
-          + len(flatdarklist) + len(ronchilist)
+    logger.info("Sorting flats:")
 
-    logger.info("Attempting to sort " + str(expected_count) + " files.")
-
-    # To make sure data was copied later in the pipeline:
-    # Add a small copied flag to each frame in calibration file lists.
-    new_flatlist = []
     for i in range(len(flatlist)):
-        # Transform 1D list into 2D list of [[filename, 'copied']]
-        # "copied" is 1 for not copied and 0 for copied.
-        templist = []
-        templist.append(flatlist[i])
-        templist.append(1)
-        new_flatlist.append(templist)
-    flatlist = new_flatlist
-
-    new_flatdarklist = []
-    for i in range(len(flatdarklist)):
-        # Transform 1D list into 2D list.
-        templist = []
-        templist.append(flatdarklist[i])
-        templist.append(1)
-        new_flatdarklist.append(templist)
-    flatdarklist = new_flatdarklist
-
-    new_arclist = []
-    for i in range(len(arclist)):
-        # Transform 1D list into 2D list.
-        templist = []
-        templist.append(arclist[i])
-        templist.append(1)
-        new_arclist.append(templist)
-    arclist = new_arclist
-
-    new_arcdarklist = []
-    for i in range(len(arcdarklist)):
-        # Transform 1D list into 2D list.
-        templist = []
-        templist.append(arcdarklist[i])
-        templist.append(1)
-        new_arcdarklist.append(templist)
-    arcdarklist = new_arcdarklist
-
-    new_ronchilist = []
-    for i in range(len(ronchilist)):
-        # Transform 1D list into 2D list.
-        templist = []
-        templist.append(ronchilist[i])
-        templist.append(1)
-        new_ronchilist.append(templist)
-    ronchilist = new_ronchilist
-
-    os.chdir(rawPath)
-
-    # Create Calibrations directories in each of the observation date directories based on existence of
-    # lamps on flats. Eg: YYYYMMDD/Calibrations
-    # Sort lamps on flats.
-    logger.info("\nSorting flats:")
-    # Create a flag so we only warn about non-standard gratings once.
-    grating_warning_flag = False
-    for i in range(len(flatlist)):
-        header = astropy.io.fits.open(flatlist[i][0])
-        obsid = header[0].header['OBSID']
-        grating = header[0].header['GRATING'][0:1]
-        if grating not in ["K", "J", "H", "Z"]:
-            logger.info("\n#####################################################################")
-            logger.info("#####################################################################")
-            logger.info("")
-            logger.info("     WARNING in sort: non-standard (non K, J, H, K) grating encountered. ")
-            logger.info("                      NIFTY has not been tested with non-standard")
-            logger.info("                      gratings!")
-            logger.info("")
-            logger.info("#####################################################################")
-            logger.info("#####################################################################\n")
-        # TODO(nat): this is horrendous. Do this in a better way.
-        # "Flat is better than nested."
         for objDir in objDirList:
             for item in obsidDateList:
                 if obsid in item:
@@ -529,7 +309,7 @@ def sortCalibrations(arcdarklist, arclist, flatlist, flatdarklist, ronchilist, o
                                 writeList(flatlist[i][0], 'flatlist', path)
 
     # Sort lamps off flats.
-    logger.info("\nSorting lamps off flats:")
+    logger.info("Sorting lamps off flats:")
     for i in range(len(flatdarklist)):
         os.chdir(rawPath)
         header = astropy.io.fits.open(flatdarklist[i][0])
@@ -550,30 +330,10 @@ def sortCalibrations(arcdarklist, arclist, flatlist, flatdarklist, ronchilist, o
                         # Create a flatdarklist in the relevant directory.
                         writeList(flatdarklist[i][0], 'flatdarklist', path)
 
-    # Sort ronchi flats.
-    logger.info("\nSorting ronchi flats:")
-    for i in range(len(ronchilist)):
-        os.chdir(rawPath)
-        header = astropy.io.fits.open(ronchilist[i][0])
-        obsid = header[0].header['OBSID']
-        grating = header[0].header['GRATING'][0:1]
-        for objDir in objDirList:
-            for item in obsidDateList:
-                if obsid in item:
-                    date = item[0]
-                    if date in objDir:
-                        if not os.path.exists(objDir+'/Calibrations_'+grating):
-                            os.mkdir(objDir+'/Calibrations_'+grating)
-                        shutil.copy('./'+ronchilist[i][0], objDir+'/Calibrations_'+grating+'/')
-                        ronchilist[i][1] = 0
-                        logger.info(ronchilist[i][0])
-                        count += 1
-                        path = objDir+'/Calibrations_'+grating+'/'
-                        # create a ronchilist in the relevant directory
-                        writeList(ronchilist[i][0], 'ronchilist', path)
+    # Sort pinholes
 
     # Sort arcs.
-    logger.info("\nSorting arcs:")
+    logger.info("Sorting arcs:")
     for i in range(len(arclist)):
         header = astropy.io.fits.open(arclist[i][0])
         date = header[0].header['DATE'].replace('-','')
@@ -611,52 +371,19 @@ def sortCalibrations(arcdarklist, arclist, flatlist, flatdarklist, ronchilist, o
                         # Create an arcdarklist in the relevant directory.
                         writeList(arcdarklist[i][0], 'arcdarklist', path)
 
-    # Check that each file in flatlist was copied.
-    for i in range(len(flatlist)):
-        if flatlist[i][1] == 1:
-            logger.info(str(flatlist[i][0])+ " was not copied.")
 
 
-    # ---------------------------- Tests ------------------------------------- #
-
-    # Check to see how many calibrations were copied.
-    if expected_count - count == 0:
-        logger.info("\nI sorted the " + str(expected_count) + " expected calibrations.\n")
-    else:
-        logger.info("\nI did not copy " + str(expected_count - count) + " calibration file(s).\n")
-
-    # Check each calibration file list to see which ones were not copied.
-    # Check that each file in flatlist was copied.
-    for i in range(len(flatlist)):
-        if flatlist[i][1] == 1:
-            logger.info(str(flatlist[i][0])+ " from flatlist was not copied.")
-
-    # Check that each file in flatdarklist was copied.
-    for i in range(len(flatdarklist)):
-        if flatdarklist[i][1] == 1:
-            logger.info(str(flatdarklist[i][0])+ " from flatdarklist was not copied.")
-
-    # Check that each file in ronchilist was copied.
-    for i in range(len(ronchilist)):
-        if ronchilist[i][1] == 1:
-            logger.info(str(ronchilist[i][0])+ " from ronchilist was not copied.")
-
-    # Check that each file in arclist was copied.
-    for i in range(len(arclist)):
-        if arclist[i][1] == 1:
-            logger.info(str(arclist[i][0])+ " from arclist was not copied.")
-
-    # Check that each file in arcdarklist was copied.
-    for i in range(len(arcdarklist)):
-        if arcdarklist[i][1] == 1:
-            logger.info(str(arcdarklist[i][0])+ " from arcdarklist was not copied.")
 
 
-    # Change back to original working directory.
-    os.chdir(path1)
 
+
+
+
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Check that each science directory exists and has associated calibration data.
-    # Pseudocode (repeated below with actual code):
+
+    # Pseudocode:
     # For each science directory, make sure that:
     # a calibrations directory is present.
     # flatlist exists and has more than one file.
@@ -1214,9 +941,6 @@ def matchTellurics(telDirList, obsDirList, telluricTimeThreshold):
     return
 
 
-
-
-
     # ------------------------------------------------------------------------------------------------------------------
 
     # Update config.cfg with the paths to the data:
@@ -1227,7 +951,6 @@ def matchTellurics(telDirList, obsDirList, telluricTimeThreshold):
     with open(path + '/config.cfg', 'w') as f:
         config.write(f)
 
-   
     # ------------------------------------------------------------------------------------------------------------------
 
     raise SystemExit('STOP')
