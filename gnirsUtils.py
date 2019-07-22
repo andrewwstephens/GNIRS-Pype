@@ -25,21 +25,20 @@
 ################################################################################
 
 # STDLIB
-'''
-import time, sys, calendar, astropy.io.fits, urllib, shutil, glob, os, fileinput, logging, smtplib, pkg_resources, math, re
+
+import time, sys, calendar, astropy.io.fits, urllib, shutil, glob, os, fileinput, logging, smtplib, pkg_resources, math, re, ConfigParser
 import numpy as np
 from xml.dom.minidom import parseString
 from pyraf import iraf
 
 # LOCAL
 
-# Import config parsing.
-from configobj.configobj import ConfigObj
-
 # Define constants
 # Paths to Nifty data.
-RECIPES_PATH = pkg_resources.resource_filename('GNIRS_NIFTY_PIPELINE', 'recipes/')
-RUNTIME_DATA_PATH = pkg_resources.resource_filename('GNIRS_NIFTY_PIPELINE', 'runtimeData/')
+#RECIPES_PATH = pkg_resources.resource_filename('GNIRS_NIFTY_PIPELINE', 'recipes/')
+RECIPES_PATH = 'recipes/'
+#RUNTIME_DATA_PATH = pkg_resources.resource_filename('GNIRS_NIFTY_PIPELINE', 'runtimeData/')
+RUNTIME_DATA_PATH = 'runtimeData/'
 
 # Let us print colors to the terminal!
 class bcolors:
@@ -67,7 +66,7 @@ class bcolors:
 
 
 #-----------------------------------------------------------------------------#
-
+'''
 def interactiveNIFSInput():  ## this function is not adapted for GNIRS as of July 2019
     """
     Get NIFS configuration interactively. This is based on Sphinx's interactive input session.
@@ -466,124 +465,125 @@ def interactiveNIFSInput():  ## this function is not adapted for GNIRS as of Jul
 def datefmt():
     datefmt = '%Y/%m/%d %H:%M:%S '
     return datefmt
-'''
+
 #-----------------------------------------------------------------------------#
 
-def copyCalibration(inputFile, outputFile, grating, over):
+def copyCalibration(inputfile, outputfile, configuration, overwrite):
     """
-    Copy calibrations over to science directories.
+    Copy calibrations over to scienceObservation and Telluric directories.
 
-    Copies inputFile to outputFile in all ../grating/scienceObservation/obs*/calibrations/ directories.
+    Copies inputfile to outputfile in all ../configuration/obs*/calibrations/ directories.
     """
-    # Also copy it over to the relevant science directories.
-    for scienceDirectory in glob.glob('../'+grating+'/obs*'):
+    # Copy it over to the relevant science directories.
+    for sciencedirectory in sorted(glob.glob('../'+configuration+'/obs*')):
         # Make sure the cals directory exists.
-        if not os.path.exists(scienceDirectory+'/calibrations'):
-            os.mkdir(scienceDirectory+'/calibrations')
+        if not os.path.exists(sciencedirectory+'/calibrations'):
+            os.mkdir(sciencedirectory+'/calibrations')
         # Check if the file exists; if not, copy it over.
-        if os.path.exists(scienceDirectory+'/calibrations/'+outputFile):
-            if over:
-                os.remove(scienceDirectory+'/calibrations/'+outputFile)
-                shutil.copy(inputFile, scienceDirectory+'/calibrations/'+outputFile)
+        if os.path.exists(sciencedirectory+'/calibrations/'+outputfile):
+            if overwrite:
+                os.remove(sciencedirectory+'/calibrations/'+outputfile)
+                shutil.copy(inputfile, sciencedirectory+'/calibrations/'+outputfile)
             else:
-                logging.info("\nOutput exists and -over not set - skipping copy of shift file to science directory")
+                logging.info("\nOutput exists and -overwrite not set - skipping copy of shift file to science directory.")
         else:
-            shutil.copy(inputFile, scienceDirectory+'/calibrations/'+outputFile)
+            shutil.copy(inputfile, sciencedirectory+'/calibrations/'+outputdile)
     # Also copy to telluric directories.
-    for telluricDirectory in glob.glob('../'+grating+'/Tellurics/obs*'):
+    for telluricdirectory in sorted(glob.glob('../'+configuration+'/Tellurics/obs*')):
         # Make sure the cals directory exists.
-        if not os.path.exists(telluricDirectory+'/calibrations'):
-            os.mkdir(telluricDirectory+'/calibrations')
+        if not os.path.exists(telluricdirectory+'/calibrations'):
+            os.mkdir(telluricdirectory+'/calibrations')
         # Check if the shift file exists; if not, copy it over.
-        if os.path.exists(telluricDirectory+'/calibrations/'+outputFile):
-            if over:
-                os.remove(telluricDirectory+'/calibrations/'+outputFile)
-                shutil.copy(inputFile, telluricDirectory+'/calibrations/'+outputFile)
+        if os.path.exists(telluricdirectory+'/calibrations/'+outputfile):
+            if overwrite:
+                os.remove(telluricdirectory+'/calibrations/'+outputfile)
+                shutil.copy(inputfile, telluricdirectory+'/calibrations/'+outputfile)
             else:
-                logging.info("\nOutput exists and -over not set - skipping copy of shift file to science directory")
+                logging.info("\nOutput exists and -overwrite not set - skipping copy of shift file to science directory.")
         else:
-            shutil.copy(inputFile, telluricDirectory+'/calibrations/'+outputFile)
+            shutil.copy(inputfile, telluricdirectory+'/calibrations/'+outputfile)
 
-def copyCalibrationDatabase(inputPrefix, grating, fileType, over):
+#-----------------------------------------------------------------------------#
+
+def copyCalibrationDatabase(inputprefix, configuration, filetype, overwrite):
     """
     Copy calibrations over to science directories.
 
-    Copies inputPrefix* to all ../grating/scienceObservation/obs*/calibrations/database directories,
-    under a new name, inputPrefix+fileType+_SCI_+sliceNumber+_
+    Copies inputPrefix* to all ../configuration/obs*/calibrations/database directories,
+    under a new name, inputprefix+filetype+_SCI_+sliceNumber+_
     """
     # Also copy it over to the relevant science directories.
-    for scienceDirectory in glob.glob('../'+grating+'/obs*'):
+    for scienceDirectory in sorted(glob.glob('../'+configuration+'/obs*')):
         # Make sure the cals directory exists.
         if not os.path.exists(scienceDirectory+'/calibrations'):
             os.mkdir(scienceDirectory+'/calibrations')
         # Make sure the database directory exists
         if os.path.isdir(scienceDirectory+"/calibrations/database"):
-            if glob.glob(scienceDirectory+"/calibrations/database/"+inputPrefix+"*"):
-                if over:
-                    for item in glob.glob(scienceDirectory+"/calibrations/database/"+inputPrefix+"*"):
+            if sorted(glob.glob(scienceDirectory+"/calibrations/database/"+inputprefix+"*")):
+                if overwrite:
+                    for item in sorted(glob.glob(scienceDirectory+"/calibrations/database/"+inputprefix+"*")):
                         os.remove(item)
-                    for item in glob.glob('database/'+inputPrefix+'*'):
-                        newName = item.split('_')
-                        newName = inputPrefix[:2]+fileType+'_SCI_'+newName[2]+'_'
-                        shutil.copy(item, scienceDirectory+"/calibrations/database/"+newName)
+                    for item in sorted(glob.glob('database/'+inputprefix+'*')):
+                        newname = item.split('_')
+                        newname = inputprefix[:2]+filetype+'_SCI_'+newname[2]+'_'
+                        shutil.copy(item, scienceDirectory+"/calibrations/database/"+newname)
                 else:
-                    print "\nOutput exists and -over not set - skipping copy of database directory"
+                    print "\nOutput exists and -overwrite not set - skipping copy of database directory"
             else:
-                for item in glob.glob('database/'+inputPrefix+'*'):
-                    newName = item.split('_')
-                    newName = inputPrefix[:2]+fileType+'_SCI_'+newName[2]+'_'
-                    shutil.copy(item, scienceDirectory+"/calibrations/database/"+newName)
+                for item in sorted(glob.glob('database/'+inputprefix+'*')):
+                    newname = item.split('_')
+                    newname = inputprefix[:2]+filetype+'_SCI_'+newname[2]+'_'
+                    shutil.copy(item, scienceDirectory+"/calibrations/database/"+newname)
         else:
             os.mkdir(scienceDirectory+"/calibrations/database")
-            for item in glob.glob('database/'+inputPrefix+'*'):
-                newName = item.split('_')
-                newName = inputPrefix[:2]+fileType+'_SCI_'+newName[2]+'_'
-                shutil.copy(item, scienceDirectory+"/calibrations/database/"+newName)
+            for item in sorted(glob.glob('database/'+inputprefix+'*')):
+                newname = item.split('_')
+                newname = inputprefix[:2]+filetype+'_SCI_'+newname[2]+'_'
+                shutil.copy(item, scienceDirectory+"/calibrations/database/"+newname)
     # Also copy to telluric directories
-    for telluricDirectory in glob.glob('../'+grating+'/Tellurics/obs*'):
+    for telluricDirectory in sorted(glob.glob('../'+configuration+'/Tellurics/obs*')):
         # Make sure the cals directory exists.
         if not os.path.exists(telluricDirectory+'/calibrations'):
             os.mkdir(telluricDirectory+'/calibrations')
         # Make sure the database directory exists
         if os.path.isdir(telluricDirectory+"/calibrations/database"):
-            if glob.glob(telluricDirectory+"/calibrations/database/"+inputPrefix+"*"):
-                if over:
-                    for item in glob.glob(telluricDirectory+"/calibrations/database/"+inputPrefix+"*"):
+            if sorted(glob.glob(telluricDirectory+"/calibrations/database/"+inputprefix+"*")):
+                if overwrite:
+                    for item in sorted(glob.glob(telluricDirectory+"/calibrations/database/"+inputprefix+"*")):
                         os.remove(item)
-                    for item in glob.glob('database/'+inputPrefix+'*'):
+                    for item in sorted(glob.glob('database/'+inputprefix+'*')):
                         newName = item.split('_')
-                        newName = inputPrefix[:2]+fileType+'_SCI_'+newName[2]+'_'
-                        shutil.copy(item, telluricDirectory+"/calibrations/database/"+newName)
+                        newName = inputprefix[:2]+filetype+'_SCI_'+newname[2]+'_'
+                        shutil.copy(item, telluricDirectory+"/calibrations/database/"+newname)
                 else:
-                    print "\nOutput exists and -over not set - skipping copy of database directory"
+                    print "\nOutput exists and -overwrite not set - skipping copy of database directory"
             else:
-                for item in glob.glob('database/'+inputPrefix+'*'):
-                    newName = item.split('_')
-                    newName = inputPrefix[:2]+fileType+'_SCI_'+newName[2]+'_'
-                    shutil.copy(item, telluricDirectory+"/calibrations/database/"+newName)
+                for item in sorted(glob.glob('database/'+inputprefix+'*')):
+                    newname = item.split('_')
+                    newname = inputprefix[:2]+filetype+'_SCI_'+newname[2]+'_'
+                    shutil.copy(item, telluricDirectory+"/calibrations/database/"+newname)
         else:
             os.mkdir(telluricDirectory+"/calibrations/database")
-            for item in glob.glob('database/'+inputPrefix+'*'):
-                newName = item.split('_')
-                newName = inputPrefix[:2]+fileType+'_SCI_'+newName[2]+'_'
-                shutil.copy(item, telluricDirectory+"/calibrations/database/"+newName)
-
+            for item in sorted(glob.glob('database/'+inputprefix+'*')):
+                newname = item.split('_')
+                newname = inputprefix[:2]+filetype+'_SCI_'+newname[2]+'_'
+                shutil.copy(item, telluricDirectory+"/calibrations/database/"+newname)
 
 #-----------------------------------------------------------------------------#
 
-def replaceNameDatabaseFiles(inputFile, oldFileName, newFileName):
+def replaceNameDatabaseFiles(inputfile, oldfilename, newfilename):
     """
     Replace old filenames in database text files with new file names.
     """
-    with open(inputFile, "r") as f:
+    with open(inputfile, "r") as f:
         lines = f.read()
-    modifiedLines = re.sub(oldFileName, newFileName, lines)
+    modifiedlines = re.sub(oldfilename, newfilename, lines)
     with open("temp.txt", "w") as f:
-        f.write(modifiedLines)
-    shutil.move("temp.txt", inputFile)
-
+        f.write(modifiedlines)
+    shutil.move("temp.txt", inputfile)
 
 #-----------------------------------------------------------------------------#
+'''
 def copyResultsToScience(inputFile, outputFile, over):
     """
 
