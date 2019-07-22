@@ -30,6 +30,7 @@
 import os, sys, shutil, pkg_resources, argparse, datetime, ConfigParser
 import log
 
+import checkcals
 import gnirsData
 import gnirsHeaders
 import gnirsSort
@@ -88,9 +89,10 @@ def start(args):
     # Second argument is the name of the current script. This could be used to get script-dependent configuration.
 #    GetConfig(args, "gnirsPipeline")  ## this functionality is not adapted for GNIRS as of July 2019
 
-    logger.info("Parameters read from %s", args.cfg)
+    logger.info("Parameters read from %s", args.config)
     config = ConfigParser.RawConfigParser()
-    config.read(args.cfg)
+    config.optionxform = str  # make options case-sensitive
+    config.read(args.config)
 
     for section in config.sections():
         logger.info('[%s]', section)
@@ -98,9 +100,8 @@ def start(args):
             logger.info(option + " = " + config.get(section,option))
     logger.info("")
 
-    # Andy wonders why there are TWO config files: config.cfg and defaultConfig.cfg
+    # Andy wonders why there are TWO config files: gnirs.cfg and defaultConfig.cfg
 
-    # Load pipeline configuration from recipes/defaultConfig.cfg
     manualMode = config.getboolean('defaults','manualMode')
     calibrationReduction = config.getboolean('gnirsPipelineConfig','calibrationReduction')
     telluricReduction = bool(config.get('gnirsPipelineConfig','telluricReduction'))
@@ -135,11 +136,11 @@ def start(args):
     ###########################################################################
     ##                      STEP 2: Read the file headers.                   ##
     ###########################################################################
-    
-    if config.getboolean('gnirsPipelineConfig','headers'):
-        if config.getboolean('defaults','manualMode'):
-            a = raw_input('About to enter gnirsHeaders.')
-        headerinfo = gnirsHeaders.start(data_directory)
+    #
+    #if config.getboolean('gnirsPipelineConfig','headers'):
+    #    if config.getboolean('defaults','manualMode'):
+    #        a = raw_input('About to enter gnirsHeaders.')
+    #    headerinfo = gnirsHeaders.start(data_directory)
     
     ###########################################################################
     #                       STEP 3: Sort the raw data.                        #
@@ -148,7 +149,11 @@ def start(args):
     if config.getboolean('gnirsPipelineConfig','sort'):
         if config.getboolean('defaults','manualMode'):
             a = raw_input('About to enter gnirsSort.')
-        gnirsSort.start(headerinfo, config)
+        gnirsSort.start(args.config)
+
+    # Check that we have all the required calibrations for the science targets listed in the config file:
+    # checkcals.start(args.config)
+
 
     # By now, we should have paths to the three types of raw data. Print them out.
     #printDirectoryLists()
@@ -220,7 +225,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='This is the GNIRS Data Reduction Pipeline...')
 
-    parser.add_argument('cfg', nargs='?', default='gnirs.cfg',
+    parser.add_argument('config', nargs='?', default='gnirs.cfg',
                         help='Configuration file')
 
     parser.add_argument('--loglevel', action='store', default='INFO',

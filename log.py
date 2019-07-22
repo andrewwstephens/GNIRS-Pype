@@ -44,7 +44,7 @@ def configure(logfile=None, filelevel='INFO', screenlevel='INFO'):
 
     # create console screen log handler:
     consoleloghandler = logging.StreamHandler()
-    formatter = logging.Formatter('%(name)-12s %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('%(name)-10s %(levelname)-8s %(message)s')
     if screenlevel.upper() == 'DEBUG':
         consoleloghandler.setLevel(logging.DEBUG)
     elif screenlevel.upper() == 'INFO':

@@ -62,4 +62,5 @@ def start(data_directory):
 
 
 if __name__ == '__main__':
+    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     start("rawData")
