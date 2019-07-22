@@ -28,7 +28,7 @@
 
 # STDLIB
 
-import logging, os, pkg_resources, glob, shutil, ConfigParser, cleanir
+import log, os, pkg_resources, glob, shutil, ConfigParser, cleanir
 from astropy.io import fits
 from pyraf import iraf, iraffunctions
 
@@ -37,14 +37,8 @@ from pyraf import iraf, iraffunctions
 # Import custom Nifty functions.
 from gnirsUtils import datefmt  ## listit, checkLists, copyCalibration, copyCalibrationDatabase, replaceNameDatabaseFiles
 
-# Define constants.
-# Paths to Nifty data.
-#RECIPES_PATH = pkg_resources.resource_filename('nifty', 'recipes/')
-RECIPES_PATH = 'recipes/'
-#RUNTIME_DATA_PATH = pkg_resources.resource_filename('nifty', 'runtimeData/')
-RECIPES_PATH = 'runtimeData/'
 
-def start(calibrationDirectoryList=None):
+def start(configfile):
     """
     This module contains all the functions needed to reduce GNIRS GENERAL BASELINE CALIBRATIONS
 
@@ -72,22 +66,36 @@ def start(calibrationDirectoryList=None):
         stop (int): stopping step of daycal reduction. Specified at command line with -z. Default: 6.
         manualMode (boolean): enable optional manualModeging pauses. Default: False.
     """
+    logger = log.getLogger('BaseCal')
+
+    logger.debug('hey, reading the config file now...')
+    config = ConfigParser.RawConfigParser()
+    config.optionxform = str  # make options case-sensitive
+    config.read(configfile)
+    manualMode = config.getboolean('defaults','manualMode')
+    overwrite = config.getboolean('defaults','overwrite')
+    calibrationDirectoryList = config.options('CalibrationDirectories')
+
+    start = bool(config.get('calibrationReductionConfig','Start'))
+    stop = bool(config.get('calibrationReductionConfig','Stop'))
+    cleanir_arcs = bool(config.get('calibrationReductionConfig','cleanir_arcs'))
+    cleanir_QHflats = bool(config.get('calibrationReductionConfig','cleanir_QHflats'))
+    cleanir_IRflats = bool(config.get('calibrationReductionConfig','cleanir_IRflats'))
+    cleanir_pinholes = bool(config.get('calibrationReductionConfig','cleanir_pinholes'))
 
     # TODO(nat): stop using first frame from list as name for combined frames. Find better names and implement
     # them in pipeline and docs.
-    # TODO(nat): Finish converting the print statements to logging.info() statements.
+    # TODO(nat): Finish converting the print statements to logger.info() statements.
 
     # Store current working directory for later use.
     path = os.getcwd()
 
-    # Set up the logging file.
-    log = os.getcwd()+'/gnirs.log'
 
-    logging.info('\n#################################################')
-    logging.info('#                                               #')
-    logging.info('# Start the GNIRS Baseline Calibration Reduction #')
-    logging.info('#                                               #')
-    logging.info('#################################################\n')
+    logger.info('\n#################################################')
+    logger.info('#                                               #')
+    logger.info('# Start the GNIRS Baseline Calibration Reduction #')
+    logger.info('#                                               #')
+    logger.info('#################################################\n')
 
     # Set up/prepare IRAF.
     iraf.gemini()
@@ -117,21 +125,6 @@ def start(calibrationDirectoryList=None):
     user_clobber=iraf.envget("clobber")
     iraf.reset(clobber='yes')
 
-    config = ConfigParser.RawConfigParser()
-    config.read(RECIPES_PATH + 'defaultConfig.cfg')
-
-    # Read general pipeline config.
-    manualMode = config.getboolean('defaults','manualMode')
-    overwrite = config.getboolean('defaults','overwrite')
-    if not calibrationDirectoryList:
-        calibrationDirectoryList = config.get('defaults','calibrationDirectoryList')
-    # Read baselineCalibrationReduction specfic config.
-    start = bool(config.get('calibrationReductionConfig','Start'))
-    stop = bool(config.get('calibrationReductionConfig','Stop'))
-    cleanir_arcs = bool(config.get('calibrationReductionConfig','cleanir_arcs'))
-    cleanir_QHflats = bool(config.get('calibrationReductionConfig','cleanir_QHflats'))
-    cleanir_IRflats = bool(config.get('calibrationReductionConfig','cleanir_IRflats'))
-    cleanir_pinholes = bool(config.get('calibrationReductionConfig','cleanir_pinholes'))
 
     ################################################################################
     # Define Variables, Reduction Lists AND identify/run number of reduction steps #
@@ -150,13 +143,13 @@ def start(calibrationDirectoryList=None):
         configuration = os.path.split(calpath)[-1]
         if not os.path.exists("../"+configuration):
 
-            logging.info("\n######################################################################")
-            logging.info("#                                                                      #")
-            logging.info("    No configuration directory (including science or telluric data)    #")
-            logging.info("    found for  ", calpath)
-            logging.info("    Skipping reduction of calibrations in that directory.              #")
-            logging.info("                                                                       #")
-            logging.info("########################################################################\n")
+            logger.info("\n######################################################################")
+            logger.info("#                                                                      #")
+            logger.info("    No configuration directory (including science or telluric data)    #")
+            logger.info("    found for  ", calpath)
+            logger.info("    Skipping reduction of calibrations in that directory.              #")
+            logger.info("                                                                       #")
+            logger.info("########################################################################\n")
 
             continue
 
@@ -316,7 +309,7 @@ def getShift(calflat, grating, over, log):
             os.remove('s'+calflat+'.fits')
             iraf.nfprepare(calflat,rawpath="",outpref="s", shiftx='INDEF', shifty='INDEF',fl_vardq='no',fl_corr='no',fl_nonl='no', fl_int='no', logfile=log)
         else:
-            logging.info("\nOutput exists and -over not set - skipping find shift")
+            logger.info("\nOutput exists and -over not set - skipping find shift")
     else:
         iraf.nfprepare(calflat,rawpath="",outpref="s", shiftx='INDEF', shifty='INDEF',fl_vardq='no',fl_corr='no',fl_nonl='no', fl_int='no', logfile=log)
 
@@ -796,4 +789,5 @@ def makeRonchi(ronchilist, ronchiflat, calflat, grating, over, flatdark, log):
 #---------------------------------------------------------------------------------------------------------------------------------------#
 
 if __name__ == '__main__':
-    start()
+    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs.cfg')
