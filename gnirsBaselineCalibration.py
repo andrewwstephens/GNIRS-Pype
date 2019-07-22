@@ -44,7 +44,7 @@ RECIPES_PATH = 'recipes/'
 #RUNTIME_DATA_PATH = pkg_resources.resource_filename('nifty', 'runtimeData/')
 RECIPES_PATH = 'runtimeData/'
 
-def start(calibrationDirectoryList=""):
+def start(calibrationDirectoryList=None):
     """
     This module contains all the functions needed to reduce GNIRS GENERAL BASELINE CALIBRATIONS
 
@@ -121,8 +121,8 @@ def start(calibrationDirectoryList=""):
     config.read(RECIPES_PATH + 'defaultConfig.cfg')
 
     # Read general pipeline config.
-    manualMode = bool(config.get('defaults','manualMode'))
-    overwrite = bool(config.get('defaults','overwrite')
+    manualMode = config.getboolean('defaults','manualMode')
+    overwrite = config.getboolean('defaults','overwrite')
     if not calibrationDirectoryList:
         calibrationDirectoryList = config.get('defaults','calibrationDirectoryList')
     # Read baselineCalibrationReduction specfic config.
