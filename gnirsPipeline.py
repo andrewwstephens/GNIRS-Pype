@@ -27,7 +27,8 @@
 #                Import some useful Python utilities/modules                   #
 ################################################################################
 
-import os, sys, shutil, pkg_resources, argparse, datetime, ConfigParser, log
+import os, sys, shutil, pkg_resources, argparse, datetime, ConfigParser
+import log
 
 import gnirsGetData
 #import gnirsHeaders
@@ -39,7 +40,7 @@ import gnirsGetData
 #import gnirsFluxCalibrate
 #import gnirsCombineOrdersXD
 
-#from gnirsUtils import datefmt
+
 
 # Import custom pipeline setup Class.
 #from objectoriented.GetConfig import GetConfig  ## this is not adapted for GNIRS as of July 2019
@@ -86,7 +87,7 @@ def start(args):
     logger.info("#                                  #")
     logger.info("#             NIFTY                #")
     logger.info("#  GNIRS Data Reduction Pipeline   #")
-    logger.info("#         Version "+ __version__+ "            #")
+    logger.info("#         Version %5s            #", __version__)
     logger.info("#         July 25th, 2017          #")
     logger.info("#     Marie Lemoine-Busserolle     #")
     logger.info("# Gemini Observatory, Hilo, Hawaii #")
@@ -94,13 +95,13 @@ def start(args):
     logger.info("####################################\n")
 
     # Make sure to change this if you change the default logfile.
-    logger.info('The log file is %s', args.config + ".")
+    logger.info('The log file is gnirs.log.')
 
     # Read or write a configuration file, interactively, from defaults or from a provided file.
     # Second argument is the name of the current script. This could be used to get script-dependent configuration.
 #    GetConfig(args, "gnirsPipeline")  ## this functionality is not adapted for GNIRS as of July 2019
 
-    logger.info("\nParameters read from %s", args.config + "\n")
+    logger.info("Parameters read from %s", args.config)
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(args.config)
@@ -222,7 +223,8 @@ def start(args):
     logger.info('# Check out http://nifty4gemini.readthedocs.io/en/latest/ #')
     logger.info('#           For docs, tutorials and examples.             #')
     logger.info('#                                                         #')
-    logger.info('###########################################################\n')
+    logger.info('###########################################################')
+
     '''
     return
 
