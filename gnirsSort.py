@@ -18,7 +18,7 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
-    rawpath = config.get('dataConfig', 'rawPath')
+    rawpath = config.get('getDataConfig', 'rawPath')
 
     info = gnirsHeaders.start(rawpath)
 
@@ -61,7 +61,7 @@ def start(configfile):
 
             if inslit(slit=info[filename]['SLIT'], decker=info[filename]['DECKER'],
                       p=info[filename]['POFFSET'] - acq[info[filename]['OBJECT']]['POFFSET'],
-                      q=info[filename]['POFFSET'] - acq[info[filename]['OBJECT']]['POFFSET']):
+                      q=info[filename]['QOFFSET'] - acq[info[filename]['OBJECT']]['QOFFSET']):
                 append(filename, newpath + '/src.list')
             else:
                 append(filename, newpath + '/sky.list')
