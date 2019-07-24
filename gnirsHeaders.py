@@ -13,6 +13,7 @@ def start(data_directory):
     Create a dictionary of all the relevant header information.
     """
     logger = log.getLogger('Headers')
+
     info = {}
     for filename in sorted(glob.glob(data_directory + '/N*.fits')):
         f = filename[filename.rfind('/')+1:]

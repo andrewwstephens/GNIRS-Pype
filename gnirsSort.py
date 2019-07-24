@@ -27,6 +27,7 @@ def start(configfile):
     logger.info('Sorted data will be copied to %s', path)
     logger.info("Creating new directories and copying files...")
 
+    caldirs = []     # List of output calibration directories
     scidirs = []     # List of output science directories
     teldirs = []     # List of output Telluric standard directories
     acq = {}         # Acqusition parameters OBJECT:{POFFSET, QOFFSET}
@@ -37,12 +38,12 @@ def start(configfile):
                      filename, info[filename]['OBSCLASS'], info[filename]['OBSTYPE'], info[filename]['OBJECT'],
                      info[filename]['SLIT'], info[filename]['GCALLAMP'])
 
-        if info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'acq':
+        if info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'acq':  # ACQUISITION
 
             acq[info[filename]['OBJECT']] = {'POFFSET': info[filename]['POFFSET'], 'QOFFSET': info[filename]['QOFFSET']}
             logger.debug('Acquisition parmameters: %s', acq[info[filename]['OBJECT']])
 
-        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'science':
+        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'science':  # SCIENCE
 
             newpath = path + '/' + \
                 info[filename]['OBJECT'] + '/' + \
@@ -58,7 +59,7 @@ def start(configfile):
                 os.makedirs(newpath)
             logger.debug('Copying %s to %s', filename, newpath)
             shutil.copy2(rawpath + '/' + filename, newpath)
-
+            append(filename, newpath + '/all.list')
             if inslit(slit=info[filename]['SLIT'], decker=info[filename]['DECKER'],
                       p=info[filename]['POFFSET'] - acq[info[filename]['OBJECT']]['POFFSET'],
                       q=info[filename]['QOFFSET'] - acq[info[filename]['OBJECT']]['QOFFSET']):
@@ -66,7 +67,7 @@ def start(configfile):
             else:
                 append(filename, newpath + '/sky.list')
 
-        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'partnerCal':
+        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'partnerCal': # TELLURIC
 
             # Associate this Telluric with all the science targets with the same config within 1.5 hours:
             matches = []
@@ -93,7 +94,7 @@ def start(configfile):
                 shutil.copy2(rawpath + '/' + filename, newpath)
                 append(filename, newpath + '/src.list')
 
-        elif info[filename]['OBSTYPE'] in ['FLAT', 'ARC', 'DARK']:
+        elif info[filename]['OBSTYPE'] in ['FLAT', 'ARC', 'DARK']:  # CALIBRATIONS
 
             # Associate these calibrations with all the science targets on the same night with the same config
             matches = {}
@@ -109,19 +110,20 @@ def start(configfile):
                          info[f]['OBJECT'] not in matches.keys()):
                     matches[info[f]['OBJECT']] = info[f]['CONFIG']
             logger.debug('This calibration matches: %s', matches.keys())
-
             for m in matches.keys():
                 newpath = path + '/' + m + '/' + \
                     info[filename]['DATE-OBS'] + '/' + \
                     matches[m] + '/' + \
                     'Calibrations'
                 logger.debug('newpath: %s', newpath)
-
+                if newpath not in caldirs:
+                    caldirs.append(newpath)
                 if not os.path.exists(newpath):
                     logger.debug('Creating %s', newpath)
                     os.makedirs(newpath)
                 logger.debug('Copying %s to %s', filename, newpath)
                 shutil.copy2(rawpath + '/' + filename, newpath)
+                append(filename, newpath + '/all.list')
 
                 if info[filename]['OBSTYPE'] == 'ARC':
                     append(filename, newpath + '/arcs.list')
@@ -157,6 +159,10 @@ def start(configfile):
     for d in teldirs:
         logger.debug('Setting %s = True', d)
         config.set('TelluricDirectories', d, True)
+
+    for d in caldirs:
+        logger.debug('Setting %s = True', d)
+        config.set('CalibrationDirectories', d, True)
 
     with open(configfile, 'w') as f:
         config.write(f)
@@ -194,7 +200,6 @@ def inslit(slit, decker, p, q):
         return False
 
 # ----------------------------------------------------------------------------------------------------------------------
-
 
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
