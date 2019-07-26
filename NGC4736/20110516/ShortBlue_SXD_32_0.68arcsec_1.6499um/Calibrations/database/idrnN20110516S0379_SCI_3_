@@ -1,4 +1,4 @@
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,270]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -12,7 +12,7 @@ begin	identify rnN20110516S0379[SCI,3][*,270]
 	         74.37  74.365593       77.3  10.0 1 1 
 	         82.36 82.3637161       85.4  10.0 1 1 
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,260]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -27,7 +27,7 @@ begin	identify rnN20110516S0379[SCI,3][*,260]
 	         81.59 85.4074806       85.4  10.0 1 1 
 	shift	3.813471221923832
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,250]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -42,7 +42,7 @@ begin	identify rnN20110516S0379[SCI,3][*,250]
 	         80.86 85.4163759       85.4  10.0 1 1 
 	shift	4.554071172078455
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,240]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -57,7 +57,7 @@ begin	identify rnN20110516S0379[SCI,3][*,240]
 	         80.15 85.4394853       85.4  10.0 1 1 
 	shift	5.289064153035486
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,230]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -72,7 +72,7 @@ begin	identify rnN20110516S0379[SCI,3][*,230]
 	         79.40 85.4349191       85.4  10.0 1 1 
 	shift	6.033796056111658
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,220]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -87,7 +87,7 @@ begin	identify rnN20110516S0379[SCI,3][*,220]
 	         78.65 85.4186189       85.4  10.0 1 1 
 	shift	6.767289861043298
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,210]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -102,7 +102,7 @@ begin	identify rnN20110516S0379[SCI,3][*,210]
 	         77.94 85.4324059       85.4  10.0 1 1 
 	shift	7.495417022705082
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,200]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -117,7 +117,7 @@ begin	identify rnN20110516S0379[SCI,3][*,200]
 	         77.22 85.4443624       85.4  10.0 1 1 
 	shift	8.223735555013025
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,190]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -132,7 +132,7 @@ begin	identify rnN20110516S0379[SCI,3][*,190]
 	         76.47  85.422323       85.4  10.0 1 1 
 	shift	8.949071629842126
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,180]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -147,7 +147,7 @@ begin	identify rnN20110516S0379[SCI,3][*,180]
 	         75.76 85.4216929       85.4  10.0 1 1 
 	shift	9.662827555338546
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,170]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -162,7 +162,7 @@ begin	identify rnN20110516S0379[SCI,3][*,170]
 	         75.07  85.444604       85.4  10.0 1 1 
 	shift	10.37145334879558
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,160]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -177,7 +177,7 @@ begin	identify rnN20110516S0379[SCI,3][*,160]
 	         74.36 85.4455392       85.4  10.0 1 1 
 	shift	11.08357022603354
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,150]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -192,7 +192,7 @@ begin	identify rnN20110516S0379[SCI,3][*,150]
 	         73.62 85.4231012       85.4  10.0 1 1 
 	shift	11.79882596333822
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,140]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -207,7 +207,7 @@ begin	identify rnN20110516S0379[SCI,3][*,140]
 	         72.93  85.435663       85.4  10.0 1 1 
 	shift	12.50753949483236
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,130]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -222,7 +222,7 @@ begin	identify rnN20110516S0379[SCI,3][*,130]
 	         72.24 85.4478255       85.4  10.0 1 1 
 	shift	13.20669848124187
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,120]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -237,7 +237,7 @@ begin	identify rnN20110516S0379[SCI,3][*,120]
 	         71.51  85.421115       85.4  10.0 1 1 
 	shift	13.91299730936687
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,110]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -252,7 +252,7 @@ begin	identify rnN20110516S0379[SCI,3][*,110]
 	         70.82  85.432644       85.4  10.0 1 1 
 	shift	14.60916525522868
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,100]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -267,7 +267,7 @@ begin	identify rnN20110516S0379[SCI,3][*,100]
 	         70.15 85.4514189       85.4  10.0 1 1 
 	shift	15.29845720926921
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,90]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -282,7 +282,7 @@ begin	identify rnN20110516S0379[SCI,3][*,90]
 	         69.43 85.4241788       85.4  10.0 1 1 
 	shift	15.99543736775717
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,80]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -297,7 +297,7 @@ begin	identify rnN20110516S0379[SCI,3][*,80]
 	         68.74 85.4290063       85.4  10.0 1 1 
 	shift	16.69064877827963
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,70]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -312,7 +312,7 @@ begin	identify rnN20110516S0379[SCI,3][*,70]
 	         68.08 85.4569655       85.4  10.0 1 1 
 	shift	17.37625414530437
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,60]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -327,7 +327,7 @@ begin	identify rnN20110516S0379[SCI,3][*,60]
 	         67.38 85.4489051       85.4  10.0 1 1 
 	shift	18.06696993509929
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,50]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -342,7 +342,7 @@ begin	identify rnN20110516S0379[SCI,3][*,50]
 	         66.68 85.4320791       85.4  10.0 1 1 
 	shift	18.74932454427084
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,40]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -357,7 +357,7 @@ begin	identify rnN20110516S0379[SCI,3][*,40]
 	         66.05 85.4705166       85.4  10.0 1 1 
 	shift	19.42284812927247
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,30]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -372,7 +372,7 @@ begin	identify rnN20110516S0379[SCI,3][*,30]
 	         65.38 85.4742613       85.4  10.0 1 1 
 	shift	20.09628588358562
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,20]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -387,7 +387,7 @@ begin	identify rnN20110516S0379[SCI,3][*,20]
 	         64.69 85.4588853       85.4  10.0 1 1 
 	shift	20.76927191416423
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,10]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -402,7 +402,7 @@ begin	identify rnN20110516S0379[SCI,3][*,10]
 	         64.21 85.4688353       85.4  10.0 1 1 
 	shift	21.26067485809326
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,280]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -417,7 +417,7 @@ begin	identify rnN20110516S0379[SCI,3][*,280]
 	         83.12 85.4435829       85.4  10.0 1 1 
 	shift	2.32175674438477
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,290]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -432,7 +432,7 @@ begin	identify rnN20110516S0379[SCI,3][*,290]
 	         83.85 85.4226491       85.4  10.0 1 1 
 	shift	1.575679524739588
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,300]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -447,7 +447,7 @@ begin	identify rnN20110516S0379[SCI,3][*,300]
 	         84.59 85.4086276       85.4  10.0 1 1 
 	shift	0.8223696390787806
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,310]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -462,7 +462,7 @@ begin	identify rnN20110516S0379[SCI,3][*,310]
 	         85.37 85.4359885       85.4  10.0 1 1 
 	shift	0.06102663675944461
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,320]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -477,7 +477,7 @@ begin	identify rnN20110516S0379[SCI,3][*,320]
 	         86.15 85.4453885       85.4  10.0 1 1 
 	shift	-0.7003863016764277
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,330]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -492,7 +492,7 @@ begin	identify rnN20110516S0379[SCI,3][*,330]
 	         86.87 85.4114708       85.4  10.0 1 1 
 	shift	-1.457257843017574
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,340]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -507,7 +507,7 @@ begin	identify rnN20110516S0379[SCI,3][*,340]
 	         87.63 85.4034676       85.4  10.0 1 1 
 	shift	-2.223119354248042
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,350]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -522,7 +522,7 @@ begin	identify rnN20110516S0379[SCI,3][*,350]
 	         88.41 85.4172259       85.4  10.0 1 1 
 	shift	-2.997523244222001
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,360]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -537,7 +537,7 @@ begin	identify rnN20110516S0379[SCI,3][*,360]
 	         89.22 85.4398375       85.4  10.0 1 1 
 	shift	-3.777371342976883
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,370]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -552,7 +552,7 @@ begin	identify rnN20110516S0379[SCI,3][*,370]
 	         89.98 85.4243702       85.4  10.0 1 1 
 	shift	-4.555091476440425
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,380]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -567,7 +567,7 @@ begin	identify rnN20110516S0379[SCI,3][*,380]
 	         90.73 85.3958254       85.4  10.0 1 1 
 	shift	-5.335764821370439
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,390]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -582,7 +582,7 @@ begin	identify rnN20110516S0379[SCI,3][*,390]
 	         91.57  85.405881       85.4  10.0 1 1 
 	shift	-6.159792836507157
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,400]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -597,7 +597,7 @@ begin	identify rnN20110516S0379[SCI,3][*,400]
 	         92.42 85.4348638       85.4  10.0 1 1 
 	shift	-6.987568155924474
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,410]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -612,7 +612,7 @@ begin	identify rnN20110516S0379[SCI,3][*,410]
 	         93.22 85.4504017       85.4  10.0 1 1 
 	shift	-7.767715072631831
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,420]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -627,7 +627,7 @@ begin	identify rnN20110516S0379[SCI,3][*,420]
 	         93.97 85.4295664       85.4  10.0 1 1 
 	shift	-8.54467671712239
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,430]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -642,7 +642,7 @@ begin	identify rnN20110516S0379[SCI,3][*,430]
 	         94.77 85.4258331       85.4  10.0 1 1 
 	shift	-9.339639282226558
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,440]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -657,7 +657,7 @@ begin	identify rnN20110516S0379[SCI,3][*,440]
 	         95.56 85.4104523       85.4  10.0 1 1 
 	shift	-10.15421447753906
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,450]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -672,7 +672,7 @@ begin	identify rnN20110516S0379[SCI,3][*,450]
 	         96.40 85.4309181       85.4  10.0 1 1 
 	shift	-10.97355422973632
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,460]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -687,7 +687,7 @@ begin	identify rnN20110516S0379[SCI,3][*,460]
 	         97.23 85.4399831       85.4  10.0 1 1 
 	shift	-11.79095102945963
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,470]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -702,7 +702,7 @@ begin	identify rnN20110516S0379[SCI,3][*,470]
 	         98.06 85.4499064       85.4  10.0 1 1 
 	shift	-12.6133794148763
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,480]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -717,7 +717,7 @@ begin	identify rnN20110516S0379[SCI,3][*,480]
 	         98.87 85.4361843       85.4  10.0 1 1 
 	shift	-13.43461952209472
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,490]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -732,7 +732,7 @@ begin	identify rnN20110516S0379[SCI,3][*,490]
 	         99.69 85.4178725       85.4  10.0 1 1 
 	shift	-14.2743729909261
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,500]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -747,7 +747,7 @@ begin	identify rnN20110516S0379[SCI,3][*,500]
 	        100.52 85.4090675       85.4  10.0 1 1 
 	shift	-15.10981521606445
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,510]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -762,7 +762,7 @@ begin	identify rnN20110516S0379[SCI,3][*,510]
 	        101.41 85.4501366       85.4  10.0 1 1 
 	shift	-15.95779953002929
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,520]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -777,7 +777,7 @@ begin	identify rnN20110516S0379[SCI,3][*,520]
 	        102.29 85.4739492       85.4  10.0 1 1 
 	shift	-16.81856180826822
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,530]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -792,7 +792,7 @@ begin	identify rnN20110516S0379[SCI,3][*,530]
 	        103.11 85.4490398       85.4  10.0 1 1 
 	shift	-17.66160926818847
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,540]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -807,7 +807,7 @@ begin	identify rnN20110516S0379[SCI,3][*,540]
 	        103.94  85.423468       85.4  10.0 1 1 
 	shift	-18.51336059570312
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,550]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -822,7 +822,7 @@ begin	identify rnN20110516S0379[SCI,3][*,550]
 	        104.81 85.4321503       85.4  10.0 1 1 
 	shift	-19.37388000488281
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,560]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -837,7 +837,7 @@ begin	identify rnN20110516S0379[SCI,3][*,560]
 	        105.66 85.4225932       85.4  10.0 1 1 
 	shift	-20.23991292317707
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,570]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -852,7 +852,7 @@ begin	identify rnN20110516S0379[SCI,3][*,570]
 	        106.52 85.4183843       85.4  10.0 1 1 
 	shift	-21.10561014811197
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,580]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -867,7 +867,7 @@ begin	identify rnN20110516S0379[SCI,3][*,580]
 	        107.44 85.4454725       85.4  10.0 1 1 
 	shift	-21.99347712198893
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,590]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -882,7 +882,7 @@ begin	identify rnN20110516S0379[SCI,3][*,590]
 	        108.36 85.4711835       85.4  10.0 1 1 
 	shift	-22.88796259562174
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,600]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -897,7 +897,7 @@ begin	identify rnN20110516S0379[SCI,3][*,600]
 	        109.24 85.4711657       85.4  10.0 1 1 
 	shift	-23.76981633504231
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,610]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -912,7 +912,7 @@ begin	identify rnN20110516S0379[SCI,3][*,610]
 	        110.11 85.4561523       85.4  10.0 1 1 
 	shift	-24.65707550048827
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,620]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -927,7 +927,7 @@ begin	identify rnN20110516S0379[SCI,3][*,620]
 	        111.00 85.4409393       85.4  10.0 1 1 
 	shift	-25.55813751220703
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,630]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -942,7 +942,7 @@ begin	identify rnN20110516S0379[SCI,3][*,630]
 	        111.91 85.4446688       85.4  10.0 1 1 
 	shift	-26.46863072713216
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,640]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -957,7 +957,7 @@ begin	identify rnN20110516S0379[SCI,3][*,640]
 	        112.82 85.4431875       85.4  10.0 1 1 
 	shift	-27.37802530924479
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,650]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -972,7 +972,7 @@ begin	identify rnN20110516S0379[SCI,3][*,650]
 	        113.73 85.4366631       85.4  10.0 1 1 
 	shift	-28.28957138061523
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,660]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -987,7 +987,7 @@ begin	identify rnN20110516S0379[SCI,3][*,660]
 	        114.63 85.4189781       85.4  10.0 1 1 
 	shift	-29.21433029174804
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,670]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1002,7 +1002,7 @@ begin	identify rnN20110516S0379[SCI,3][*,670]
 	        115.56 85.4161425       85.4  10.0 1 1 
 	shift	-30.14426701863607
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,680]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1017,7 +1017,7 @@ begin	identify rnN20110516S0379[SCI,3][*,680]
 	        116.52 85.4378367       85.4  10.0 1 1 
 	shift	-31.08097737630208
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,690]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1032,7 +1032,7 @@ begin	identify rnN20110516S0379[SCI,3][*,690]
 	        117.48 85.4542208       85.4  10.0 1 1 
 	shift	-32.02371495564779
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,700]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1047,7 +1047,7 @@ begin	identify rnN20110516S0379[SCI,3][*,700]
 	        118.45 85.4858561       85.4  10.0 1 1 
 	shift	-32.96436971028646
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,710]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1062,7 +1062,7 @@ begin	identify rnN20110516S0379[SCI,3][*,710]
 	        119.42 85.5084226       85.4  10.0 1 1 
 	shift	-33.91413904825846
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,720]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1077,7 +1077,7 @@ begin	identify rnN20110516S0379[SCI,3][*,720]
 	        120.38  85.504744       85.4  10.0 1 1 
 	shift	-34.87870178222656
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,730]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1092,7 +1092,7 @@ begin	identify rnN20110516S0379[SCI,3][*,730]
 	        121.35 85.4893784       85.4  10.0 1 1 
 	shift	-35.86222229003906
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,740]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1107,7 +1107,7 @@ begin	identify rnN20110516S0379[SCI,3][*,740]
 	        122.35 85.4951487       85.4  10.0 1 1 
 	shift	-36.85199635823567
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,750]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1122,7 +1122,7 @@ begin	identify rnN20110516S0379[SCI,3][*,750]
 	        123.33 85.5068242       85.4  10.0 1 1 
 	shift	-37.82750345865885
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,760]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1137,7 +1137,7 @@ begin	identify rnN20110516S0379[SCI,3][*,760]
 	        124.32 85.5083552       85.4  10.0 1 1 
 	shift	-38.81169789632161
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,770]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1152,7 +1152,7 @@ begin	identify rnN20110516S0379[SCI,3][*,770]
 	        125.32 85.5238556       85.4  10.0 1 1 
 	shift	-39.80057678222656
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,780]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1167,7 +1167,7 @@ begin	identify rnN20110516S0379[SCI,3][*,780]
 	        126.33 85.5275571       85.4  10.0 1 1 
 	shift	-40.79780604044596
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,790]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1182,7 +1182,7 @@ begin	identify rnN20110516S0379[SCI,3][*,790]
 	        127.33 85.5182798       85.4  10.0 1 1 
 	shift	-41.81494166056316
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,800]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1197,7 +1197,7 @@ begin	identify rnN20110516S0379[SCI,3][*,800]
 	        128.35 85.5239726       85.4  10.0 1 1 
 	shift	-42.82354634602866
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,810]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1212,7 +1212,7 @@ begin	identify rnN20110516S0379[SCI,3][*,810]
 	        129.36 85.5188049       85.4  10.0 1 1 
 	shift	-43.84317932128906
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,820]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1227,7 +1227,7 @@ begin	identify rnN20110516S0379[SCI,3][*,820]
 	        130.39 85.4971947       85.4  10.0 1 1 
 	shift	-44.89176712036132
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,830]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1242,7 +1242,7 @@ begin	identify rnN20110516S0379[SCI,3][*,830]
 	        131.39 85.4627022       85.4  10.0 1 1 
 	shift	-45.9316764831543
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,840]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1257,7 +1257,7 @@ begin	identify rnN20110516S0379[SCI,3][*,840]
 	        132.44 85.4749855       85.4  10.0 1 1 
 	shift	-46.96114120483399
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,850]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1272,7 +1272,7 @@ begin	identify rnN20110516S0379[SCI,3][*,850]
 	        133.51 85.4992661       85.4  10.0 1 1 
 	shift	-48.00709686279297
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,860]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1287,7 +1287,7 @@ begin	identify rnN20110516S0379[SCI,3][*,860]
 	        134.54  85.481356       85.4  10.0 1 1 
 	shift	-49.05840835571289
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,870]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1302,7 +1302,7 @@ begin	identify rnN20110516S0379[SCI,3][*,870]
 	        135.58 85.4863914       85.4  10.0 1 1 
 	shift	-50.09835586547851
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,880]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1317,7 +1317,7 @@ begin	identify rnN20110516S0379[SCI,3][*,880]
 	        136.70 85.5056976       85.4  10.0 1 1 
 	shift	-51.19162902832031
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,890]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1332,7 +1332,7 @@ begin	identify rnN20110516S0379[SCI,3][*,890]
 	        137.83  85.507708       85.4  10.0 1 1 
 	shift	-52.31953201293945
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,900]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1347,7 +1347,7 @@ begin	identify rnN20110516S0379[SCI,3][*,900]
 	        138.94 85.5313362       85.4  10.0 1 1 
 	shift	-53.41212997436523
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,910]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1362,7 +1362,7 @@ begin	identify rnN20110516S0379[SCI,3][*,910]
 	        140.00 85.4992991       85.4  10.0 1 1 
 	shift	-54.49673360188802
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,920]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1377,7 +1377,7 @@ begin	identify rnN20110516S0379[SCI,3][*,920]
 	        141.05 85.4688171       85.4  10.0 1 1 
 	shift	-55.57875976562501
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,930]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1392,7 +1392,7 @@ begin	identify rnN20110516S0379[SCI,3][*,930]
 	        142.17 85.4950368       85.4  10.0 1 1 
 	shift	-56.6738779703776
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,940]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1407,7 +1407,7 @@ begin	identify rnN20110516S0379[SCI,3][*,940]
 	        143.36 85.4832558       85.4  10.0 1 1 
 	shift	-57.88153610229491
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,950]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1422,7 +1422,7 @@ begin	identify rnN20110516S0379[SCI,3][*,950]
 	        144.64 85.5773046       85.4  10.0 1 1 
 	shift	-59.06339670817057
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,960]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1437,7 +1437,7 @@ begin	identify rnN20110516S0379[SCI,3][*,960]
 	        145.74 85.6359772       85.4  10.0 1 1 
 	shift	-60.10811767578124
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,970]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1452,7 +1452,7 @@ begin	identify rnN20110516S0379[SCI,3][*,970]
 	        146.79 85.5298943       85.4  10.0 1 1 
 	shift	-61.25611648559569
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,980]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
@@ -1467,7 +1467,7 @@ begin	identify rnN20110516S0379[SCI,3][*,980]
 	        147.99 85.5705602       85.4  10.0 1 1 
 	shift	-62.41720225016276
 
-# Tue 17:44:00 23-Jul-2019
+# Thu 14:53:44 25-Jul-2019
 begin	identify rnN20110516S0379[SCI,3][*,990]
 	id	rnN20110516S0379[SCI,3]
 	task	identify
