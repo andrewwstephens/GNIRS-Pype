@@ -13,7 +13,7 @@ def start(configfile):
     """
     Sort and copy the GNIRS raw data to subdirectories: target / date / config.
     """
-    logger = log.getLogger('Sort')
+    logger = log.getLogger('gnirsSort.start')
 
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
@@ -173,7 +173,7 @@ def start(configfile):
 
 
 def append(string, filename):
-    logger = log.getLogger('append')
+    logger = log.getLogger('gnirsSort.append')
     with open(filename, 'a+') as f:
         if string not in f.read().split('\n'):
             logger.debug('Adding %s to %s', string, filename)
@@ -183,7 +183,7 @@ def append(string, filename):
 
 
 def inslit(slit, decker, p, q):
-    logger = log.getLogger('inslit')
+    logger = log.getLogger('gnirsSort.inslit')
     logger.debug('Offsets:  %.1f  %.1f arcsec', p, q)
     if 'SC' in decker and 'XD' in decker:
         slitlength = 7.0

@@ -22,18 +22,18 @@ JUL 11 - JUL 12:
 JUL 15 - JUL 16:  O’ahu Visit    [YES]
 
 JUL 17 - JUL 19:
+- [x] `gnirsGetData.py`
 - [ ] `gnirsBaselineCalibration.py`
 - [ ] Test Run
 
-JUL 19    ::    Revise plan (if required)    YES
+JUL 19:    Revise plan (if required)    YES
 
 **JUL 22 - JUL 26**
 - [x] `gnirsSort.py`
-- [ ] `gnirsBaselineCalibration.py`
-- [ ] `gnirsReduceXD.py`
+- [x] `gnirsBaselineCalibration.py`
+- [ ] `gnirsReduce.py`
 
-JUL 26:
- * Revise plan (if required)    ____
+JUL 26:    Revise plan (if required)    ____
 
 JUL 29  - AUG 02:
 - [ ] `gnirsTelluric.py`
