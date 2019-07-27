@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from astropy.io import fits
 import datetime
@@ -28,14 +29,16 @@ def start(data_directory):
             logger.debug('Skipping %s which is not cross-dispersed', filename)
             continue
 
-        for key in ['PRISM', 'OBSTYPE', 'OBSID', 'OBSCLASS', 'OBJECT', 'DATE-OBS', 'TIME-OBS', 'CAMERA',
-                    'DECKER', 'GRATING', 'SLIT', 'GRATWAVE', 'POFFSET', 'QOFFSET', 'GCALLAMP']:
+        for key in ['PRISM', 'OBSTYPE', 'OBSID', 'OBSCLASS', 'OBJECT', 'RA', 'DEC', 'DATE-OBS', 'TIME-OBS',
+                    'CAMERA', 'DECKER', 'GRATING', 'SLIT', 'GRATWAVE', 'POFFSET', 'QOFFSET', 'GCALLAMP']:
             try:
                 info[f][key] = header[key].strip() if isinstance(header[key], str) else header[key]
             except:
+                logger.debug('Setting %s[%s] = None', f, key)
                 info[f][key] = None
-                
+
         info[f]['DATETIME'] = dateutil.parser.parse(info[f]['DATE-OBS'] + ' ' + info[f]['TIME-OBS'])
+        info[f]['COORDS'] = '%.2f %.2f' % (info[f]['RA'], info[f]['DEC'])
         info[f]['OBJECT'] = re.sub('[^a-zA-Z0-9]', '', info[f]['OBJECT'])  # replace non-alphanumeric characters
         info[f]['DATE-OBS'] = info[f]['DATE-OBS'].replace('-', '')
         info[f]['OBSID'] = info[f]['OBSID'].replace('-', '_')

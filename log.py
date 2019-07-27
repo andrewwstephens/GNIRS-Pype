@@ -1,30 +1,33 @@
 #!/usr/bin/env python
 import logging
 
-# ---------------------------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------------------------------------------------
 # Convenience method
 
 def getLogger(name):
     return logging.getLogger(name)
 
-# ---------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+
 
 def configure(logfile=None, filelevel='INFO', screenlevel='INFO'):
+    """
+    Configure file and console logging.
 
+    DEBUG     Detailed information, typically of interest only when diagnosing problems.
+    INFO      Confirmation that things are working as expected.
+    WARNING   An indication that something unexpected happened, or indicative of some problem in the near future.
+    ERROR     Due to a more serious problem, the software has not been able to perform some function.
+    CRITICAL  A serious error, indicating that the program itself may be unable to continue running.
+    """
     logger = logging.getLogger()
-
-    # DEBUG     Detailed information, typically of interest only when diagnosing problems.
-    # INFO      Confirmation that things are working as expected.
-    # WARNING   An indication that something unexpected happened, or indicative of some problem in the near future.
-    # ERROR     Due to a more serious problem, the software has not been able to perform some function.
-    # CRITICAL  A serious error, indicating that the program itself may be unable to continue running.
-
-    logger.setLevel(logging.DEBUG) # set minimum threshold level for logger
+    logger.setLevel(logging.DEBUG)  # set minimum threshold level for logger
 
     datefmt = '%Y-%m-%d %H:%M:%S'
     formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', datefmt=datefmt)
 
-    if logfile: # create file handler:
+    if logfile:  # Create file handler
         logfilehandler = logging.FileHandler(logfile)
         if filelevel.upper() == 'DEBUG':
             logfilehandler.setLevel(logging.DEBUG)
@@ -42,9 +45,9 @@ def configure(logfile=None, filelevel='INFO', screenlevel='INFO'):
         logfilehandler.setFormatter(formatter)
         logger.addHandler(logfilehandler)
 
-    # create console screen log handler:
+    # Create console screen log handler
     consoleloghandler = logging.StreamHandler()
-    formatter = logging.Formatter('%(name)-10s %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('%(name)-16s %(levelname)-8s %(message)s')
     if screenlevel.upper() == 'DEBUG':
         consoleloghandler.setLevel(logging.DEBUG)
     elif screenlevel.upper() == 'INFO':
