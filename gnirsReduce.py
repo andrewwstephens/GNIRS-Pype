@@ -123,7 +123,7 @@ def start(kind, configfile):
     # LIKELY HAVE TO REMOVE FILES IF YOU RE_RUN THE SCRIPT.
     user_clobber=iraf.envget("clobber")
     iraf.reset(clobber='yes')
-
+    '''
     # This helps make sure all variables are initialized to prevent bugs.
     scienceSkySubtraction = None
     scienceOneDExtraction = None
@@ -131,29 +131,43 @@ def start(kind, configfile):
     extractionYC = None
     extractionRadius = None
     telluricSkySubtraction = None
-
+    '''
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
     # Read general config.
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
-    scienceOneDExtraction = config.getboolean['defaults','scienceOneDExtraction']
+    scienceOneDExtraction = config.getboolean('defaults','scienceOneDExtraction')
     
     if kind == 'Telluric':  # telluric reduction specific config
+        observationSection = 'TelluricDirectories'
+        observationDirectories = config.options('TelluricDirectories')
         start = config.getint('telluricReduction','Start')
         stop = config.getint('telluricReduction','Stop')
         cleanir = config.getboolean('telluricReduction','cleanir')
+        radiationEventCorrectionMethod = config.get('telluricReduction','radiationEventCorrectionMethod')
+        radiationThreshold = config.get('telluricReduction','radiationThreshold')
         extractionApertureRadius = config.getfloat('telluricReduction','extractionApertureRadius')
         extractionStepsize = config.getfloat('telluricReduction','extractionStepsize')
-        ObservationDirectories = config.options('TelluricDirectories')
     elif kind == 'Science':  # science reduction specific config
+        observationSection = 'ScienceDirectories'
+        observationDirectories = config.options('ScienceDirectories')
         start = config.getint('scienceReduction','Start')
         stop = config.getint('scienceReduction','Stop')
         cleanir = config.getboolean('scienceReduction','cleanir')
-        ObservationDirectories = config.options('ScienceDirectories')
-
-#        calDirList = config['calibrationDirectoryList']
+        radiationEventCorrectionMethod = config.get('scienceReduction','radiationEventCorrectionMethod')
+        radiationThreshold = config.get('scienceReduction','radiationThreshold')
+    else:
+        logger.error("###########################################################################")
+        logger.error("###########################################################################")
+        logger.error("                                                                           ")
+        logger.error("      ERROR in reduce: invalid kind of reduction. Please enter either      ")
+        logger.error("                        'science' or 'telluric'.                           ")
+        logger.error("                                                                           ")
+        logger.error("###########################################################################")
+        logger.error("###########################################################################")
+        raise SystemExit
 
     ###########################################################################
     ##                                                                       ##
@@ -165,387 +179,555 @@ def start(kind, configfile):
     # runs through a series of calibration steps on the data in that directory.
 
     # Loop through all the observation (telluric or science) directories to perform a reduction on each one.
-    for obspath in ObservationDirectories:
+    for obspath in observationDirectories:
 
-        ###########################################################################
-        ##                                                                       ##
-        ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
-        ##                                                                       ##
-        ###########################################################################
-
-        # Print the current directory of data being reduced.
-        logger.info("#################################################################################")
-        logger.info("                                                                                 ")
-        logger.info("                       Currently working on reductions in,                       ")
-        logger.info(" %s", obspath)
-        logger.info("                                                                                 ")
-        logger.info("#################################################################################\n")
-
-        os.chdir(obspath)
+        logger.debug("observationDirectory: %s", obspath)
         
-        tempObs = obspath.split(os.sep)
-        obsid = tempObs[-1]
+        if config.getboolean(observationSection,obspath):
 
-        # Change the iraf directory to the current directory.
-        iraffunctions.chdir(obspath)
-        '''
-        # Copy relevant calibrations over to the science directory.
-        # Open and store the name of the MDF shift reference file from shiftfile into shift.
-        shift = 'calibrations/shiftFile'
-        # Open and store the name of the flat frame
-        flat = 'calibrations/finalFlat'
-        # Open and store the bad pixel mask
-        finalBadPixelMask = 'calibrations/finalBadPixelMask'
-        # Ronchi, arc and database must all be in local calibrations directory
-        # Open and store the name of the reduced spatial correction ronchi flat frame name from ronchifile in ronchi.
-        ronchi = 'finalRonchi'
-        # Open and store the name of the reduced wavelength calibration arc frame from arclist in arc.
-        arc = 'finalArc'
-        '''
-        mdfshiftimage = open('../mdfshiftimagefile.txt', "r").readlines()
-        mdfshiftimage = [image.strip() for image in mdfshiftimage]
-        sdistrefimage = open('../sdistrefimagefile.txt', "r").readlines()
-        sdistrefimage = [image.strip() for image in sdistrefimage]
-        '''
-        if os.path.exists(os.getcwd()+'/'+ronchi+".fits"):
-            if over:
-                iraf.delete(os.getcwd()+'/calibrations/finalRonchi.fits')
-                # Copy the spatial calibration ronchi flat frame from Calibrations_grating to the observation directory.
+            ###########################################################################
+            ##                                                                       ##
+            ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
+            ##                                                                       ##
+            ###########################################################################
+
+            os.chdir(obspath)
+
+#            firstfilename = sorted(glob.glob(obspath+'/N*.fits'))[0]
+#            header = fits.open(firstfilename)[0].header
+
+            # Change the iraf directory to the current directory.
+            iraffunctions.chdir(obspath)
+
+            tempObspath = obspath.split(os.sep)
+            obsid = tempObspath[:-1]
+            calpath = "/".join(tempObspath[:-2]) + '/Calibrations'
+            '''
+            # Copy relevant calibrations over to the science directory.
+            # Open and store the name of the MDF shift reference file from shiftfile into shift.
+            shift = 'calibrations/shiftFile'
+            # Open and store the name of the flat frame
+            flat = 'calibrations/finalFlat'
+            # Open and store the bad pixel mask
+            finalBadPixelMask = 'calibrations/finalBadPixelMask'
+            # Ronchi, arc and database must all be in local calibrations directory
+            # Open and store the name of the reduced spatial correction ronchi flat frame name from ronchifile in ronchi.
+            ronchi = 'finalRonchi'
+            # Open and store the name of the reduced wavelength calibration arc frame from arclist in arc.
+            arc = 'finalArc'
+            '''
+            allobslist = open('all.list', "r").readlines()
+            allobslist = [file.strip() for file in allobslist]
+            rawHeader = fits.open(allobslist[0])[0].header
+
+            srclist = open('src.list', "r").readlines()
+            srclist = [file.strip() for file in srclist]
+            skylist = open('src.list', "r").readlines()
+            skylist = [file.strip() for file in skylist]
+
+            QHflatlist = open(calpath+'/QHflats.list', "r").readlines()
+            mdfshiftrefimage = calpath+'/n'+QHflatlist[0].strip()
+            pinholelist = open(calpath+'/pinholes.list', "r").readlines()
+            sdistrefimage = calpath+'/rn'+pinholelist[0].strip()
+            '''
+            if os.path.exists(os.getcwd()+'/'+ronchi+".fits"):
+                if over:
+                    iraf.delete(os.getcwd()+'/calibrations/finalRonchi.fits')
+                    # Copy the spatial calibration ronchi flat frame from Calibrations_grating to the observation directory.
+                    shutil.copy(os.getcwd()+'/calibrations/finalRonchi.fits', ronchi+'.fits')
+                else:
+                    print "\nOutput exists and -over not set - skipping copy of reduced ronchi"
+            else:
                 shutil.copy(os.getcwd()+'/calibrations/finalRonchi.fits', ronchi+'.fits')
-            else:
-                print "\nOutput exists and -over not set - skipping copy of reduced ronchi"
-        else:
-            shutil.copy(os.getcwd()+'/calibrations/finalRonchi.fits', ronchi+'.fits')
 
-        if os.path.exists(os.getcwd()+'/'+arc+".fits"):
-            if over:
-                iraf.delete(os.getcwd()+'/calibrations/finalArc.fits')
-                # Copy the spatial calibration arc flat frame from Calibrations_grating to the observation directory.
-                shutil.copy(os.getcwd()+'/calibrations/finalArc.fits', arc+'.fits')
+            if os.path.exists(os.getcwd()+'/'+arc+".fits"):
+                if over:
+                    iraf.delete(os.getcwd()+'/calibrations/finalArc.fits')
+                    # Copy the spatial calibration arc flat frame from Calibrations_grating to the observation directory.
+                    shutil.copy(os.getcwd()+'/calibrations/finalArc.fits', arc+'.fits')
+                else:
+                    print "\nOutput exists and -over not set - skipping copy of reduced arc"
             else:
-                print "\nOutput exists and -over not set - skipping copy of reduced arc"
-        else:
-            shutil.copy(os.getcwd()+'/calibrations/finalArc.fits', arc+'.fits')
-        
-        # Make sure the database files are in place. Current understanding is that these should be local to the 
-        # reduction directory, so need to be copied from the calDir.
-        if os.path.isdir("./database"):
-            if over:
-                shutil.rmtree("./database")
-                os.mkdir("./database")
+                shutil.copy(os.getcwd()+'/calibrations/finalArc.fits', arc+'.fits')
+            
+            # Make sure the database files are in place. Current understanding is that these should be local to the 
+            # reduction directory, so need to be copied from the calDir.
+            if os.path.isdir("./database"):
+                if over:
+                    shutil.rmtree("./database")
+                    os.mkdir("./database")
+                    for item in glob.glob("calibrations/database/*"):
+                        shutil.copy(item, "./database/")
+                else:
+                    print "\nOutput exists and -over not set - skipping copy of database directory"
+            else:
+                os.mkdir('./database/')
                 for item in glob.glob("calibrations/database/*"):
                     shutil.copy(item, "./database/")
-            else:
-                print "\nOutput exists and -over not set - skipping copy of database directory"
-        else:
-            os.mkdir('./database/')
-            for item in glob.glob("calibrations/database/*"):
-                shutil.copy(item, "./database/")
-        
-        if telluricSkySubtraction or scienceSkySubtraction:
-            # Read the list of sky frames in the observation directory.
-            try:
-                skyFrameList = open("skyFrameList", "r").readlines()
-                skyFrameList = [frame.strip() for frame in skyFrameList]
-            except:
-                logger.info("\n#####################################################################")
-                logger.info("#####################################################################")
-                logger.info("")
-                logger.info("     WARNING in reduce: No sky frames were found in a directory.")
-                logger.info("              Please make a skyFrameList in: " + str(os.getcwd()))
-                logger.info("")
-                logger.info("#####################################################################")
-                logger.info("#####################################################################\n")
-                raise SystemExit
-            sky = skyFrameList[0]
+            
+            if telluricSkySubtraction or scienceSkySubtraction:
+                # Read the list of sky frames in the observation directory.
+                try:
+                    skyFrameList = open("skyFrameList", "r").readlines()
+                    skyFrameList = [frame.strip() for frame in skyFrameList]
+                except:
+                    logger.info("\n#####################################################################")
+                    logger.info("#####################################################################")
+                    logger.info("")
+                    logger.info("     WARNING in reduce: No sky frames were found in a directory.")
+                    logger.info("              Please make a skyFrameList in: " + str(os.getcwd()))
+                    logger.info("")
+                    logger.info("#####################################################################")
+                    logger.info("#####################################################################\n")
+                    raise SystemExit
+                sky = skyFrameList[0]
 
-        # If we are doing a telluric reduction, open the list of telluric frames in the observation directory.
-        # If we are doing a science reduction, open the list of science frames in the observation directory.
-        if kind == 'Telluric':
-            tellist = open('tellist', 'r').readlines()
-            tellist = [frame.strip() for frame in tellist]
-        elif kind == 'Science':
-            scienceFrameList = open("scienceFrameList", "r").readlines()
-            scienceFrameList = [frame.strip() for frame in scienceFrameList]
-            # For science frames, check to see if the number of sky frames matches the number of science frames.
-            # IF NOT duplicate the sky frames and rewrite the sky file and skyFrameList.
-            if scienceSkySubtraction:
-                if not len(skyFrameList)==len(scienceFrameList):
-                    skyFrameList = makeSkyList(skyFrameList, scienceFrameList, observationDirectory)
-        '''
-        ###########################################################################
-        ##                                                                       ##
-        ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
-        ##                BEGIN DATA REDUCTION FOR AN OBSERVATION                ##
-        ##                                                                       ##
-        ###########################################################################
-
-        # Check start and stop values for reduction steps. Ask user for a correction if input is not valid.
-        valindex = start
-        while valindex > stop  or valindex < 1 or stop > 6:
-            logger.info("\n#####################################################################")
-            logger.info("#####################################################################")
-            logger.info("")
-            logger.info("     WARNING in reduce: invalid start/stop values of observation")
-            logger.info("                           reduction steps.")
-            logger.info("")
-            logger.info("#####################################################################")
-            logger.info("#####################################################################\n")
-
-            valindex = int(raw_input("\nPlease enter a valid start value (1 to 7, default 1): "))
-            stop = int(raw_input("\nPlease enter a valid stop value (1 to 7, default 7): "))
-
-        while valindex <= stop :
-
+            # If we are doing a telluric reduction, open the list of telluric frames in the observation directory.
+            # If we are doing a science reduction, open the list of science frames in the observation directory.
+            if kind == 'Telluric':
+                tellist = open('tellist', 'r').readlines()
+                tellist = [frame.strip() for frame in tellist]
+            elif kind == 'Science':
+                scienceFrameList = open("scienceFrameList", "r").readlines()
+                scienceFrameList = [frame.strip() for frame in scienceFrameList]
+                # For science frames, check to see if the number of sky frames matches the number of science frames.
+                # IF NOT duplicate the sky frames and rewrite the sky file and skyFrameList.
+                if scienceSkySubtraction:
+                    if not len(skyFrameList)==len(scienceFrameList):
+                        skyFrameList = makeSkyList(skyFrameList, scienceFrameList, observationDirectory)
+            '''
             ###########################################################################
-            ##  STEP 1: Prepare raw data; science, telluric and sky frames ->n       ##
+            ##                                                                       ##
+            ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
+            ##                BEGIN DATA REDUCTION FOR AN OBSERVATION                ##
+            ##                                                                       ##
             ###########################################################################
 
-            if valindex == 1:
-                if manualMode:
-                    a = raw_input("About to enter step 1: locate the spectrum.")
-                if kind=='Telluric':
-                    tellist = prepare(tellist, shift, finalBadPixelMask, log, over)
-                elif kind=='Science':
-                    scienceFrameList = prepare(scienceFrameList, shift, finalBadPixelMask, log, over)
-                if telluricSkySubtraction or scienceSkySubtraction:
-                    skyFrameList = prepare(skyFrameList, shift, finalBadPixelMask, log, over)
-                logger.info("\n##############################################################################")
-                logger.info("")
-                logger.info("  STEP 1: Locate the Spectrum (and prepare raw data) ->n - COMPLETED ")
-                logger.info("")
-                logger.info("##############################################################################\n")
+            # Check start and stop values for reduction steps. Ask user for a correction if input is not valid.
+            valindex = start
+            while valindex > stop  or valindex < 1 or stop > 7:
+                logger.warning("#####################################################################")
+                logger.warning("#####################################################################")
+                logger.warning("#                                                                   #")
+                logger.warning("#     WARNING in reduce: invalid start/stop values of observation   #")
+                logger.warning("#                        reduction steps.                           #")
+                logger.warning("#                                                                   #")
+                logger.warning("#####################################################################")
+                logger.warning("#####################################################################\n")
 
-            ###########################################################################
-            ##  STEP 2: Sky Subtraction ->sn                                         ##
-            ###########################################################################
+                valindex = int(raw_input("\nPlease enter a valid start value (1 to 7, default 1): "))
+                stop = int(raw_input("\nPlease enter a valid stop value (1 to 7, default 7): "))
+            
+            # Print the current directory of data being reduced.
+            logger.info("Currently working on reductions in %s\n", obspath)
+            logger.info("The path to the calibrations is %s\n", calpath)
 
-            elif valindex == 2:
-                if manualMode:
-                    a = raw_input("About to enter step 2: sky subtraction.")
-                # Combine telluric sky frames.
-                if kind=='Telluric':
-                    if telluricSkySubtraction:
-                        if len(skyFrameList)>1:
-                            combineImages(skyFrameList, "gn"+sky, log, over)
-                        else:
-                            copyImage(skyFrameList, 'gn'+sky+'.fits', over)
-                        skySubtractTel(tellist, "gn"+sky, log, over)
+            while valindex <= stop :
+
+                #############################################################################
+                ##  STEP 1: Clean raw observation frames.                                  ##
+                ##  Output: Cleaned science, sky, or telluric frames.                      ##
+                #############################################################################
+
+                if valindex == 1:
+                    if manualMode:
+                        a = raw_input("About to enter step 1: clean raw observation frames.")
+                    '''
+                    if cleanir:
+                        cleanir(allobslist)
                     else:
-                        for image in tellist:
-                            iraf.copy('n'+image+'.fits', 'sn'+image+'.fits')
+                        logger.info("######################################################################")
+                        logger.info("######################################################################")
+                        logger.info("#                                                                    #")
+                        logger.info("#       WARNING in reduce: raw observation frames not cleaned.       #")
+                        logger.info("#                                                                    #")
+                        logger.info("######################################################################")
+                        logger.info("######################################################################\n")
+                    
+                    logger.info("##################################################################")
+                    logger.info("#                                                                #")
+                    logger.info("#       STEP 1: Clean raw observation frames - COMPLETED         #")
+                    logger.info("#                                                                #")
+                    logger.info("##################################################################\n")
+                    '''
+                ###########################################################################
+                ##    STEP 2: Prepare observations (science, sky, and telluric frames)   ##
+                ###########################################################################
 
-                if kind=='Science':
-                    if scienceSkySubtraction:
-                        skySubtractObj(scienceFrameList, skyFrameList, log, over)
+                if valindex == 2:
+                    if manualMode:
+                        a = raw_input("About to enter step 2: locate the spectrum.")
+                    
+                    arrayid = rawHeader['ARRAYID'].strip()
+                    if arrayid == 'SN7638228.1':
+                        bpmfile = 'gnirs$data/gnirsn_2011apr07_bpm.fits'
+                    elif arrayid == 'SN7638228.1.2':
+                        bpmfile = 'gnirs$data/gnirsn_2012dec05_bpm.fits'
                     else:
-                        for image in scienceFrameList:
-                            iraf.copy('n'+image+'.fits', 'sn'+image+'.fits')
+                        logger.error("######################################################################")
+                        logger.error("######################################################################")
+                        logger.error("#                                                                    #")
+                        logger.error("#        ERROR in reduce: unknown array ID. Exiting script.          #")
+                        logger.error("#                                                                    #")
+                        logger.error("######################################################################")
+                        logger.error("######################################################################\n")
+                        raise SystemExit
+                    
+                    prepareObservations(mdfshiftrefimage, bpmfile, overwrite)
 
-                logger.info("\n##############################################################################")
-                logger.info("")
-                logger.info("  STEP 2: Sky Subtraction ->sn - COMPLETED ")
-                logger.info("")
-                logger.info("##############################################################################\n")
+                    logger.info("##############################################################################")
+                    logger.info("#                                                                            #")
+                    logger.info("#       STEP 1: Locate the Spectrum (prepare observations) - COMPLETED       #")
+                    logger.info("#                                                                            #")
+                    logger.info("##############################################################################\n")
+                
+                ###########################################################################
+                ##  STEP 3: Prepare bad pixel masks and do radiation event correction    ##
+                ###########################################################################
 
-            ##############################################################################
-            ##  STEP 3: Flat field, slice, subtract dark and correct bad pixels ->brsn  ##
-            ##############################################################################
+                elif valindex == 3:
+                    if manualMode:
+                        a = raw_input("About to enter step 3: radiation event correction.")
 
-            elif valindex == 3:
-                if manualMode:
-                    a = raw_input("About to enter step 3: flat fielding and bad pixels correction.")
-                if kind=='Telluric':
-                    applyFlat(tellist, flat, log, over, kind)
-                    fixBad(tellist, log, over)
-                elif kind=='Science':
-                    applyFlat(scienceFrameList, flat, log, over, kind)
-                    fixBad(scienceFrameList, log, over)
-                logger.info("\n##############################################################################")
-                logger.info("")
-                logger.info("  STEP 3: Flat fielding and Bad Pixels Correction ->brsn - COMPLETED ")
-                logger.info("")
-                logger.info("##############################################################################\n")
+                    preparedHeader = fits.open('n'+allobslist[0])[0].header
 
+                    rdnoise = preparedHeader['RDNOISE'].strip()
+                    gain = preparedHeader['GAIN'].strip()
 
-            ###########################################################################
-            ##  STEP 4: Derive and apply 2D to 3D transformation ->tfbrsn            ##
-            ###########################################################################
+                    radiationEventCorrection(rdnoise, gain, overwite)
 
-            elif valindex == 4:
-                if manualMode:
-                    a = raw_input("About to enter step 4: 2D to 3D transformation and Wavelength Calibration.")
-                if kind=='Telluric':
-                    fitCoords(tellist, arc, ronchi, log, over, kind)
-                    transform(tellist, log, over)
-                elif kind=='Science':
-                    fitCoords(scienceFrameList, arc, ronchi, log, over, kind)
-                    transform(scienceFrameList, log, over)
-                logger.info("\n##############################################################################")
-                logger.info("")
-                logger.info("  STEP 4: 2D to 3D transformation and Wavelength Calibration ->tfbrsn - COMPLETED ")
-                logger.info("")
-                logger.info("##############################################################################\n")
+                    logger.info("##############################################################################")
+                    logger.info("#                                                                            #")
+                    logger.info("#  STEP 3: Radiation event correction - COMPLETED                            #")
+                    logger.info("#                                                                            #")
+                    logger.info("##############################################################################\n")
+                '''
+                ##############################################################################
+                ##  STEP 4: Flat field, slice, subtract dark and correct bad pixels ->brsn  ##
+                ##############################################################################
 
-            ############################################################################
-            ##  STEP 5 (tellurics): For telluric data derive a telluric               ##
-            ##                     correction ->gxtfbrsn                              ##
-            ##  STEP 5 (science): For science apply an efficiency correction and make ##
-            ##           a data cube (not necessarily in that order).                 ##
-            ##           (i) Python method applies correction to nftransformed cube.  ##
-            ##           Good for faint objects.                        ->cptfbrsn    ##
-            ##           (ii) iraf.telluric method applies correction to              ##
-            ##           nftransformed result (not quite a data cube) then            ##
-            ##           nftransforms cube.                             ->catfbrsn    ##
-            ##           (iii) If no telluric correction/flux calibration to be       ##
-            ##           applied make a plain data cube.                ->ctfbrsn     ##
-            ############################################################################
-
-            elif valindex == 5:
-                if manualMode:
-                    a = raw_input("About to enter step 5.")
-                # For telluric data:
-                # Make a combined extracted 1D standard star spectrum.
-                if kind=='Telluric':
-                    extractOneD(tellist, kind, log, over, extractionXC, extractionYC, extractionRadius)
-
-                    # TODO(nat): add this as a parameter; encapsulate this.
-                    copyToScience = True
-                    if copyToScience:
-                        # Copy final extracted results to science directory.
-                        try:
-                            with open("scienceMatchedTellsList", "r") as f:
-                                lines = f.readlines()
-                            lines = [x.strip() for x in lines]
-
-                            for i in range(len(lines)):
-                                if "obs" in lines[i]:
-                                    k = 1
-                                    while i+k != len(lines) and "obs" not in lines[i+k]:
-                                        copyResultsToScience("gxtfbrsn"+tellist[0]+".fits", "0_tel"+lines[i+k]+".fits", over)
-                                        k+=1
-                        except IOError:
-                            logger.info("\nNo scienceMatchedTellsList found in "+ os.getcwd() +" . Skipping copy of extracted spectra to science directory.")
-
+                elif valindex == 3:
+                    if manualMode:
+                        a = raw_input("About to enter step 3: flat fielding and bad pixels correction.")
+                    if kind=='Telluric':
+                        applyFlat(tellist, flat, log, over, kind)
+                        fixBad(tellist, log, over)
+                    elif kind=='Science':
+                        applyFlat(scienceFrameList, flat, log, over, kind)
+                        fixBad(scienceFrameList, log, over)
                     logger.info("\n##############################################################################")
                     logger.info("")
-                    logger.info("  STEP 5a: Extract 1D Spectra and Make Combined 1D Standard Star Spectrum")
-                    logger.info("           ->gxtfbrsn - COMPLETED")
+                    logger.info("  STEP 3: Flat fielding and Bad Pixels Correction ->brsn - COMPLETED ")
                     logger.info("")
                     logger.info("##############################################################################\n")
-                    #TODO(nat): add this as a parameter.
-                    makeTelluricCube = True
-                    if makeTelluricCube:
-                        makeCube('tfbrsn', tellist, log, over)
+
+
+                ###########################################################################
+                ##  STEP 4: Derive and apply 2D to 3D transformation ->tfbrsn            ##
+                ###########################################################################
+
+                elif valindex == 4:
+                    if manualMode:
+                        a = raw_input("About to enter step 4: 2D to 3D transformation and Wavelength Calibration.")
+                    if kind=='Telluric':
+                        fitCoords(tellist, arc, ronchi, log, over, kind)
+                        transform(tellist, log, over)
+                    elif kind=='Science':
+                        fitCoords(scienceFrameList, arc, ronchi, log, over, kind)
+                        transform(scienceFrameList, log, over)
+                    logger.info("\n##############################################################################")
+                    logger.info("")
+                    logger.info("  STEP 4: 2D to 3D transformation and Wavelength Calibration ->tfbrsn - COMPLETED ")
+                    logger.info("")
+                    logger.info("##############################################################################\n")
+
+                ############################################################################
+                ##  STEP 5 (tellurics): For telluric data derive a telluric               ##
+                ##                     correction ->gxtfbrsn                              ##
+                ##  STEP 5 (science): For science apply an efficiency correction and make ##
+                ##           a data cube (not necessarily in that order).                 ##
+                ##           (i) Python method applies correction to nftransformed cube.  ##
+                ##           Good for faint objects.                        ->cptfbrsn    ##
+                ##           (ii) iraf.telluric method applies correction to              ##
+                ##           nftransformed result (not quite a data cube) then            ##
+                ##           nftransforms cube.                             ->catfbrsn    ##
+                ##           (iii) If no telluric correction/flux calibration to be       ##
+                ##           applied make a plain data cube.                ->ctfbrsn     ##
+                ############################################################################
+
+                elif valindex == 5:
+                    if manualMode:
+                        a = raw_input("About to enter step 5.")
+                    # For telluric data:
+                    # Make a combined extracted 1D standard star spectrum.
+                    if kind=='Telluric':
+                        extractOneD(tellist, kind, log, over, extractionXC, extractionYC, extractionRadius)
+
+                        # TODO(nat): add this as a parameter; encapsulate this.
+                        copyToScience = True
+                        if copyToScience:
+                            # Copy final extracted results to science directory.
+                            try:
+                                with open("scienceMatchedTellsList", "r") as f:
+                                    lines = f.readlines()
+                                lines = [x.strip() for x in lines]
+
+                                for i in range(len(lines)):
+                                    if "obs" in lines[i]:
+                                        k = 1
+                                        while i+k != len(lines) and "obs" not in lines[i+k]:
+                                            copyResultsToScience("gxtfbrsn"+tellist[0]+".fits", "0_tel"+lines[i+k]+".fits", over)
+                                            k+=1
+                            except IOError:
+                                logger.info("\nNo scienceMatchedTellsList found in "+ os.getcwd() +" . Skipping copy of extracted spectra to science directory.")
+
                         logger.info("\n##############################################################################")
                         logger.info("")
-                        logger.info("  STEP 5b: Make uncorrected standard star data cubes, ->ctfbrsn  - COMPLETED")
+                        logger.info("  STEP 5a: Extract 1D Spectra and Make Combined 1D Standard Star Spectrum")
+                        logger.info("           ->gxtfbrsn - COMPLETED")
                         logger.info("")
                         logger.info("##############################################################################\n")
+                        #TODO(nat): add this as a parameter.
+                        makeTelluricCube = True
+                        if makeTelluricCube:
+                            makeCube('tfbrsn', tellist, log, over)
+                            logger.info("\n##############################################################################")
+                            logger.info("")
+                            logger.info("  STEP 5b: Make uncorrected standard star data cubes, ->ctfbrsn  - COMPLETED")
+                            logger.info("")
+                            logger.info("##############################################################################\n")
 
-                # For Science data:
-                # Possibly extract 1D spectra, and make uncorrected cubes.
-                elif kind=='Science':
-                    if scienceOneDExtraction:
-                        extractOneD(scienceFrameList, kind, log, over, extractionXC, extractionYC, extractionRadius)
-                        copyExtracted(scienceFrameList, over)
-                        logger.info("\n##############################################################################")
-                        logger.info("")
-                        logger.info("  STEP 5a: Make extracted 1D Science spectra, ->ctgbrsn  - COMPLETED")
-                        logger.info("")
-                        logger.info("##############################################################################\n")
-                    makeCube('tfbrsn', scienceFrameList, log, over)
+                    # For Science data:
+                    # Possibly extract 1D spectra, and make uncorrected cubes.
+                    elif kind=='Science':
+                        if scienceOneDExtraction:
+                            extractOneD(scienceFrameList, kind, log, over, extractionXC, extractionYC, extractionRadius)
+                            copyExtracted(scienceFrameList, over)
+                            logger.info("\n##############################################################################")
+                            logger.info("")
+                            logger.info("  STEP 5a: Make extracted 1D Science spectra, ->ctgbrsn  - COMPLETED")
+                            logger.info("")
+                            logger.info("##############################################################################\n")
+                        makeCube('tfbrsn', scienceFrameList, log, over)
 
-                    # TODO(nat): encapsulate this inside a function.
-                    if os.path.exists('products_uncorrected'):
-                        if over:
-                            shutil.rmtree('products_uncorrected')
+                        # TODO(nat): encapsulate this inside a function.
+                        if os.path.exists('products_uncorrected'):
+                            if over:
+                                shutil.rmtree('products_uncorrected')
+                                os.mkdir('products_uncorrected')
+                            else:
+                                logger.info("\nOutput exists and -over not set - skipping creating of products_uncorrected directory")
+                        else:
                             os.mkdir('products_uncorrected')
-                        else:
-                            logger.info("\nOutput exists and -over not set - skipping creating of products_uncorrected directory")
-                    else:
-                        os.mkdir('products_uncorrected')
-                    for item in scienceFrameList:
-                        if os.path.exists('products_uncorrected/ctfbrsn'+item+'.fits'):
-                            if over:
-                                os.remove('products_uncorrected/ctfbrsn'+item+'.fits')
+                        for item in scienceFrameList:
+                            if os.path.exists('products_uncorrected/ctfbrsn'+item+'.fits'):
+                                if over:
+                                    os.remove('products_uncorrected/ctfbrsn'+item+'.fits')
+                                    shutil.copy('ctfbrsn'+item+'.fits', 'products_uncorrected/ctfbrsn'+item+'.fits')
+                                else:
+                                    logger.info("\nOutput exists and -over not set - skipping copy of uncorrected cube")
+                            else:
                                 shutil.copy('ctfbrsn'+item+'.fits', 'products_uncorrected/ctfbrsn'+item+'.fits')
-                            else:
-                                logger.info("\nOutput exists and -over not set - skipping copy of uncorrected cube")
-                        else:
-                            shutil.copy('ctfbrsn'+item+'.fits', 'products_uncorrected/ctfbrsn'+item+'.fits')
 
-                    if os.path.exists('products_telluric_corrected'):
-                        if over:
-                            shutil.rmtree('products_telluric_corrected')
-                            os.mkdir('products_telluric_corrected')
-                        else:
-                            logger.info("\nOutput exists and -over not set - skipping creating of products_telluric_corrected directory")
-                    else:
-                        os.mkdir('products_telluric_corrected')
-                    for item in scienceFrameList:
-                        if os.path.exists('products_telluric_corrected/ctfbrsn'+item+'.fits'):
+                        if os.path.exists('products_telluric_corrected'):
                             if over:
-                                os.remove('products_telluric_corrected/ctfbrsn'+item+'.fits')
-                                shutil.copy('ctfbrsn'+item+'.fits', 'products_telluric_corrected/ctfbrsn'+item+'.fits')
+                                shutil.rmtree('products_telluric_corrected')
+                                os.mkdir('products_telluric_corrected')
                             else:
-                                logger.info("\nOutput exists and -over not set - skipping copy of uncorrected cube")
+                                logger.info("\nOutput exists and -over not set - skipping creating of products_telluric_corrected directory")
                         else:
-                            shutil.copy('ctfbrsn'+item+'.fits', 'products_telluric_corrected/ctfbrsn'+item+'.fits')
+                            os.mkdir('products_telluric_corrected')
+                        for item in scienceFrameList:
+                            if os.path.exists('products_telluric_corrected/ctfbrsn'+item+'.fits'):
+                                if over:
+                                    os.remove('products_telluric_corrected/ctfbrsn'+item+'.fits')
+                                    shutil.copy('ctfbrsn'+item+'.fits', 'products_telluric_corrected/ctfbrsn'+item+'.fits')
+                                else:
+                                    logger.info("\nOutput exists and -over not set - skipping copy of uncorrected cube")
+                            else:
+                                shutil.copy('ctfbrsn'+item+'.fits', 'products_telluric_corrected/ctfbrsn'+item+'.fits')
 
 
-                    logger.info("\n##############################################################################")
-                    logger.info("")
-                    logger.info("  STEP 5b: Make uncorrected science data cubes, ->ctfbrsn  - COMPLETED")
-                    logger.info("")
-                    logger.info("##############################################################################\n")
+                        logger.info("\n##############################################################################")
+                        logger.info("")
+                        logger.info("  STEP 5b: Make uncorrected science data cubes, ->ctfbrsn  - COMPLETED")
+                        logger.info("")
+                        logger.info("##############################################################################\n")
+                '''
+                valindex += 1
 
-            valindex += 1
-
-        logger.info("\n##############################################################################")
-        logger.info("")
-        logger.info("  COMPLETE - Reductions completed for " + str(observationDirectory))
-        logger.info("")
-        logger.info("##############################################################################\n")
+            logger.info("##############################################################################")
+            logger.info("#                                                                            #")
+            logger.info("#  COMPLETE - Reductions completed for                                       #")
+            logger.info("#  %s", obspath                                                                )
+            logger.info("#                                                                            #")
+            logger.info("##############################################################################\n")
 
     # Return to directory script was begun from.
     os.chdir(path)
+
+    return
 
 ##################################################################################################################
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
 
-def prepare(inlist, shiftima, finalBadPixelMask, log, over):
-    """Prepare list of frames using iraf.nfprepare. Output: -->n.
-
-    Processing with NFPREPARE (this task is used only for NIFS data
-    but other instruments have their own preparation tasks
-    with similar actions) will rename the data extension and add
-    variance and data quality extensions. By default (see NSHEADERS)
-    the extension names are SCI for science data, VAR for variance, and
-    DQ for data quality (0 = good). Generation of the data quality
-    plane (DQ) is important in order to fix hot and dark pixels on the
-    NIFS detector in subsequent steps in the data reduction process.
-    Various header keywords (used later) are also added in NFPREPARE.
-    NFPREPARE will also add an MDF file (extension MDF) describing the
-    NIFS image slicer pattern and how the IFU maps to the sky field.
-
+def prepareObservations(mdfshiftrefimage, bpmfile, overwrite):
     """
+    Prepare the observation frames (science, sky, or telluric) using nsprepare. Output: Prefix "n" added to the raw 
+    filenames.
 
-    # Update frames with mdf offset value and generate variance and data quality extensions.
-    for frame in inlist:
-        if os.path.exists("n"+frame+".fits"):
-            if over:
-                os.remove("n"+frame+".fits")
-            else:
-                logger.info("Output file exists and -over not set - skipping prepare_list")
-                continue
-        iraf.nfprepare(frame, rawpath="", shiftimage=shiftima, fl_vardq="yes", bpm=finalBadPixelMask, fl_int='yes', fl_corr='no', fl_nonl='no', logfile=log)
-    inlist = checkLists(inlist, '.', 'n', '.fits')
-    return inlist
+    Processing with NFPREPARE (this task is used only for GNIRS data but other instruments have their own preparation 
+    tasks with similar actions) will rename the data extension and add variance and data quality extensions. By default 
+    (see NSHEADERS) the extension names are SCI for science data, VAR for variance, and DQ for data quality (0 = good). 
+    NSPREPARE will add an MDF file (extension MDF) describing the GNIRS image pattern and how all images 
+    cross-coorelate with the first pinhole flat frame supplied as the "mdfshiftimage" reference with the "shiftimage"
+    parameter in NSPREPARE.
+    """
+    logger = log.getLogger('gnirsReduce.prepareObservations')
+
+    # Update frames with mdf offset value and generate variance and data quality extensions. This code structure checks 
+    # if iraf output files already exist. If output files exist and overwrite is specified, iraf output is overwritten.
+
+    oldfiles = glob.glob('./nN*.fits')
+    if not oldfiles:
+        iraf.nsprepare(inimages='@all.list', rawpath='', outimages='', outprefix='n', bpm=bpmfile, \
+            logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', fl_cravg='no', crradius=0.0, \
+            fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', fl_nonlinear='yes', fl_checkwcs='yes', \
+            fl_forcewcs='yes', arraytable='gnirs$data/array.fits', configtable='gnirs$data/config.fits', \
+            specsec='[*,*]', offsetsec='none', pixscale='0.15', shiftimage=mdfshiftrefimage, shiftx=0., 
+            shifty=0., obstype='FLAT', fl_inter='no', verbose='yes', mode='al')
+    else:
+        if overwrite:
+            logger.warning('Removing old nN*.fits files.')
+            [os.remove(file) for file in oldfiles]
+            iraf.nsprepare(inimages='@all.list', rawpath='', outimages='', outprefix='n', bpm=bpmfile, \
+                logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', fl_cravg='no', crradius=0.0, \
+                fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', fl_nonlinear='yes', fl_checkwcs='yes', \
+                fl_forcewcs='yes', arraytable='gnirs$data/array.fits', configtable='gnirs$data/config.fits', \
+                specsec='[*,*]', offsetsec='none', pixscale='0.15', shiftimage='mdfshiftrefimage', shiftx=0., \
+                shifty=0., obstype='FLAT', fl_inter='no', verbose='yes', mode='al')
+        else:
+            logger.warning("Output files exist and -overwrite not set - skipping nsprepare for all observation ")
+            logger.warning("frames.")
 
 #--------------------------------------------------------------------------------------------------------------------------------#
 
+def radiationEventCorrection(rdnoise, gain, overwrite):
+    """
+    Prepare bad pixel masks for the observation frames (science, sky, or telluric) using the data quality plane of the
+    nsprepare'd observations.
+
+    TODO(Viraja):  Describe comparison 'fixpix' vs 'dqplane' methods.
+    """
+    logger = log.getLogger('gnirsReduce.prepareObservations')
+
+    if badPixelCorretionMethod = 'fixpix':
+        # Combine the source and sky observation frames separately using GEMCOMBINE to create a "minimum" image using
+        # the "minmax" combining algorithm.
+        minsrc = 'min_src.fits'
+        minsky = 'min_sky.fits'
+        oldfiles_minimages = glob.glob('./min*.pl')
+        oldfiles_masks = glob.glob('./mask*')
+        oldfiles = oldfiles_minimages + oldfiles_masks
+        if not oldfiles:
+            iraf.gemcombine(input='@src.list', output=minsrc, title="", combine="median", reject="minmax", \
+                offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
+                statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=kreject, \
+                nkeep=1, mclip = 'yes', lsigma = 3., hsigma = 3., key_ron = "RDNOISE", key_gain="GAIN", ron=0.0, \
+                gain = 1.0, snoise = "0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", \
+                sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', \
+                logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+            for src in srclist:
+                iraf.imexpr("(a-b)>"+radiationThreshold+"*sqrt("+rdnoise+"**2+2*b/"+gain+") ? 1 : 0", \
+                    output='mask'+obs[:-5]+'.pl', a='n'+obs+'[SCI]', b=minsrc+'[SCI]', dims="auto", intype="int", \
+                    outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., rangecheck='yes', \
+                    verbose='yes', exprdb="none")
+
+            iraf.gemcombine(input='@sky.list', output=minsky, title="", combine="median", reject="minmax", \
+                offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
+                statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=kreject, \
+                nkeep=1, mclip = 'yes', lsigma = 3., hsigma = 3., key_ron = "RDNOISE", key_gain="GAIN", ron=0.0, \
+                gain = 1.0, snoise = "0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", \
+                sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', \
+                logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+            for sky in skylist:
+                iraf.imexpr("(a-b)>"+radiationThreshold+"*sqrt("+rdnoise+"**2+2*b/"+gain+") ? 1 : 0", \
+                    output='mask'+obs[:-5]+'.pl', a='n'+obs+'[SCI]', b=minsrc+'[SCI]', dims="auto", intype="int", \
+                    outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., rangecheck='yes', \
+                    verbose='yes', exprdb="none")
+
+            open("masks.list", "w").write(sorted(glob.glob('mask*.fits')))
+        else:
+            if overwrite:
+                logger.warning('Removing old %s and %s', minsrc, minsky)
+                logger.warning('Removing old mask*.fits files.')
+                [os.remove(file) for file in oldfiles]
+                iraf.gemcombine(input='@src.list', output=minsrc, title="", combine="median", reject="minmax", \
+                    offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
+                    statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=kreject,\
+                    nkeep=1, mclip = 'yes', lsigma = 3., hsigma = 3., key_ron = "RDNOISE", key_gain="GAIN", ron=0.0, \
+                    gain = 1.0, snoise = "0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", \
+                    sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', \
+                    logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+                for src in srclist:
+                    iraf.imexpr(expr="(a-b)>"+radiationThreshold+"*sqrt("+rdnoise+"**2+2*b/"+gain+") ? 1 : 0", \
+                        output='mask'+src[:-5]+'.pl', a='n'+src+'[SCI]', b=minsrc+'[SCI]', dims="auto", intype="int", \
+                        outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., rangecheck='yes', \
+                        verbose='yes', exprdb="none")
+
+                iraf.gemcombine(input='@sky.list', output=minsky, title="", combine="median", reject="minmax", \
+                    offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
+                    statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=kreject,\
+                    nkeep=1, mclip = 'yes', lsigma = 3., hsigma = 3., key_ron = "RDNOISE", key_gain="GAIN", ron=0.0, \
+                    gain = 1.0, snoise = "0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", \
+                    sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', \
+                    logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+                for sky in skylist:
+                    iraf.imexpr(expr="(a-b)>"+radiationThreshold+"*sqrt("+rdnoise+"**2+2*b/"+gain+") ? 1 : 0", \
+                        output='mask'+sky[:-5]+'.pl', a='n'+sky+'[SCI]', b=minsrc+'[SCI]', dims="auto", intype="int", \
+                        outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., rangecheck='yes', \
+                        verbose='yes', exprdb="none")
+
+                open("masks.list", "w").write(sorted(glob.glob('mask*.fits')))
+            else:
+                logger.warning("Output files exist and -overwrite not set - using existing outputs for further ")  
+                logger.warning("reduction of all observation frames.")
+    elif badPixelCorrectionMethod = 'dqplane':
+        pass
+    else:
+        logger.error("######################################################################")
+        logger.error("######################################################################")
+        logger.error("#                                                                    #")
+        logger.error("#       ERROR in reduce: unknown bad pixel correction method.        #")
+        logger.error("#                        Exiting script.                             #")
+        logger.error("#                                                                    #")
+        logger.error("######################################################################")
+        logger.error("######################################################################\n")
+        raise SystemExit
+    
+    oldfiles_gmasks = glob.glob('./gmask*')
+    oldfiles_radiationclean = glob.glob('./lnN*.fits')
+    oldfiles_combinedmasks = glob.glob('./bgmask*')
+    oldfiles = oldfiles_gmasks + oldfiles_radiationclean + oldfiles_combinedmasks
+    if not oldfiles:
+        iraf.crgrow(input='@masks.list', output='g@masks.list', radius=1.5, inval="INDEF", outval="INDEF")
+
+        for src in srclist:
+            iraf.copy(input='nc'+src, output='lnc'+src, verbose='no') 
+            iraf.imexpr(expr="a||b", output='bgmask'+src[:-5]+'.pl', a='gmask'+src[:-5]+'.pl', b=minsrc+'[DQ]', \
+                dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., \
+                rangecheck='yes', verbose='yes', exprdb="none")
+            iraf.proto.fixpix(images='ln'+src+'[SCI,1]', masks='bgmask'+src[:-5]+'.pl', linterp=1, \
+                cinterp="INDEF", verbose='no', pixels='no')
+
+            
+            
+
+
+
+#--------------------------------------------------------------------------------------------------------------------------------#
+'''
 def combineImages(inlist, out, log, over):
     """Gemcombine multiple frames. Output: -->gn."""
 
@@ -829,7 +1011,7 @@ def copyExtracted(scienceFrameList, over):
         shutil.copy(spectra, ExtractedOneD+'/combined'+date+'_'+obsid+'.fits')
 
 #--------------------------------------------------------------------------------------------------------------------------------#
-
+'''
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     a = raw_input('Enter <Science> for science reduction or <Telluric> for telluric reduction: ')
