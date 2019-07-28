@@ -122,91 +122,90 @@ def checklist(filelist, path, headerdict):
     logger = log.getLogger('checklist')
     logger.debug('Checking %s/%s', path, filelist)
 
-    if os.path.exists(path + '/' + filelist):
-        logger.info('Found %s', filelist)
-        with open(path + '/' + filelist, "r") as f:
-            files = f.read().strip().split('\n')
-        logger.debug('files: %s', files)
-
-        configs = []
-        coords = []
-        exptimes = []
-        objects = []
-        obstypes = []
-
-        for f in files:
-
-            if f not in headerdict:  # Check that all the files in the list exist
-                logger.error('%s is in %s but can not be found', f, filelist)
-                continue
-
-            configs.append(headerdict[f]['CONFIG'])
-            coords.append(headerdict[f]['COORDS'])
-            exptimes.append(headerdict[f]['EXPTIME'])
-            objects.append(headerdict[f]['OBJECT'])
-            obstypes.append(headerdict[f]['OBSTYPE'])
-
-        if headerdict[f]['OBSTYPE'] == 'OBJECT':  # Science or Telluric
-            minfiles = 2
-        elif headerdict[f]['OBSTYPE'] == 'ARC':
-            minfiles = 1
-        elif headerdict[f]['OBSTYPE'] == 'FLAT':  # IR, QH, or pinholes
-            minfiles = 1
-        else:
-            minfiles = 1
-        logger.debug('Minimum number of files: %d', minfiles)
-        if len(files) < minfiles:
-            logger.error('%s only has %d files', filelist, len(files))
-
-        if len(list(set(configs))) > 1:  # Check that all the configs are the same
-            logger.error('Multiple configurations: %s', configs)
-        else:
-            logger.debug('Configs match')
-
-        if len(list(set(coords))) > 1:  # Check that all the coordinates are the same
-            logger.error('Multiple coordinates: %s', coords)
-        else:
-            logger.debug('Coordinates match')
-
-        if len(list(set(objects))) > 1:  # Check that all the target names are the same
-            logger.error('Multiple target names: %s', objects)
-        else:
-            logger.debug('Target names match')
-
-        if len(list(set(obstypes))) > 1:  # Check that all the obstypes are the same
-            logger.error('Multiple observation types: %s', obstypes)
-        else:
-            logger.debug('Observation types match')
-
-        if len(list(set(exptimes))) > 1:  # Check that all the exposure times are the same
-            logger.warning('Multiple exposure times: %s', exptimes)
-            freq = collections.Counter(exptimes)
-            logger.debug('Exposure time %s', freq)
-            val, num = freq.most_common(1)[0]
-            logger.info('The most common exposure time is %.2f sec', val)
-            npeak = freq.values().count(val)
-            if npeak > 1:
-                logger.error('But the most common value occurs %n times.', npeak)
-                logger.error('You will need to fix this.')
-                raise SystemExit
-
-            backup = filelist + '.bak'
-            logger.info('Backing up %s to %s', filelist, backup)
-            shutil.copy2(path + '/' + filelist, path + '/' + backup)
-            logger.warning('Updating %s to only include files with EXPTIME = %s', filelist, val)
-            with open(path + '/' + filelist, "w") as fout:
-                for f in files:
-                    if headerdict[f]['EXPTIME'] == val:
-                        fout.write(f + '\n')
-
-            if num < minfiles:
-                logger.error('%s only has %d files', filelist, num)
-
-        else:
-            logger.debug('Exposure times match')
-
-    else:
+    if not os.path.exists(path + '/' + filelist):
         logger.error('Could not find %s', filelist)
+        return
+
+    logger.info('Found %s', filelist)
+    with open(path + '/' + filelist, "r") as f:
+        files = f.read().strip().split('\n')
+    logger.debug('files: %s', files)
+
+    configs = []
+    coords = []
+    exptimes = []
+    objects = []
+    obstypes = []
+
+    for f in files:
+
+        if f not in headerdict:  # Check that all the files in the list exist
+            logger.error('%s is in %s but can not be found', f, filelist)
+            continue
+
+        configs.append(headerdict[f]['CONFIG'])
+        coords.append(headerdict[f]['COORDS'])
+        exptimes.append(headerdict[f]['EXPTIME'])
+        objects.append(headerdict[f]['OBJECT'])
+        obstypes.append(headerdict[f]['OBSTYPE'])
+
+    if headerdict[f]['OBSTYPE'] == 'OBJECT':  # Science or Telluric
+        minfiles = 2
+    elif headerdict[f]['OBSTYPE'] == 'ARC':
+        minfiles = 1
+    elif headerdict[f]['OBSTYPE'] == 'FLAT':  # IR, QH, or pinholes
+        minfiles = 1
+    else:
+        minfiles = 1
+    logger.debug('Minimum number of files: %d', minfiles)
+    if len(files) < minfiles:
+        logger.error('%s only has %d files', filelist, len(files))
+
+    if len(list(set(configs))) == 1:  # Check that all the configs are the same
+        logger.debug('Configs match')
+    else:
+        logger.error('Multiple configurations: %s', configs)
+
+    if len(list(set(coords))) == 1:  # Check that all the coordinates are the same
+        logger.debug('Coordinates match')
+    else:
+        logger.error('Multiple coordinates: %s', coords)
+
+    if len(list(set(objects))) == 1:  # Check that all the target names are the same
+        logger.debug('Target names match')
+    else:
+        logger.error('Multiple target names: %s', objects)
+
+    if len(list(set(obstypes))) == 1:  # Check that all the obstypes are the same
+        logger.debug('Observation types match')
+    else:
+        logger.error('Multiple observation types: %s', obstypes)
+
+    if len(list(set(exptimes))) == 1:  # Check that all the exposure times are the same
+        logger.debug('Exposure times match')
+    else:
+        logger.warning('Multiple exposure times: %s', exptimes)
+        freq = collections.Counter(exptimes)
+        logger.debug('Exposure time %s', freq)
+        val, num = freq.most_common(1)[0]
+        logger.info('The most common exposure time is %.2f sec', val)
+        npeak = freq.values().count(val)
+        if npeak > 1:
+            logger.error('But the most common value occurs %n times.', npeak)
+            logger.error('You will need to fix this.')
+            raise SystemExit
+
+        backup = filelist + '.bak'
+        logger.info('Backing up %s to %s', filelist, backup)
+        shutil.copy2(path + '/' + filelist, path + '/' + backup)
+        logger.warning('Updating %s to only include files with EXPTIME = %s', filelist, val)
+        with open(path + '/' + filelist, "w") as fout:
+            for f in files:
+                if headerdict[f]['EXPTIME'] == val:
+                    fout.write(f + '\n')
+
+        if num < minfiles:
+            logger.error('%s only has %d files', filelist, num)
 
     return
 
