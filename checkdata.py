@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import collections
 import ConfigParser
 import datetime
 import log
 import os
 import gnirsHeaders
-
+import shutil
 
 def start(configfile):
     """
@@ -32,11 +33,11 @@ def start(configfile):
     logger.debug('Telluric directories: %s', teldirs)
 
     if len(scidirs) < 1:
-        logger.error('No science directories are listed in %s', configfile)
+        logger.error('No science directories listed in %s', configfile)
     if len(caldirs) < 1:
-        logger.error('No calibration directories are listed in %s', configfile)
+        logger.error('No calibration directories listed in %s', configfile)
     if len(teldirs) < 1:
-        logger.error('No telluric directories are listed in %s', configfile)
+        logger.error('No telluric directories listed in %s', configfile)
 
     for sdir in scidirs:
         if config.getboolean('ScienceDirectories', sdir):  # Only check directories marked True
@@ -48,30 +49,44 @@ def start(configfile):
             if os.path.exists(sdir + '/sky.list'):  # If there is a sky.list then check it too
                 checklist('sky.list', path=sdir, headerdict=sci_info)
 
-            sfile = next(iter(sci_info))  # The sci exposures should all be the same, so just use the first
+            sfile = next(iter(sci_info))  # The science configs should all be the same, so just use the first file
 
             logger.info('Searching for matching calibrations...')
+            cal_match = False
             for cdir in caldirs:
                 logger.debug('...%s', cdir)
                 cal_info = gnirsHeaders.start(cdir)
-                # The arcs and flats will match but the pinholes will not.  Find an IR flats to compare with:
+                cal_match = True
 
-                # TODO: We should probably compare ALL the calibration configs (IR, QH, arcs) to make sure they match
-                
-                irflats = [k for k in cal_info.keys() if
-                           cal_info[k]['OBSTYPE'] == 'FLAT' and cal_info[k]['GCALLAMP'] == 'IRhigh']
+                arcs = [k for k in cal_info.keys() if cal_info[k]['OBSTYPE'] == 'ARC']
+                logger.debug('Arcs: %s', arcs)
+                irflats = [k for k in cal_info.keys() if cal_info[k]['OBSTYPE'] == 'FLAT' and
+                           cal_info[k]['GCALLAMP'] == 'IRhigh']
                 logger.debug('IR flats: %s', irflats)
-                f = irflats[0]
-                if cal_info[f]['DATE-OBS'] == sci_info[sfile]['DATE-OBS'] and \
-                        cal_info[f]['CONFIG'] == sci_info[sfile]['CONFIG'] and \
-                        cal_info[f]['COORDS'] == sci_info[sfile]['COORDS']:
-                    logger.info('Calibration directory %s matches', cdir)
-                    # Check that we have all the cals we need:
+                qhflats = [k for k in cal_info.keys() if cal_info[k]['OBSTYPE'] == 'FLAT' and
+                           cal_info[k]['GCALLAMP'] == 'QH' and 'Pinholes' not in cal_info[k]['SLIT']]
+                logger.debug('QH flats: %s', qhflats)
+
+                # Compare the config of the first file in each list with the config of the first science file:
+                for cal, cfile in [('arcs', arcs[0]), ('IRflats', irflats[0]), ('QHflats', qhflats[0])]:
+                    if cal_info[cfile]['DATE-OBS'] == sci_info[sfile]['DATE-OBS'] and \
+                            cal_info[cfile]['CONFIG'] == sci_info[sfile]['CONFIG'] and \
+                            cal_info[cfile]['COORDS'] == sci_info[sfile]['COORDS']:
+                        logger.info('Calibration directory %s matches %s', cdir, cal)
+                        logger.debug('cal_match = %s', cal_match)
+                    else:
+                        cal_match = False
+
+                if cal_match:   # This looks like the right directory, so check that we have everything:
                     checklist('arcs.list', path=cdir, headerdict=cal_info)
                     checklist('IRflats.list', path=cdir, headerdict=cal_info)
                     checklist('QHflats.list', path=cdir, headerdict=cal_info)
                     checklist('arcs.list', path=cdir, headerdict=cal_info)
                     break  # no need to check any other calibration directories
+
+            if not cal_match:
+                logger.error('No matching calibration directory found.')
+                raise SystemExit
 
             logger.info('Searching for matching Telluric standards...')
             dt = {}
@@ -84,9 +99,7 @@ def start(configfile):
                     dt[tdir] = abs(tel_info[tfile]['AVETIME'] - sci_info[sfile]['AVETIME'])
                     logger.debug('This Telluric directory matches; dt = %s', dt[tdir])
 
-            if len(dt) == 0:
-                logger.error('No matching Telluric standard found.')
-            else:
+            if len(dt) > 0:
                 logger.info('Found %d Tellurics with the same config on the same night', len(dt))
                 best = dt.keys()[dt.values().index(min(dt.values()))]
                 logger.info('The best Telluric is: %s', best)
@@ -96,6 +109,9 @@ def start(configfile):
                     tel_info = gnirsHeaders.start(best)
                 checklist('all.list', path=tdir, headerdict=tel_info)
                 checklist('src.list', path=tdir, headerdict=tel_info)
+            else:
+                logger.error('No matching Telluric standard found.')
+                raise SystemExit
 
     return
 
@@ -104,6 +120,7 @@ def start(configfile):
 
 def checklist(filelist, path, headerdict):
     logger = log.getLogger('checklist')
+    logger.debug('Checking %s/%s', path, filelist)
 
     if os.path.exists(path + '/' + filelist):
         logger.info('Found %s', filelist)
@@ -120,7 +137,7 @@ def checklist(filelist, path, headerdict):
         for f in files:
 
             if f not in headerdict:  # Check that all the files in the list exist
-                logger.error('%s is in %s but was not found', f, filelist)
+                logger.error('%s is in %s but can not be found', f, filelist)
                 continue
 
             configs.append(headerdict[f]['CONFIG'])
@@ -151,11 +168,6 @@ def checklist(filelist, path, headerdict):
         else:
             logger.debug('Coordinates match')
 
-        if len(list(set(exptimes))) > 1:  # Check that all the exposure times are the same
-            logger.error('Multiple exposure times: %s', exptimes)
-        else:
-            logger.debug('Exposure times match')
-
         if len(list(set(objects))) > 1:  # Check that all the target names are the same
             logger.error('Multiple target names: %s', objects)
         else:
@@ -166,13 +178,41 @@ def checklist(filelist, path, headerdict):
         else:
             logger.debug('Observation types match')
 
+        if len(list(set(exptimes))) > 1:  # Check that all the exposure times are the same
+            logger.warning('Multiple exposure times: %s', exptimes)
+            freq = collections.Counter(exptimes)
+            logger.debug('Exposure time %s', freq)
+            val, num = freq.most_common(1)[0]
+            logger.info('The most common exposure time is %.2f sec', val)
+            npeak = freq.values().count(val)
+            if npeak > 1:
+                logger.error('But the most common value occurs %n times.', npeak)
+                logger.error('You will need to fix this.')
+                raise SystemExit
+
+            backup = filelist + '.bak'
+            logger.info('Backing up %s to %s', filelist, backup)
+            shutil.copy2(path + '/' + filelist, path + '/' + backup)
+            logger.warning('Updating %s to only include files with EXPTIME = %s', filelist, val)
+            with open(path + '/' + filelist, "w") as fout:
+                for f in files:
+                    if headerdict[f]['EXPTIME'] == val:
+                        fout.write(f + '\n')
+
+            if num < minfiles:
+                logger.error('%s only has %d files', filelist, num)
+
+        else:
+            logger.debug('Exposure times match')
+
     else:
         logger.error('Could not find %s', filelist)
+
     return
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='INFO')
+    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     start('gnirs.cfg')

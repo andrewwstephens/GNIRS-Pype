@@ -91,6 +91,7 @@ def start(configfile):
                     os.makedirs(newpath)
                 logger.debug('Copying %s to %s', filename, newpath)
                 shutil.copy2(rawpath + '/' + filename, newpath)
+                append(filename, newpath + '/all.list')
                 append(filename, newpath + '/src.list')
 
         elif info[filename]['OBSTYPE'] in ['FLAT', 'ARC', 'DARK']:                                        # CALIBRATIONS
@@ -139,7 +140,7 @@ def start(configfile):
                     append(filename, newpath + '/pinholes.list')
 
                 elif info[filename]['OBSTYPE'] == 'FLAT' and \
-                        info[filename]['GCALLAMP'] == 'QH'and \
+                        info[filename]['GCALLAMP'] == 'QH' and \
                         'Pinholes' not in info[filename]['SLIT']:
                     append(filename, newpath + '/QHflats.list')
 
