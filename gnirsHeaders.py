@@ -9,14 +9,15 @@ import log
 import re
 
 
-def start(data_directory):
+def start(directory):
     """
-    Create a dictionary of all the relevant header information.
+    Create a dictionary of relevant header information for all FITS files in the supplied directory.
     """
     logger = log.getLogger('gnirsHeaders.start')
+    logger.info('Reading header information for FITS files in %s', directory)
 
     info = {}
-    for filename in sorted(glob.glob(data_directory + '/N*.fits')):
+    for filename in sorted(glob.glob(directory + '/N*.fits')):
         f = filename[filename.rfind('/')+1:]
         info[f] = {}
         header = fits.open(filename)[0].header
@@ -29,12 +30,12 @@ def start(data_directory):
             logger.debug('Skipping %s which is not cross-dispersed', filename)
             continue
 
-        for key in ['PRISM', 'OBSTYPE', 'OBSID', 'OBSCLASS', 'OBJECT', 'RA', 'DEC', 'DATE-OBS', 'TIME-OBS',
+        for key in ['PRISM', 'OBSTYPE', 'OBSID', 'OBSCLASS', 'OBJECT', 'RA', 'DEC', 'DATE-OBS', 'TIME-OBS', 'EXPTIME',
                     'CAMERA', 'DECKER', 'GRATING', 'SLIT', 'GRATWAVE', 'POFFSET', 'QOFFSET', 'GCALLAMP']:
             try:
                 info[f][key] = header[key].strip() if isinstance(header[key], str) else header[key]
             except:
-                logger.debug('Setting %s[%s] = None', f, key)
+                logger.debug('%s[%s] = None', f, key)
                 info[f][key] = None
 
         info[f]['DATETIME'] = dateutil.parser.parse(info[f]['DATE-OBS'] + ' ' + info[f]['TIME-OBS'])
