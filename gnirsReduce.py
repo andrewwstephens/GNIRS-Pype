@@ -388,8 +388,8 @@ def start(kind, configfile):
                         wavecallampfileslength, combinedarc, overwrite)
                     if kind == 'Science':
                         if calcSNRspectrum:
-                            logger.info("Applying spatial-distortion correction and spectral transformation to the ")
-                            logger.info("science frames reduced without sky subtraction.\n")
+                            logger.info("Applying spatial-distortion correction and spectral transformation to the "+ \
+                                "science frames reduced without sky subtraction.\n")
                             reduce_outputPrefix = 'k'
                             SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, \
                                 sdistfileslength, wavecallampfileslength, combinedarc, overwrite)
@@ -399,7 +399,7 @@ def start(kind, configfile):
                     logger.info("# STEP 5: spatial-distortion correction and spectral transformation - COMPLETED  #")
                     logger.info("#                                                                                #")
                     logger.info("##################################################################################\n")
-                '''
+                
                 #################################################################################
                 ##  STEP 6: Combine 2D spectra (individual orders)                             ##                                       -------------------- which reduced sky frames should be combined for calculating the SNR spectrum later?
                 #################################################################################
@@ -408,28 +408,34 @@ def start(kind, configfile):
                     if manualMode:
                         a = raw_input("About to enter step 6: combine 2D spectra.")
 
+                    if kind == 'Telluric':
+                        allcombinlist = 'all.list'
+                        reduce_outputPrefix = 'r'
+                        allcomb = 'all_comb.fits'
+                        crossCorrelation = 'yes'
+                        combine2Dspectra(allcombinlist, reduce_outputPrefix, allcomb, crossCorrelation, overwrite)
                     if kind == 'Science':
                         # For science frames, only the source observations are combined unless the user has specified 
                         # that the SNR spectrum is also to be calculated in which case the sky observations will also
                         # be combined.
+                        srccombinlist = 'src.list'
+                        reduce_outputPrefix = 'r'
                         srccomb = 'src_comb.fits'
                         crossCorrelation = 'no'
-                        combine2Dspectra(srclist, srccomb, crossCorrelation, overwrite)
+                        combine2Dspectra(srccombinlist, reduce_outputPrefix, srccomb, crossCorrelation, overwrite)
                         if calcSNRspectrum:
-                            logger.info("Combining the sky observations.\n")
+                            logger.info("Combining the sky observations reduced without sky subtraction.\n")
+                            skycombinlist = 'sky.list'
+                            reduce_outputPrefix = 'k'
                             skycomb = 'sky_comb.fits'
-                            combine2Dspectra(skylist, skycomb, overwrite)
-                    if kind == 'Telluric':
-                        allcomb = 'all_comb.fits'
-                        crossCorrelation = 'yes'
-                        combine2Dspectra(allobslist, allcomb, crossCorrelation, overwrite)
+                            combine2Dspectra(skycombinlist, reduce_outputPrefix, skycomb, crossCorrelation, overwrite)
 
                     logger.info("###########################################################################")
                     logger.info("#                                                                         #")
                     logger.info("# STEP 6: combine 2D spectra - COMPLETED                                  #")
                     logger.info("#                                                                         #")
                     logger.info("###########################################################################\n")
-                
+                '''
                 ############################################################################
                 ##  STEP 5 (tellurics): For telluric data derive a telluric               ##
                 ##                     correction ->gxtfbrsn                              ##
@@ -996,8 +1002,8 @@ def SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobsl
             logger.warning("spectral transformation for all observations.")
 
 #---------------------------------------------------------------------------------------------------------------------#
-'''
-def combine2Dspectra(imagelist, combinedimage, crossCorrelation, overwrite):
+
+def combine2Dspectra(inlist, reduce_outputPrefix, combinedimage, crossCorrelation, overwrite):
     """
     Combining the transformed science or telluric frames.
 
@@ -1015,18 +1021,27 @@ def combine2Dspectra(imagelist, combinedimage, crossCorrelation, overwrite):
         if overwrite:
             logger.warning("Removing old %s", combinedimage)
             os.remove(combinedimage)
-            iraf.nscombine(inimages='@'+imagelist, tolerance=0.5, output=combinedimage, output_suffix='', bpm="", \
-                dispaxis=1, pixscale=1., fl_cross=crossCorrelation, fl_keepshift='no', fl_shiftint='yes', \
-                interptype="linear", boundary="nearest", constant=0., combtype="average", rejtype="none", \
-                masktype="none", maskvalue=0., statsec="[*,*]", scale="none",zero="none", weight="none", \
-                lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=5., hsigma=5., \
-                ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', \
-                fl_inter='no', logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
+            iraf.nscombine(inimages='ttf'+reduce_outputPrefix+'ln//@'+inlist, tolerance=0.5, output=combinedimage, \
+                output_suffix='', bpm="", dispaxis=1, pixscale=1., fl_cross=crossCorrelation, fl_keepshift='no', \
+                fl_shiftint='yes', interptype="linear", boundary="nearest", constant=0., combtype="average", \
+                rejtype="none", masktype="none", maskvalue=0., statsec="[*,*]", scale="none",zero="none", \
+                weight="none", lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, mclip='yes', \
+                lsigma=5., hsigma=5., ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, \
+                nrejfile='', fl_vardq='yes', fl_inter='no', logfile=logger.root.handlers[0].baseFilename, \
+                verbose='yes', debug='no', force='no')
         else:
-            logger.warning("Output file exists and -overwrite not set - skipping nscombine for observations.")
+            logger.warning("Old %s exists and -overwrite not set - skipping nscombine for observations.", combinedimage)
+    else:
+        iraf.nscombine(inimages='ttf'+reduce_outputPrefix+'ln//@'+inlist, tolerance=0.5, output=combinedimage, \
+            output_suffix='', bpm="", dispaxis=1, pixscale=1., fl_cross=crossCorrelation, fl_keepshift='no', \
+            fl_shiftint='yes', interptype="linear", boundary="nearest", constant=0., combtype="average", \
+            rejtype="none", masktype="none", maskvalue=0., statsec="[*,*]", scale="none",zero="none", weight="none", \
+            lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=5., hsigma=5., \
+            ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', \
+            fl_inter='no', logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
 
 #---------------------------------------------------------------------------------------------------------------------#
-
+'''
 def extractOneD(inputList, kind, log, over, extractionXC=15.0, extractionYC=33.0, extractionRadius=2.5):
     """Extracts 1-D spectra with iraf.nfextract and combines them with iraf.gemcombine.
     iraf.nfextract is currently only done interactively. Output: -->xtfbrsn and gxtfbrsn
