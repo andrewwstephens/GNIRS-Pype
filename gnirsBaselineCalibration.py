@@ -190,9 +190,10 @@ def start(configfile):
                 if valindex == 1:
                     if manualMode:
                         a = raw_input("About to enter step 1: clean calibration frames.")
-                    '''
+                    '
                     if cleanir_arcs:
-                        cleanir(arclist)
+#                        cleanir(arclist)
+                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
                     else:
                         logger.info("######################################################################")
                         logger.info("######################################################################")
@@ -203,7 +204,8 @@ def start(configfile):
                         logger.info("######################################################################\n")
                 
                     if cleanir_QHflats:
-                        cleanir(QHflatlist)
+#                        cleanir(QHflatlist)
+                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
                     else:
                         logger.info("######################################################################")
                         logger.info("######################################################################")
@@ -214,7 +216,8 @@ def start(configfile):
                         logger.info("######################################################################\n")
                 
                     if cleanir_IRflats:
-                        cleanir(IRflatlist)
+#                        cleanir(IRflatlist)
+                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
                     else:
                         logger.info("######################################################################")
                         logger.info("######################################################################")
@@ -225,7 +228,8 @@ def start(configfile):
                         logger.info("######################################################################\n")
 
                     if cleanir_pinholes:
-                        cleanir(pinholelist)
+#                        cleanir(pinholelist)
+                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
                     else:
                         logger.info("######################################################################")
                         logger.info("######################################################################")
@@ -240,7 +244,7 @@ def start(configfile):
                     logger.info("#          STEP 1: Clean calibration frames - COMPLETED          #")
                     logger.info("#                                                                #")
                     logger.info("##################################################################\n")
-                    '''
+                    
                 #############################################################################
                 ##  STEP 2: Preparing all calibration frames for further processing.       ##
                 ##  Output: All nsprepare'd and nsreduce'd calibration images.             ##
@@ -273,7 +277,6 @@ def start(configfile):
                     logger.info("#            arcs, and pinholes) - COMPLETED                       #")
                     logger.info("#                                                                  #")
                     logger.info("####################################################################\n")
-
 
                 #############################################################################
                 ##  STEP 3: Create flat field images for QHflats and IR flats.             ##
@@ -479,6 +482,12 @@ def makeFlat(overwrite):
 
     Use FXCOPY followed by FXINSERT to produce the final flat by grouping order 3 of IRflats and orders 4-18 of 
     QHflats. The output from this task is used as the flatfield image for further reduction.
+
+    NOTE:  Sometimes nsflat crashes with a fixpix or other, unknown error. In such a situation, tweaking the lthresh 
+    parameter sometimes helps. XDGNIRS loops through a fixed list of lthresh values until it (hopefully) runs without
+    an error in three trials after which it fails and exits. The nsflat function in this pipeline is currently not set 
+    to run through a loop; it simply uses the specified lthresh. However, it can be made to run through a loop of
+    random lthresh values in a specified range until it runs without an error to avoid the system exit.
     """
     logger = log.getLogger('gnirsBaselineCalibration.makeFlat')
 

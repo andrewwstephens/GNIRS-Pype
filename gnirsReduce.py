@@ -115,7 +115,7 @@ def start(kind, configfile):
     # Prepare the IRAF package for GNIRS.
     # NSHEADERS lists the header parameters used by the various tasks in the GNIRS package (excluding headers values 
     # which have values fixed by IRAF or FITS conventions).
-    iraf.nsheaders("gnirs",logfile=logger.root.handlers[0].baseFilename)
+    iraf.nsheaders("gnirs",logfile=logger.root.handlers[0].baseFilename)  ##                                                            -------------------- is this set right?
 
     # Set clobber to 'yes' for the script. This still does not make the gemini tasks overwrite files, so: YOU WILL 
     # LIKELY HAVE TO REMOVE FILES IF YOU RE_RUN THE SCRIPT.
@@ -189,7 +189,7 @@ def start(kind, configfile):
             tempObspath = obspath.split(os.sep)
 #            obsid = tempObspath[:-1]  ## this is not currently used by the script
             
-            calpath = "/".join(tempObspath[:-2]) + '/Calibrations'
+            calpath = "/".join(tempObspath[:-2])+'/Calibrations'
             # Print the directory from which reduced calibratios are being used.
             logger.info("The path to the calibrations is %s\n", calpath)
 
@@ -205,8 +205,10 @@ def start(kind, configfile):
             QHflatlist = open(calpath+'/QHflats.list', "r").readlines()
             mdfshiftimage = calpath+'/n'+QHflatlist[0].strip()
             masterflat = calpath+'/masterflat.fits'
-            combinedarc = calpath+'/arc_comb.fits'
-            databasepath = calpath+'/database'
+            combinedarc = 'arc_comb.fits'
+            databasepath = calpath+'/database'  ##                                              -------------------- to read the number of *_sdist and *_lamp files
+            sdistfileslength = len(glob.glob(databasepath+'/*_sdist'))
+            wavecallampfileslength = len(glob.glob(databasepath+'/*_lamp'))
             
             ###########################################################################
             ##                                                                       ##
@@ -371,7 +373,7 @@ def start(kind, configfile):
                     logger.info("#  STEP 4: Flat fielding and sky subtraction - COMPLETED                     #")
                     logger.info("#                                                                            #")
                     logger.info("##############################################################################\n")
-                '''
+                
                 #################################################################################
                 ##  STEP 5: Apply spatial-distortion correction and spectral transformation    ##
                 #################################################################################
@@ -382,23 +384,24 @@ def start(kind, configfile):
                             transformation.")
 
                     reduce_outputPrefix = 'r'
-                    SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfiles, \
-                        wavecallampfiles, overwrite)
-                    if calcSNRspectrum:
-                        logger.info("Applying spatial-distortion correction and spectral transformation to the ")
-                        logger.info("observations reduced without sky subtraction.\n")
-                        reduce_outputPrefix = 'k'
-                        SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfiles, \
-                            wavecallampfiles, overwrite)
+                    SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfileslength,\
+                        wavecallampfileslength, combinedarc, overwrite)
+                    if kind == 'Science':
+                        if calcSNRspectrum:
+                            logger.info("Applying spatial-distortion correction and spectral transformation to the ")
+                            logger.info("science frames reduced without sky subtraction.\n")
+                            reduce_outputPrefix = 'k'
+                            SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, \
+                                sdistfileslength, wavecallampfileslength, combinedarc, overwrite)
 
                     logger.info("##################################################################################")
                     logger.info("#                                                                                #")
                     logger.info("# STEP 5: spatial-distortion correction and spectral transformation - COMPLETED  #")
                     logger.info("#                                                                                #")
                     logger.info("##################################################################################\n")
-                
+                '''
                 #################################################################################
-                ##  STEP 6: Combine 2D spectra (individual orders)                             ##
+                ##  STEP 6: Combine 2D spectra (individual orders)                             ##                                       -------------------- which reduced sky frames should be combined for calculating the SNR spectrum later?
                 #################################################################################
 
                 elif valindex == 6:
@@ -406,15 +409,20 @@ def start(kind, configfile):
                         a = raw_input("About to enter step 6: combine 2D spectra.")
 
                     if kind == 'Science':
+                        # For science frames, only the source observations are combined unless the user has specified 
+                        # that the SNR spectrum is also to be calculated in which case the sky observations will also
+                        # be combined.
                         srccomb = 'src_comb.fits'
-                        combine2Dspectra(srclist, srccomb, overwrite)
+                        crossCorrelation = 'no'
+                        combine2Dspectra(srclist, srccomb, crossCorrelation, overwrite)
                         if calcSNRspectrum:
-                            logger.info("Combining the off-slit sky observations.\n")
+                            logger.info("Combining the sky observations.\n")
                             skycomb = 'sky_comb.fits'
                             combine2Dspectra(skylist, skycomb, overwrite)
                     if kind == 'Telluric':
                         allcomb = 'all_comb.fits'
-                        combine2Dspectra(allobslist, allcomb, overwrite)
+                        crossCorrelation = 'yes'
+                        combine2Dspectra(allobslist, allcomb, crossCorrelation, overwrite)
 
                     logger.info("###########################################################################")
                     logger.info("#                                                                         #")
@@ -580,23 +588,24 @@ def prepareObservations(mdfshiftimage, bpmfile, overwrite):
         if overwrite:
             logger.warning('Removing old nN*.fits files.')
             [os.remove(filename) for filename in oldfiles]
-            iraf.nsprepare(inimages='@'+allobslist, rawpath='', outimages='', outprefix='n', bpm=bpmfile, \
+            iraf.nsprepare(inimages='@all.list', rawpath='', outimages='', outprefix='n', bpm=bpmfile, \
                 logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', fl_cravg='no', crradius=0.0, \
                 fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', fl_nonlinear='yes', fl_checkwcs='yes', \
                 fl_forcewcs='yes', arraytable='gnirs$data/array.fits', configtable='gnirs$data/config.fits', \
                 specsec='[*,*]', offsetsec='none', pixscale='0.15', shiftimage=mdfshiftimage, shiftx=0., shifty=0., \
                 obstype='FLAT', fl_inter='no', verbose='yes', mode='al')
         else:
-            logger.warning("Output files exist and -overwrite not set - skipping nsprepare for all observations. ")
+            logger.warning("Output files exist and -overwrite not set - skipping nsprepare for all observations.")
 
 #---------------------------------------------------------------------------------------------------------------------#
 
 def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThreshold, rdnoise, gain, overwrite):
     """
-    Prepare bad pixel masks for all observations (science or telluric) using the bad pixel interpolation
-    method.
+    Prepare bad pixel masks for all observations (science or telluric) using the bad pixel interpolation method.
 
-    TODO(Viraja):  Describe 'fixpix' method.
+    Here, the task proto.fixpix is set to interpolate along lines to avoid bad effects when a radiation event is right\
+    on a skyline. Column interpolation may be better for events landing on the peak of target spectra, but effects \
+    from bad interpolation over skylines seem to do worse.
     """
     logger = log.getLogger('gnirsReduce.radiationEventCorrectionFixpix')
 
@@ -611,24 +620,28 @@ def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThresh
     if not oldfiles:
         # Combine source and sky observations separately using GEMCOMBINE to create a "minimum" image using "minmax"
         # combining algorithm.
+        logger.info("Creating a relatively clean 'minimum' image of the source observations.\n")  ##                                      -------------------- probably all telluric frames should be used to create a minimum image as none of them are on-sky observations
         iraf.gemcombine(input='n//@src.list', output=minsrc, title="", combine="median", reject="minmax", \
             offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
             statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=len(srclist)-1, \
             nkeep=1, mclip='yes', lsigma=3., hsigma=3., key_ron="RDNOISE", key_gain="GAIN", ron=0.0, gain=1.0, \
             snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", sci_ext="SCI", var_ext="VAR", \
             dq_ext="DQ", fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+        logger.info("Creating initial masks for the source observations.\n")
         for src in srclist:
             iraf.imexpr("(a-b)>"+str(radiationThreshold)+"*sqrt("+str(rdnoise)+"**2+2*b/"+str(gain)+") ? 1 : 0", \
                 output='mask'+src[:-5]+'.pl', a='n'+src+'[SCI]', b=minsrc+'[SCI]', dims="auto", intype="int", \
                 outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., rangecheck='yes', verbose='yes', \
                 exprdb="none")
-
+        
+        logger.info("Creating a relatively clean 'minimum' image of the sky observations.\n")
         iraf.gemcombine(input='n//@sky.list', output=minsky, title="", combine="median", reject="minmax", \
             offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
             statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=len(skylist)-1, \
             nkeep=1, mclip='yes', lsigma=3., hsigma=3., key_ron="RDNOISE", key_gain="GAIN", ron=0.0, gain=1.0, \
             snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", sci_ext="SCI", var_ext="VAR", \
             dq_ext="DQ", fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+        logger.info("Creating initial masks for the sky observations.\n")
         for sky in skylist:
             iraf.imexpr("(a-b)>"+str(radiationThreshold)+"*sqrt("+str(rdnoise)+"**2+2*b/"+str(gain)+") ? 1 : 0", \
                 output='mask'+sky[:-5]+'.pl', a='n'+sky+'[SCI]', b=minsky+'[SCI]', dims="auto", intype="int", \
@@ -643,8 +656,10 @@ def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThresh
                     
         iraf.crgrow(input='@masks.list', output='g//@masks.list', radius=1.5, inval="INDEF", outval="INDEF")
 
-        for src in srclist:
-            iraf.copy(input='n'+src, output='ln'+src, verbose='no') 
+        logger.info("Adding bad pixels from the [DQ] plane generated by nsprepare to the masks so that they can be \
+            fixed as well. Interpolating over the radiation events.")
+        for src in srclist:  ##                                                                                                           -------------------- consequently, use the same minimum image to interpolate over the bad pixels in all telluric frames
+            iraf.copy(input='n'+src, output='ln'+src, verbose='no')
             iraf.imexpr(expr="a||b", output='bgmask'+src[:-5]+'.pl', a='gmask'+src[:-5]+'.pl', b=minsrc+'[DQ]', \
                 dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., \
                 rangecheck='yes', verbose='yes', exprdb="none")
@@ -663,6 +678,7 @@ def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThresh
             logger.warning('Removing old %s and %s', minsrc, minsky)
             logger.warning('Removing old mask*, gmask*.pl, lnN*.fits, bgmask*.pl files.')
             [os.remove(filename) for filename in oldfiles]
+            logger.info("Creating a relatively clean 'minimum' image of the source observations.\n")
             iraf.gemcombine(input='n//@src.list', output=minsrc, title="", combine="median", reject="minmax", \
                 offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
                 statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, \
@@ -670,12 +686,14 @@ def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThresh
                 ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", \
                 sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', \
                 logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+            logger.info("Creating initial masks for the source observations.\n")
             for src in srclist:
                 iraf.imexpr(expr="(a-b)>"+str(radiationThreshold)+"*sqrt("+str(rdnoise)+"**2+2*b/"+str(gain)+") ? 1 : 0",\
                     output='mask'+src[:-5]+'.pl', a='n'+src+'[SCI]', b=minsrc+'[SCI]', dims="auto", intype="int", \
                     outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., rangecheck='yes', \
                     verbose='yes', exprdb="none")
-
+            
+            logger.info("Creating a relatively clean 'minimum' image of the sky observations.\n")
             iraf.gemcombine(input='n//@sky.list', output=minsky, title="", combine="median", reject="minmax", \
                 offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
                 statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, \
@@ -683,6 +701,7 @@ def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThresh
                 ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", \
                 sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename,\
                 fl_dqprop='no', verbose='yes')
+            logger.info("Creating initial masks for the sky observations.\n")
             for sky in skylist:
                 iraf.imexpr(expr="(a-b)>"+str(radiationThreshold)+"*sqrt("+str(rdnoise)+"**2+2*b/"+str(gain)+") ? 1 : 0",\
                     output='mask'+sky[:-5]+'.pl', a='n'+sky+'[SCI]', b=minsrc+'[SCI]', dims="auto", intype="int", \
@@ -697,6 +716,8 @@ def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThresh
 
             iraf.crgrow(input='@masks.list', output='g//@masks.list', radius=1.5, inval="INDEF", outval="INDEF")
 
+            logger.info("Adding bad pixels from the [DQ] plane generated by nsprepare to the masks so that they can be\
+                fixed as well. Interpolating over the radiation events.")
             for src in srclist:
                 iraf.copy(input='n'+src, output='ln'+src, verbose='no') 
                 iraf.imexpr(expr="a||b", output='bgmask'+src[:-5]+'.pl', a='gmask'+src[:-5]+'.pl', b=minsrc+'[DQ]', \
@@ -713,8 +734,8 @@ def radiationEventCorrectionFixpix(allobslist, srclist, skylist, radiationThresh
                 iraf.proto.fixpix(images='ln'+src+'[SCI,1]', masks='bgmask'+sky[:-5]+'.pl', linterp=1, \
                     cinterp="INDEF", verbose='yes', pixels='no')
         else:
-            logger.warning("Output files exist and -overwrite not set - skipping radiation event correction for all ")
-            logger.warning("observations.")
+            logger.warning("Output files exist and -overwrite not set - skipping radiation event correction for all \
+                observations.")
 
 #---------------------------------------------------------------------------------------------------------------------#
 
@@ -738,12 +759,14 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
     if not oldfiles:
         # Combine source and sky observations separately using GEMCOMBINE to create a "minimum" image using "minmax"
         # combining algorithm.
+        logger.info("Creating a relatively clean 'minimum' image of the source observations.\n")
         iraf.gemcombine(input='n//@src.list', output=minsrc, title="", combine="median", reject="minmax", \
             offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
             statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=len(srclist)-1, \
             nkeep=1, mclip='yes', lsigma=3., hsigma=3., key_ron="RDNOISE", key_gain="GAIN", ron=0.0, gain=1.0, \
             snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", sci_ext="SCI", var_ext="VAR", \
             dq_ext="DQ", fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+        logger.info("Creating a relatively clean 'minimum' image of the sky observations.\n")
         iraf.gemcombine(input='n//@sky.list', output=minsky, title="", combine="median", reject="minmax", \
             offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
             statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, nhigh=len(skylist)-1, \
@@ -751,6 +774,7 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
             snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", sci_ext="SCI", var_ext="VAR", \
             dq_ext="DQ", fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
         
+        logger.info("Copying the [DQ] planes generated by nsprepare as the initial masks for all observations.\n")  ##                                      -------------------- in this case, we do not need to combine the images to create a minimum image in the previous step, right?
         for obs in allobslist:
             iraf.imcopy(input='n'+obs+'[DQ,1]', output='mask'+obs[:-5]+'.pl', verbose='yes')
         
@@ -762,7 +786,10 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
     
         iraf.crgrow(input='@masks.list', output='g//@masks.list', radius=1.5, inval="INDEF", outval="INDEF")
 
-        for src in srclist:
+        logger.info("Adding 'minimum' images of the source and the sky observations to the masks so that they can be \
+            replaced as well. Replacing only the pixels identified as bad pixels by the final masks with corresponding\
+            pixels from the 'minimum' images.")
+        for src in srclist:  ##                                                                                                                 -------------------- or should we still have a minimum image and add the masks from the [DQ] planes to it? 
             iraf.copy(input='n'+src, output='ln'+src, verbose='no') 
             iraf.imexpr(expr="a||b", output='bgmask'+src[:-5]+'.pl', a='gmask'+src[:-5]+'.pl', b=minsrc+'[DQ]', \
                 dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., \
@@ -784,7 +811,7 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
             logger.warning('Removing old %s and %s', minsrc, minsky)
             logger.warning('Removing old mask*, gmask*.pl, lnN*.fits, bgmask*.pl files.')
             [os.remove(filename) for filename in oldfiles]
-            
+            logger.info("Creating a relatively clean 'minimum' image of the source observations.\n")
             iraf.gemcombine(input='n//@src.list', output=minsrc, title="", combine="median", reject="minmax", \
                 offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
                 statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, \
@@ -792,6 +819,7 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
                 ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="", \
                 sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', \
                 logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
+            logger.info("Creating a relatively clean 'minimum' image of the sky observations.\n")
             iraf.gemcombine(input='n//@sky.list', output=minsky, title="", combine="median", reject="minmax", \
                 offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none", \
                 statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0, \
@@ -800,6 +828,7 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
                 sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes', \
                 logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
             
+            logger.info("Copying the [DQ] planes generated by nsprepare as the initial masks for all observations.\n")
             for obs in allobslist:
                 iraf.imcopy(input='n'+obs+'[DQ,1]', output='mask'+obs[:-5]+'.pl', verbose='yes')
             
@@ -810,7 +839,10 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
                         f.write(filename + '\n')
 
             iraf.crgrow(input='@masks.list', output='g//@masks.list', radius=1.5, inval="INDEF", outval="INDEF")
-
+            
+            logger.info("Adding 'minimum' images of the source and the sky observations to the masks so that they can be \
+                replaced as well. Replacing only the pixels identified as bad pixels by the final masks with corresponding\
+                pixels from the 'minimum' images.")
             for src in srclist:
                 iraf.copy(input='n'+src, output='ln'+src, verbose='no') 
                 iraf.imexpr(expr="a||b", output='bgmask'+src[:-5]+'.pl', a='gmask'+src[:-5]+'.pl', b=minsrc+'[DQ]', \
@@ -831,8 +863,8 @@ def radiationEventCorrectionDQplane(allobslist, srclist, skylist, radiationThres
                     refim="auto", bwidth=0, btype="nearest", bpixval=0., rangecheck='yes', verbose='yes', \
                     exprdb="none")
         else:
-            logger.warning("Output files exist and -overwrite not set - skipping radiation event correction for all ")
-            logger.warning("observations.")
+            logger.warning("Output files exist and -overwrite not set - skipping radiation event correction for all \
+                observations.")
 
 #---------------------------------------------------------------------------------------------------------------------#
 
@@ -857,6 +889,7 @@ def reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiatio
             nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=3., hsigma=3., snoise="0.0", sigscale=0.1, pclip=-0.5, \
             grow=0.0, skyrange='INDEF', nodsize=3., fl_flat='yes', flatimage=masterflat, flatmin=0.0, fl_vardq='yes', \
             logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
+        # Record radiation threshold value in reduced file headers
         iraf.hedit(images=reduce_outputPrefix+'ln//@all.list', fields='RTHRESH', value=radiationThreshold, add='yes', \
             addonly='no', delete='no', verify='no', show='no', update='yes')
     else:
@@ -879,17 +912,17 @@ def reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiatio
             logger.warning("Output files exist and -overwrite not set - skipping nsreduce for all observations.")
 
 #---------------------------------------------------------------------------------------------------------------------#
-'''
-def SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfiles, wavecallampfiles, overwrite):
+
+def SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfileslength, wavecallampfileslength, combinedarc, overwrite):
     """
     Apply spatial-distortion correction and spectral transformation. 
 
     In general, we would run nsfitcoords on all reduced science or telluric frames with and without sky subtraction (if 
     creating an error spectrum) to straighten the spectra and then de-tilt. nsfitcoords simply writes database info, 
     which depends only on pinholes and arcs (the *_sdist and *_lamp files that were written to the databse while 
-    reducing baseline calibrations), not on on-sky data. So, here we aceess the nsfitcoords solution from the 
-    calibrations folder and append the relevant header keywords, which will tell nstransform which databse files to 
-    use, without actually calling nsfitcoords. This routine also uses the output files in the database that were 
+    reducing baseline calibrations), not on on-sky data. So, here we access the nsfitcoords solution from the 
+    calibrations folder and append the relevant header keywords, which will tell nstransform the database files it 
+    should use, without actually calling nsfitcoords. This routine also uses the output files in the database that were 
     created by the nswavelength task.
     """
     logger = log.getLogger('gnirsReduce.SdistCorrection_SpectralTransform')
@@ -909,20 +942,20 @@ def SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobsl
                 add='yes', addonly='no', delete='no', verify='no', show='no', update='yes', mode='al')
             
             # Second, add sdist info and transform the files to make the orders vertical.
-            for i in range(len(sdistfiles)):
+            for i in range(sdistfileslength):
                 iraf.hedit(images='f'+reduce_outputPrefix+'ln'+obs+'[SCI,'+str(i+1)+']', field="FCFIT2", \
-                    value='farc_comb_SCI_'+str(i+1)+'_sdist', add='yes', addonly='no', delete='no', verify='no', \
-                    show='no', update='yes', mode='al')
+                    value='f'+combinedarc[:-5]+'_SCI_'+str(i+1)+'_sdist', add='yes', addonly='no', delete='no', \
+                    verify='no', show='no', update='yes', mode='al')
             iraf.nstransform(inimages='f'+reduce_outputPrefix+'ln'+obs, outspectra='', outprefix='t', dispaxis=1, \
                 database=databasepath, fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
                 logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
             
             # Third, add lamp info and transform the files to make skylines horizontal (spatial direction along 
             # detector rows).
-            for i in range(len(wavecallampfiles)):
+            for i in range(wavecallampfileslength):
                 iraf.hedit(images='tf'+reduce_outputPrefix+'ln'+obs+'[SCI,'+str(i+1)+']', field="FCFIT1", \
-                    value='ftfarc_comb_SCI_'+str(i+1)+'_lamp', add='yes', addonly='no', delete='no', verify='no', \
-                    show='no', update='yes', mode='al')
+                    value='ftf'+combinedarc[:-5]+'_SCI_'+str(i+1)+'_lamp', add='yes', addonly='no', delete='no', \
+                    verify='no', show='no', update='yes', mode='al')
             iraf.nstransform(inimages='tf'+reduce_outputPrefix+'ln'+obs, outspectra='', outprefix='t', dispaxis=1, \
                 database=databasepath, fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
                 logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
@@ -941,20 +974,20 @@ def SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobsl
                     add='yes', addonly='no', delete='no', verify='no', show='no', update='yes', mode='al')
                 
                 # Second, add sdist info and transform the files to make the orders vertical.
-                for i in range(len(sdistfiles)):
+                for i in range(sdistfileslength):
                     iraf.hedit(images='f'+reduce_outputPrefix+'ln'+obs+'[SCI,'+str(i+1)+']', field="FCFIT2", \
-                        value='farc_comb_SCI_'+str(i+1)+'_sdist', add='yes', addonly='no', delete='no', verify='no', \
-                        show='no', update='yes', mode='al')
+                        value='f'+combinedarc[:-5]+'_SCI_'+str(i+1)+'_sdist', add='yes', addonly='no', delete='no', \
+                        verify='no', show='no', update='yes', mode='al')
                 iraf.nstransform(inimages='f'+reduce_outputPrefix+'ln'+obs, outspectra='', outprefix='t', dispaxis=1, \
                     database=databasepath, fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
                     logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
                 
                 # Third, add lamp info and transform the files to make skylines horizontal (spatial direction along 
                 # detector rows).
-                for i in range(len(wavecallampfiles)):
+                for i in range(wavecallampfileslength):
                     iraf.hedit(images='tf'+reduce_outputPrefix+'ln'+obs+'[SCI,'+str(i+1)+']', field="FCFIT1", \
-                        value='ftfarc_comb_SCI_'+str(i+1)+'_lamp', add='yes', addonly='no', delete='no', verify='no', \
-                        show='no', update='yes', mode='al')
+                        value='ftf'+combinedarc[:-5]+'_SCI_'+str(i+1)+'_lamp', add='yes', addonly='no', delete='no', \
+                        verify='no', show='no', update='yes', mode='al')
                 iraf.nstransform(inimages='tf'+reduce_outputPrefix+'ln'+obs, outspectra='', outprefix='t', dispaxis=1,\
                     database=databasepath, fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
                     logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
@@ -963,10 +996,18 @@ def SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobsl
             logger.warning("spectral transformation for all observations.")
 
 #---------------------------------------------------------------------------------------------------------------------#
-
-def combine2Dspectra(imagelist, combinedimage, overwrite):
+'''
+def combine2Dspectra(imagelist, combinedimage, crossCorrelation, overwrite):
     """
-    description
+    Combining the transformed science or telluric frames.
+
+    There is currently (2015) a bug in nscombine that miscalculates the shifts at certain position angles while 
+    cross-correlating different frames. Unfortunately, we cannot provide a shift to nscombine directly. 
+    
+    If targets are bright enough, the task avoids the bug and the cross-correlation happens smoothly (set with 
+    fl_cross='yes'); else, the task should be run with fl_cross='no'. XDGNIRS always uses fl_cross='yes' for telluric
+    frames. For science frames, XDGNIRS checks whether the shifts used by nscombine with fl_cross='yes' were reasonable; 
+    else, it runs nscombine with fl_cross = 'no'.
     """
     logger = log.getLogger('gnirsReduce.combine2Dspectra')
     
@@ -975,12 +1016,12 @@ def combine2Dspectra(imagelist, combinedimage, overwrite):
             logger.warning("Removing old %s", combinedimage)
             os.remove(combinedimage)
             iraf.nscombine(inimages='@'+imagelist, tolerance=0.5, output=combinedimage, output_suffix='', bpm="", \
-                dispaxis=1, pixscale=1., fl_cross='no', fl_keepshift='no', fl_shiftint='yes', interptype="linear", \
-                boundary="nearest", constant=0., combtype="average", rejtype="none", masktype="none", maskvalue=0., \
-                statsec="[*,*]", scale="none",zero="none", weight="none", lthreshold="INDEF", hthreshold="INDEF", \
-                nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=5., hsigma=5.,ron=0.0, gain=1.0, snoise="0.0", \
-                sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', fl_inter='no', \
-                logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
+                dispaxis=1, pixscale=1., fl_cross=crossCorrelation, fl_keepshift='no', fl_shiftint='yes', \
+                interptype="linear", boundary="nearest", constant=0., combtype="average", rejtype="none", \
+                masktype="none", maskvalue=0., statsec="[*,*]", scale="none",zero="none", weight="none", \
+                lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=5., hsigma=5., \
+                ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', \
+                fl_inter='no', logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
         else:
             logger.warning("Output file exists and -overwrite not set - skipping nscombine for observations.")
 
