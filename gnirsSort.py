@@ -11,14 +11,15 @@ import gnirsHeaders
 
 def start(configfile):
     """
-    Sort and copy the GNIRS raw data to subdirectories: target / date / config.
+    Sort and copy the GNIRS raw data to subdirectories:
+    target / date / config / {Sci,Tel}_ObsID / {Calibrations,Intermediate}
     """
     logger = log.getLogger('gnirsSort.start')
 
     config = ConfigParser.RawConfigParser()
-    config.optionxform = str  # make options case-sensitive
+    config.optionxform = str  # make config file options case-sensitive
     config.read(configfile)
-    rawpath = config.get('getDataConfig', 'rawPath')
+    rawpath = config.get('getData', 'rawPath')
 
     info = gnirsHeaders.start(rawpath)
 
@@ -38,19 +39,18 @@ def start(configfile):
                      filename, info[filename]['OBSCLASS'], info[filename]['OBSTYPE'], info[filename]['OBJECT'],
                      info[filename]['SLIT'], info[filename]['GCALLAMP'])
 
-        if info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'acq':  # ACQUISITION
+        if info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'acq':                  # ACQUISITION
 
             acq[info[filename]['OBJECT']] = {'POFFSET': info[filename]['POFFSET'], 'QOFFSET': info[filename]['QOFFSET']}
             logger.debug('Acquisition parmameters: %s', acq[info[filename]['OBJECT']])
 
-        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'science':  # SCIENCE
+        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'science':                # SCIENCE
 
             newpath = path + '/' + \
                 info[filename]['OBJECT'] + '/' + \
                 info[filename]['DATE-OBS'] + '/' + \
                 info[filename]['CONFIG'] + '/' + \
-                'Science/' + \
-                info[filename]['OBSID']
+                'Sci_' + info[filename]['OBSID'] + '/Intermediate'
             logger.debug('newpath: %s', newpath)
             if newpath not in scidirs:
                 scidirs.append(newpath)
@@ -67,7 +67,7 @@ def start(configfile):
             else:
                 append(filename, newpath + '/sky.list')
 
-        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'partnerCal': # TELLURIC
+        elif info[filename]['OBSTYPE'] == 'OBJECT' and info[filename]['OBSCLASS'] == 'partnerCal':            # TELLURIC
 
             # Associate this Telluric with all the science targets with the same config within 1.5 hours:
             matches = []
@@ -82,8 +82,7 @@ def start(configfile):
                 newpath = path + '/' + m + '/' + \
                     info[filename]['DATE-OBS'] + '/' + \
                     info[filename]['CONFIG'] + '/' + \
-                    'Tellurics/' + \
-                    info[filename]['OBSID']
+                    'Tel_' + info[filename]['OBSID']
                 logger.debug('newpath: %s', newpath)
                 if newpath not in teldirs:
                     teldirs.append(newpath)
@@ -92,28 +91,32 @@ def start(configfile):
                     os.makedirs(newpath)
                 logger.debug('Copying %s to %s', filename, newpath)
                 shutil.copy2(rawpath + '/' + filename, newpath)
+                append(filename, newpath + '/all.list')
                 append(filename, newpath + '/src.list')
 
-        elif info[filename]['OBSTYPE'] in ['FLAT', 'ARC', 'DARK']:  # CALIBRATIONS
+        elif info[filename]['OBSTYPE'] in ['FLAT', 'ARC', 'DARK']:                                        # CALIBRATIONS
 
-            # Associate these calibrations with all the science targets on the same night with the same config
+            # Associate calibrations with all the science targets on the same night with the same config and coords
             matches = {}
             for f in info.keys():
                 if (info[f]['OBSCLASS'] == 'science' and
-                    info[f]['CONFIG'] == info[filename]['CONFIG'] and
                     info[f]['DATE-OBS'] == info[filename]['DATE-OBS'] and
+                    info[f]['CONFIG'] == info[filename]['CONFIG'] and
+                    info[f]['COORDS'] == info[filename]['COORDS'] and
                     info[f]['OBJECT'] not in matches) or \
                         ('Pinholes' in info[filename]['SLIT'] and  # pinholes don't match the full config
                          info[f]['OBSCLASS'] == 'science' and
-                         info[f]['CAMERA'] == info[filename]['CAMERA'] and
                          info[f]['DATE-OBS'] == info[filename]['DATE-OBS'] and
+                         info[f]['CAMERA'] == info[filename]['CAMERA'] and
                          info[f]['OBJECT'] not in matches.keys()):
-                    matches[info[f]['OBJECT']] = info[f]['CONFIG']
+                    matches[info[f]['OBJECT']] = {'CONFIG': info[f]['CONFIG'], 'OBSID': info[f]['OBSID']}
+                    logger.debug('match: %s: %s', info[f]['OBJECT'], matches[info[f]['OBJECT']])
             logger.debug('This calibration matches: %s', matches.keys())
             for m in matches.keys():
                 newpath = path + '/' + m + '/' + \
                     info[filename]['DATE-OBS'] + '/' + \
-                    matches[m] + '/' + \
+                    matches[m]['CONFIG'] + '/' + \
+                    'Sci_' + matches[m]['OBSID'] + '/' + \
                     'Calibrations'
                 logger.debug('newpath: %s', newpath)
                 if newpath not in caldirs:
@@ -137,7 +140,7 @@ def start(configfile):
                     append(filename, newpath + '/pinholes.list')
 
                 elif info[filename]['OBSTYPE'] == 'FLAT' and \
-                        info[filename]['GCALLAMP'] == 'QH'and \
+                        info[filename]['GCALLAMP'] == 'QH' and \
                         'Pinholes' not in info[filename]['SLIT']:
                     append(filename, newpath + '/QHflats.list')
 
