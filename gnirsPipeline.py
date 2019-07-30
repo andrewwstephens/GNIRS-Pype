@@ -32,7 +32,7 @@ import log
 
 import gnirsGetData
 import gnirsSort
-import gnirsCheckCalibrations
+import gnirsCheckData
 import gnirsBaselineCalibration
 import gnirsReduce
 import gnirsCombineSpectra2D
@@ -115,7 +115,7 @@ def start(args):
     # Load pipeline specific configuration.
     getData = config.getboolean('gnirsPipeline','getData')
     sort = config.getboolean('gnirsPipeline','sort')
-    checkCalibrations = config.getboolean('gnirsPipeline','checkCalibrations')
+    checkData = config.getboolean('gnirsPipeline','checkData')
     calibrationReduction = config.getboolean('gnirsPipeline','calibrationReduction')
     telluricReduction = config.getboolean('gnirsPipeline','telluricReduction')
     scienceReduction = config.getboolean('gnirsPipeline','scienceReduction')
@@ -134,7 +134,7 @@ def start(args):
     ##   Twelve Steps:                                                                  ##  
     ##       1) Get raw data - gnirsData.py                                             ##
     ##       2) Sort raw data - gnirsSort.py                                            ##
-    ##       3) Check raw calibrations - gnirsCheckCalibrations.py                      ##
+    ##       3) Check raw data - gnirsCheckData.py                                      ##
     ##       4) Reduce baseline calibrations - gnirsBaselineCalibration.py              ##
     ##       5) Reduce observations (science and/or telluric) - gnirsReduce.py          ##
     ##       6) Combine 2D spectra - gnirsCombine2Dspectra.py                           ##
@@ -166,13 +166,13 @@ def start(args):
         gnirsSort.start(args.config)
 
     ###########################################################################
-    ##                  STEP 3: Check raw calibration data                   ##
+    ##                         STEP 3: Check raw Data                        ##
     ###########################################################################
 
-    if checkCalibrations:
+    if checkData:
         if manualMode:
-            a = raw_input('About to enter gnirsCheckCalibrations.')
-        gnirsCheckCalibrations.start(args.config)
+            a = raw_input('About to enter gnirsCheckData.')
+        gnirsCheckData.start(args.config)
 
     ###########################################################################
     ##                STEP 4: Reduce baseline calibrations                   ##
