@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 from xml.dom.minidom import parseString
-import urllib, os, glob, sys, shutil, math, pkg_resources, argparse, ConfigParser, log, time, datetime, re, datetime, dateutil.parser
 from astropy.io import fits
+
+import urllib, os, sys, ConfigParser, log
 import numpy as np
 
 # Import NDMapper gemini data download, by James E.H. Turner.
@@ -11,14 +12,14 @@ from downloadFromGeminiPublicArchive import download_query_gemini
 
 def start(configfile):
     """
-    Get the required GNIRS data.
+    Get the required raw GNIRS data.
 
     Args:
-        configfile: The "gnirs.cfg" configuration file.
+    -  configfile: gnirs.cfg configuration file.
     """
     
     log.configure('gnirs.log', filelevel='INFO', screenlevel='INFO')
-    logger = log.getLogger('Data')
+    logger = log.getLogger('getData')
 
     # Store current working directory for later use.
     path = os.getcwd()
@@ -26,13 +27,13 @@ def start(configfile):
     # Set up the logger file.
     #log = os.getcwd()+'/gnirs.log'
 
-    logger.info('\n####################################')
+    logger.info('####################################')
     logger.info('#                                  #')
-    logger.info('#   Get the required GNIRS data    #')
+    logger.info('#       Get raw GNIRS data         #')
     logger.info('#                                  #')
     logger.info('####################################\n')
 
-    logger.info("\nParameters read from %s", configfile, "\n")
+    logger.info("Parameters read from %s\n", configfile)
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
