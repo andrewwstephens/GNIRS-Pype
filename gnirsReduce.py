@@ -138,6 +138,7 @@ def start(kind, configfile):
         cleanir = config.getboolean('telluricReduction','cleanir')
         radiationEventCorrectionMethod = config.get('telluricReduction','radiationEventCorrectionMethod')
         radiationThreshold = config.getfloat('telluricReduction','radiationThreshold')
+        useApall = config.getboolean('telluricReduction','useApall')
         extractionApertureRadius = config.getfloat('telluricReduction','extractionApertureRadius')
         extractionStepsize = config.getfloat('telluricReduction','extractionStepsize')
     elif kind == 'Science':  # science reduction specific config
@@ -148,6 +149,9 @@ def start(kind, configfile):
         cleanir = config.getboolean('scienceReduction','cleanir')
         radiationEventCorrectionMethod = config.get('scienceReduction','radiationEventCorrectionMethod')
         radiationThreshold = config.getfloat('scienceReduction','radiationThreshold')
+        useApall = config.getboolean('scienceReduction','useApall')
+        extractionApertureRadius = config.getfloat('scienceReduction','extractionApertureRadius')
+        extractionStepsize = config.getfloat('scienceReduction','extractionStepsize')
         calcSNRspectrum = config.getboolean('gnirsPipeline','calcSNRspectrum')  ##                                      -------------------- using this parameter from the config file????                                                      
     else:
         logger.error("###########################################################################")
@@ -416,7 +420,7 @@ def start(kind, configfile):
                         combine2Dspectra(allcombinlist, reduce_outputPrefix, allcomb, crossCorrelation, overwrite)
                     if kind == 'Science':
                         # For science frames, only the source observations are combined unless the user has specified 
-                        # that the SNR spectrum is also to be calculated in which case the sky observations will also
+                        # that the SNR spectrum is to be calculated in which case the sky observations will also be
                         # be combined.
                         srccombinlist = 'src.list'
                         reduce_outputPrefix = 'r'
@@ -435,6 +439,55 @@ def start(kind, configfile):
                     logger.info("# STEP 6: combine 2D spectra - COMPLETED                                  #")
                     logger.info("#                                                                         #")
                     logger.info("###########################################################################\n")
+                
+                #################################################################################
+                ##  STEP 7: Extract 1D spectra (individual orders)                             ##
+                #################################################################################
+
+                elif valindex == 7:
+                    if manualMode:
+                        a = raw_input("About to enter step 7: extract 1D spectra.")
+
+                    if kind == 'Telluric':
+                        allcomb = 'all_comb.fits'
+                        if useApall:
+                            apertureTracingColumns = 20
+                            extract1Dspectra(allcomb, useApall, apertureTracingColumns, databasepath, \
+                                extractionApertureRadius, overwrite)
+                        else:
+                            apertureTracingColumns = 10
+                            extract1Dspectra(allcomb, useApall, apertureTracingColumns, databasepath, \
+                                extractionApertureRadius, overwrite)
+                    if kind == 'Science':
+                        # For science frames, only the source combined spectrum is extracted unless the user has 
+                        # specified that the SNR spectrum is to be calculated in which case the sky combined spectrum 
+                        # will also be extracted.
+                        srccomb = 'src_comb.fits'
+                        if useApall:
+                            # This performs a weighted extraction
+                            apertureTracingColumns = 20
+                            extract1Dspectra(srccomb, useApall, apertureTracingColumns, databasepath, \
+                                extractionApertureRadius, overwrite)
+                            if calcSNRspectrum:
+                                logger.info("Extracting the combined sky spectrum reduced without sky subtraction.\n")
+                                skycomb = 'sky_comb.fits'
+                                extract1Dspectra(skycomb, useApall, apertureTracingColumns, databasepath, \
+                                    extractionApertureRadius, overwrite)
+                        else:
+                            apertureTracingColumns = 10
+                            extract1Dspectra(srccomb, useApall, apertureTracingColumns, databasepath, \
+                                extractionApertureRadius, overwrite)
+                            if calcSNRspectrum:
+                                logger.info("Extracting the combined sky spectrum reduced without sky subtraction.\n")
+                                skycomb = 'sky_comb.fits'
+                                extract1Dspectra(skycomb, useApall, apertureTracingColumns, databasepath, \
+                                    extractionApertureRadius, overwrite)
+
+                    logger.info("#############################################################################")
+                    logger.info("#                                                                           #")
+                    logger.info("# STEP 7: extract 1D spectra - COMPLETED                                    #")
+                    logger.info("#                                                                           #")
+                    logger.info("#############################################################################\n")
                 '''
                 ############################################################################
                 ##  STEP 5 (tellurics): For telluric data derive a telluric               ##
@@ -1041,55 +1094,40 @@ def combine2Dspectra(inlist, reduce_outputPrefix, combinedimage, crossCorrelatio
             fl_inter='no', logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
 
 #---------------------------------------------------------------------------------------------------------------------#
-'''
-def extractOneD(inputList, kind, log, over, extractionXC=15.0, extractionYC=33.0, extractionRadius=2.5):
-    """Extracts 1-D spectra with iraf.nfextract and combines them with iraf.gemcombine.
-    iraf.nfextract is currently only done interactively. Output: -->xtfbrsn and gxtfbrsn
 
-    NFEXTRACT - Extract NIFS spectra.
-
-    This could be used to extract a 1D spectra from IFU data and is
-    particularly useful for extracting the bright spectra of
-    telluric calibrator stars. Note that this routine only works
-    on data that has been run through NFTRANSFORM.
+def extract1Dspectra(combinedimage, useApall, apertureTracingColumns, databasepath, extractionApertureRadius, overwrite):
+    """
+    Extracting 1D spectra from the combined 2D spectra using nsextract.
 
     """
+    logger = log.getLogger('gnirsReduce.extract1Dspectra')
 
-    for frame in inputList:
-        frame = str(frame).strip()
-        if os.path.exists("xtfbrsn"+frame+".fits"):
-            if over:
-                iraf.delete("xtfbrsn"+frame+".fits")
-            else:
-                logger.info("Output file exists and -over not set - skipping nfextract in extract1D")
-                continue
-
-        iraf.nfextract("tfbrsn"+frame, outpref="x", xc=extractionXC, yc=extractionYC, diameter=extractionRadius, fl_int='no', logfile=log)
-    inputList = checkLists(inputList, '.', 'xtfbrsn', '.fits')
-    # Combine all the 1D spectra to one final output file with the name of the first input file.
-    combined = str(inputList[0]).strip()
-    if len(inputList) > 1:
-        if os.path.exists("gxtfbrsn"+combined+".fits"):
-            if over:
-                iraf.delete("gxtfbrsn"+combined+".fits")
-            else:
-                logger.info("Output file exists and -over not set - skipping gemcombine in extract1D")
-                return
-        iraf.gemcombine(listit(inputList,"xtfbrsn"),output="gxtfbrsn"+combined, statsec="[*]", combine="median",masktype="none",fl_vardq="yes", logfile=log)
+    if os.path.exists('v'+combinedimage):
+        if overwrite:
+            logger.warning("Removing old v%s", combinedimage)
+            os.remove('v'+combinedimage)
+            iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, database=databasepath, \
+                line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
+                lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', \
+                fl_skylines='yes', fl_inter='no', fl_apall=useApall, fl_trace='no', \
+                aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', \
+                fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', \
+                tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, \
+                weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
+        else:
+            logger.warning("Old %s exists and -overwrite not set - skipping nsextract for observations.", combinedimage)
     else:
-        if over:
-            iraf.delete("gxtfbrsn"+combined+".fits")
-        iraf.copy(input="xtfbrsn"+combined+".fits", output="gxtfbrsn"+combined+".fits")
-
-    if kind == 'Telluric':
-        # Put the name of the final combined file into a text file called
-        # telluricfile to be used by the pipeline later.
-        open("telluricfile", "w").write("gxtfbrsn"+combined)
-    elif kind == 'Science':
-        open("combinedOneD", "w").write("gxtfbrsn"+combined)
+        iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, database=databasepath, \
+            line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
+            lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', \
+            fl_skylines='yes', fl_inter='no', fl_apall=useApall, fl_trace='no', aptable='gnirs$data/apertures.fits', \
+            fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', bgsample='*', trace='', tr_nsum=10,\
+            tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, \
+            tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, weights='variance', \
+            logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
 
 #---------------------------------------------------------------------------------------------------------------------#
-'''
+
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     a = raw_input('Enter <Science> for science reduction or <Telluric> for telluric reduction: ')
