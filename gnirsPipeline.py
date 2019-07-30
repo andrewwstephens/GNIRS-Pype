@@ -273,8 +273,10 @@ def start(args):
     logger.info('#           For docs, tutorials and examples.             #')
     logger.info('#                                                         #')
     logger.info('###########################################################\n')
-s
+
     return
+
+#---------------------------------------------------------------------------------------------------------------------#
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

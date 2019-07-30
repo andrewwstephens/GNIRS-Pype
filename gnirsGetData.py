@@ -15,7 +15,7 @@ def start(configfile):
     Get raw GNIRS data.
 
     Args:
-    -  configfile: gnirs.cfg configuration file.
+    - configfile: gnirs.cfg configuration file.
     """
     logger = log.getLogger('getData')
 
