@@ -31,6 +31,8 @@ import log, os, pkg_resources, glob, shutil, ConfigParser, cleanir
 from astropy.io import fits
 from pyraf import iraf, iraffunctions
 
+## IMPORTANT NOTE:  The command line options are not available for GNIRS as of July 2019.
+
 
 def start(configfile):
     """
@@ -48,21 +50,25 @@ def start(configfile):
 
     OUTPUT FILES:
         - masterflat.fits
-        - Wavelength-calibrated arc image
+        - wavelength calibrated arc image
 
     Args:
-        # Loaded from gnirs.cfg
-        Paths to the calibrations (str): E.g. ['Target/Date/Configuration/Calibrations'].
-        manualMode (boolean): Enable optional manualModeging pauses. Default: False.
-        overwrite (boolean): Overwrite old files. Default: False.
-        start (int): starting step of calibration reductions. Specified at command line with -a. Default: 1.  ## this 
-                     option not updated for GNIRS as of July 2019
-        stop (int): stopping step of calibration reductions. Specified at command line with -z. Default: 5.  ## this 
-                     option not updated for GNIRS as of July 2019
-        cleanir_QHflats (boolean): Cleaning QH flat frames. Default: False.
-        cleanir_IRflats (boolean): Cleaning IR flat frames. Default: False.
-        cleanir_arcs (boolean): Cleaning arc frames. Default: False.
-        cleanir_pinholes (boolean): Cleaning pinhole flat frames. Default: False.
+        - configfile: gnirs.cfg configuration file
+                - Paths to the calibrations (str), reduction truth value (boolean): 
+                  E.g. 'target/date/config/{Sci,Tel}_ObsID/{Calibrations,Intermediate}', True
+                - manualMode (boolean): Enable optional manualModeging pauses? Default: False
+                - overwrite (boolean): Overwrite old files? Default: False
+                - start (int): starting step of calibration reductions. Specified at command line with -a. Default: 1
+                - stop (int): stopping step of calibration reductions. Specified at command line with -z. Default: 5
+                - cleanir_QHflats (boolean): Cleaning QH flat frames. Default: False
+                - cleanir_IRflats (boolean): Cleaning IR flat frames. Default: False
+                - cleanir_arcs (boolean): Cleaning arc frames. Default: False
+                - cleanir_pinholes (boolean): Cleaning pinhole flat frames. Default: False
+                - nsprepareInter (boolean): Running nsprepare interactively? Default: False
+                - nscombineInter (boolean): Running nscombine interactively? Default: False
+                - nssdistInter (boolean): Running nssdist interactively? Default: False
+                - nswavelengthInter (boolean): Running nswavelength interactively? Default: False
+                - nsfitcoordsInter (boolean): Running nsfitcoords interactively? Default: False
     """
     logger = log.getLogger('gnirsBaselineCalibration.start')
 
@@ -115,6 +121,12 @@ def start(configfile):
     cleanir_IRflats = config.getboolean('calibrationReduction','cleanir_IRflats')
     cleanir_arcs = config.getboolean('calibrationReduction','cleanir_arcs')
     cleanir_pinholes = config.getboolean('calibrationReduction','cleanir_pinholes')
+    nsprepareInter = config.getboolean('interactive','nsprepareInter')
+    nsflatInter = config.getboolean('interactive','nsflatInter')
+    nscombineInter = config.getboolean('interactive','nscombineInter')
+    nssdistInter = config.getboolean('interactive','nssdistInter')
+    nswavelengthInter = config.getboolean('interactive','nswavelengthInter')
+    nsfitcoordsInter = config.getboolean('interactive','nsfitcoordsInter')
 
     ################################################################################
     # Define Variables, Reduction Lists AND identify/run number of reduction steps #
@@ -125,11 +137,11 @@ def start(configfile):
         if config.getboolean('CalibrationDirectories', calpath):
             
             os.chdir(calpath)
-
-            firstfilename = sorted(glob.glob(calpath+'/N*.fits'))[0]
-            header = fits.open(firstfilename)[0].header
-
+            # Change the iraf directory to the current directory.
             iraffunctions.chdir(calpath)
+
+            # Print the current directory of calibrations being processed.
+            logger.info("Currently working on calibrations in %s\n", calpath)
 
             # However, don't do the reduction for a Calibrations_"configuration" directory without associated telluric
             # or science data. Check that a Calibrations_"configuration" directory exists at the same level as the 
@@ -145,7 +157,7 @@ def start(configfile):
                 logger.error("#######################################################################")
                 logger.error("                                                                       ")
                 logger.error("    No configuration directory (including science or telluric data)    ")
-                logger.error("    found for  %s.", calpath)
+                logger.error("    found for %s.", calpath)
                 logger.error("    Skipping reduction of calibrations in that directory.              ")
                 logger.error("                                                                       ")
                 logger.error("#######################################################################")
@@ -153,14 +165,25 @@ def start(configfile):
 
                 continue
             '''
-            # Create lists of each type of calibration from textfiles in Calibrations directory.
-            allcallist = open("all.list", "r").readlines()
-            QHflatlist = open("QHflats.list", "r").readlines()
-            IRflatlist = open("IRflats.list", "r").readlines()
-            pinholelist = open("pinholes.list", "r").readlines()
-            arclist = open("arcs.list", "r").readlines()
-            # Write the name of the first flat in pinholelist for which spatial distortion will be calculated.
-            sdistrefimage = 'rn'+pinholelist[0].strip()
+            # Create lists of each type of calibration from text files in the Calibrations directory.
+            allcalsfilename = 'all.list'
+            allcalslist = open(allcalsfilename, "r").readlines()
+            allcalslist = [filename.strip() for filename in allcalslist]
+            rawHeader = fits.open(allcalslist[0])[0].header
+            QHflatsfilename = 'QHflats.list'
+            QHflatslist = open(QHflatsfilename, "r").readlines()
+            QHflatslist = [filename.strip() for filename in QHflatslist]
+            IRflatsfilename = 'IRflats.list'
+            IRflatslist = open(IRflatsfilename, "r").readlines()
+            IRflatslist = [filename.strip() for filename in IRflatslist]
+            pinholesfilename = 'pinholes.list'
+            pinholeslist = open(pinholesfilename, "r").readlines()
+            pinholeslist = [filename.strip() for filename in pinholeslist]
+            # Write the name of the first flat in pinholeslist for which spatial distortion will be calculated.
+            sdistrefimage = 'rn'+pinholeslist[0]
+            arcslistfilename = 'arcs.list'
+            arcslist = open(arcslistfilename, "r").readlines()
+            arcslist = [filename.strip() for filename in arcslist]
         
             # Check start and stop values for reduction steps. Ask user for a correction if input is not valid.
             valindex = start
@@ -174,11 +197,8 @@ def start(configfile):
                 logger.warning("######################################################################")
                 logger.warning("######################################################################\n")
 
-                valindex = int(raw_input("\nPlease enter a valid start value (1 to 5, default 1): "))
-                stop = int(raw_input("\nPlease enter a valid stop value (1 to 5, default 5): "))
-
-            # Print the current directory of calibrations being processed.
-            logger.info("Currently working on calibrations in %s\n", calpath)
+                valindex = int(raw_input("Please enter a valid start value (1 to 5, default 1): "))
+                stop = int(raw_input("Please enter a valid stop value (1 to 5, default 5): "))
 
             while valindex <= stop:
             
@@ -188,24 +208,13 @@ def start(configfile):
                 #############################################################################
 
                 if valindex == 1:
+                    ## this step is not modified to work with the GNIRS pipeline as of July 2019
                     if manualMode:
                         a = raw_input("About to enter step 1: clean calibration frames.")
-                    '
-                    if cleanir_arcs:
-#                        cleanir(arclist)
-                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
-                    else:
-                        logger.info("######################################################################")
-                        logger.info("######################################################################")
-                        logger.info("#                                                                    #")
-                        logger.info("#               WARNING in calibrate: arcs not cleaned.              #")
-                        logger.info("#                                                                    #")
-                        logger.info("######################################################################")
-                        logger.info("######################################################################\n")
-                
+
                     if cleanir_QHflats:
-#                        cleanir(QHflatlist)
-                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
+#                        cleanir(QHflatslist)
+                        pass
                     else:
                         logger.info("######################################################################")
                         logger.info("######################################################################")
@@ -216,8 +225,8 @@ def start(configfile):
                         logger.info("######################################################################\n")
                 
                     if cleanir_IRflats:
-#                        cleanir(IRflatlist)
-                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
+#                        cleanir(IRflatslist)
+                        pass
                     else:
                         logger.info("######################################################################")
                         logger.info("######################################################################")
@@ -227,9 +236,21 @@ def start(configfile):
                         logger.info("######################################################################")
                         logger.info("######################################################################\n")
 
+                    if cleanir_arcs:
+#                        cleanir(arcslist)
+                        pass
+                    else:
+                        logger.info("######################################################################")
+                        logger.info("######################################################################")
+                        logger.info("#                                                                    #")
+                        logger.info("#               WARNING in calibrate: arcs not cleaned.              #")
+                        logger.info("#                                                                    #")
+                        logger.info("######################################################################")
+                        logger.info("######################################################################\n")
+
                     if cleanir_pinholes:
-#                        cleanir(pinholelist)
-                        pass  ## this step is not modifoed to work with this pipeline as of July 2019
+#                        cleanir(pinholeslist)
+                        pass
                     else:
                         logger.info("######################################################################")
                         logger.info("######################################################################")
@@ -247,14 +268,14 @@ def start(configfile):
                     
                 #############################################################################
                 ##  STEP 2: Preparing all calibration frames for further processing.       ##
-                ##  Output: All nsprepare'd and nsreduce'd calibration images.             ##
+                ##  Output: All prepared and reduced calibration images.                   ##
                 #############################################################################
 
                 elif valindex == 2:
                     if manualMode:
                         a = raw_input("About to enter step 2: preparing all calibration frames.")
                     
-                    arrayid = header['ARRAYID'].strip()
+                    arrayid = rawHeader['ARRAYID'].strip()
                     if arrayid == 'SN7638228.1':
                         bpmfile = 'gnirs$data/gnirsn_2011apr07_bpm.fits'
                     elif arrayid == 'SN7638228.1.2':
@@ -269,7 +290,7 @@ def start(configfile):
                         logger.error("######################################################################\n")
                         raise SystemExit
                     
-                    prepareCalibrations(bpmfile, overwrite)
+                    prepareCalibrations(nsprepareInter, bpmfile, overwrite)
 
                     logger.info("####################################################################")
                     logger.info("#                                                                  #")
@@ -289,7 +310,8 @@ def start(configfile):
                     if manualMode:
                         a = raw_input("About to enter step 3: create flat field.")
 
-                    makeFlat(overwrite)
+                    masterflat = 'masterflat.fits'
+                    makeFlat(masterflat, nsflatInter, overwrite)
 
                     logger.info("###################################################################")
                     logger.info("#                                                                 #")
@@ -307,7 +329,7 @@ def start(configfile):
                 elif valindex == 4:
                     if manualMode:
                         a = raw_input("About to enter step 4: spatial curvature and spectral distortion.")
-                
+
                     if 'Long' in calpath:
                         pinhole_coordlist = 'gnirs$data/pinholes-long-dense-north.lis'
                     elif 'Short' in calpath:
@@ -322,7 +344,7 @@ def start(configfile):
                         logger.error("#######################################################################\n")
                         raise SystemExit
 
-                    makeSdistortion(pinholelist, pinhole_coordlist, overwrite)
+                    makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, overwrite)
                 
                     logger.info("####################################################################")
                     logger.info("#                                                                  #")
@@ -336,13 +358,14 @@ def start(configfile):
                 ##  STEP 5: Combine arc frames.                                           ##
                 ##          Determine the wavelength solution and create the wavelength-  ##
                 ##          calibrated arc image corrected for spatial distortion.        ##
-                ##  OUTPUT: Combined and wavelength-calibrated arc image.                 ##
+                ##  OUTPUT: Combined and wavelength calibrated arc image.                 ##
                 ############################################################################
 
                 elif valindex == 5:
                     if manualMode:
                         a = raw_input("About to enter step 5: wavelength solution.")
                     
+                    combinedarc = 'arc_comb.fits'
                     if '10' in calpath and '32' in calpath:
                         waveCal_coordlist = 'gnirs$data/lowresargon.dat'
                     elif '110' in calpath:
@@ -357,7 +380,8 @@ def start(configfile):
                         logger.error("########################################################################\n")
                         raise SystemExit
 
-                    makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite)
+                    makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, \
+                        waveCal_coordlist, overwrite)
                     
                     logger.info("####################################################################")
                     logger.info("#                                                                  #")
@@ -371,7 +395,7 @@ def start(configfile):
                     logger.error("########################################################################")
                     logger.error("########################################################################")
                     logger.error("#                                                                      #")
-                    logger.error("#         ERROR in calibrate: ", valindex, " is not valid.             #")
+                    logger.error("#  ERROR in calibrate: %d", valindex, " is not valid. Exiting script.  #")
                     logger.error("#                                                                      #")
                     logger.error("########################################################################")
                     logger.error("########################################################################\n")
@@ -387,14 +411,14 @@ def start(configfile):
             logger.info("###########################################################################\n")
         
         else:
-            logger.warning("########################################################################")
-            logger.warning("########################################################################")
-            logger.warning("#                                                                      #")
-            logger.warning("#    GNIRS baseline calibration turned off. Not reducing baseline      #")
-            logger.warning("#      calibrations in %s", calpath                                      )
-            logger.warning("#                                                                      #")
-            logger.warning("########################################################################")
-            logger.warning("########################################################################\n")
+            logger.warning("######################################################################################")
+            logger.warning("######################################################################################")
+            logger.warning("#                                                                                    #")
+            logger.warning("#    GNIRS baseline calibration turned off. Not reducing baseline calibrations in    #")
+            logger.warning("#    %s", calpath                                                                      )
+            logger.warning("#                                                                                    #")
+            logger.warning("######################################################################################")
+            logger.warning("####################################################################################\n")
 
     # Return to directory script was begun from.
     os.chdir(path)
@@ -405,7 +429,7 @@ def start(configfile):
 #                                        FUNCTIONS                                  #
 #####################################################################################
 
-def prepareCalibrations(bpmfile, overwrite):
+def prepareCalibrations(nsprepareInter, bpmfile, overwrite):
     """
     Prepare calibration frames for further processing.
 
@@ -419,33 +443,20 @@ def prepareCalibrations(bpmfile, overwrite):
     """
     logger = log.getLogger('gnirsBaselineCalibration.prepareCalibrations')
     
-    # Update all calibration frames with mdf offset value and generate variance and data quality extensions. This code
-    # structure checks if iraf output files already exist. If output files exist and overwrite is specified, iraf
-    # output is overwritten.
-    oldfiles = glob.glob('./nN*.fits')
+    # This code structure checks if iraf output files already exist. If output files exist and overwrite is specified, 
+    # iraf output is overwritten.
+    oldfiles_prepared = glob.glob('./nN*.fits')
+    oldfiles_reduced = glob.glob('./rnN*.fits')
+    oldfiles = oldfiles_prepared + oldfiles_reduced
     if not oldfiles:
+        # Update all calibration frames with mdf offset value and generate variance and data quality extensions. 
         iraf.nsprepare(inimages='@QHflats.list,@IRflats.list,@arcs.list,@pinholes.list', rawpath='', outimages='', \
             outprefix='n', bpm=bpmfile, logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', fl_cravg='no', \
             crradius=0.0, fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', fl_nonlinear='yes', \
             fl_checkwcs='yes', fl_forcewcs='yes', arraytable='gnirs$data/array.fits', \
             configtable='gnirs$data/config.fits', specsec='[*,*]', offsetsec='none', pixscale='0.15', shiftimage='', \
-            shiftx='INDEF', shifty='INDEF', obstype='FLAT', fl_inter='no', verbose='yes', mode='al')
-    else:
-        if overwrite:
-            logger.warning('Removing old nN*.fits files.')
-            [os.remove(filename) for filename in oldfiles]
-            iraf.nsprepare(inimages='@QHflats.list,@IRflats.list,@arcs.list,@pinholes.list', rawpath='', outimages='',\
-                outprefix='n', bpm=bpmfile, logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', \
-                fl_cravg='no', crradius=0.0, fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', \
-                fl_nonlinear='yes', fl_checkwcs='yes', fl_forcewcs='yes', arraytable='gnirs$data/array.fits', \
-                configtable='gnirs$data/config.fits', specsec='[*,*]', offsetsec='none', pixscale='0.15', \
-                shiftimage='', shiftx='INDEF', shifty='INDEF', obstype='FLAT', fl_inter='no', verbose='yes', mode='al')
-        else:
-            logger.warning("Output files exist and -overwrite not set - skipping nsprepare for all calibration frames.")
-    
-    # Cut all calibration frames according to the size specified by the MDFs.
-    oldfiles = glob.glob('./rnN*.fits')
-    if not oldfiles:
+            shiftx='INDEF', shifty='INDEF', obstype='FLAT', fl_inter=nsprepareInter, verbose='yes', mode='al')
+        # Cut all calibration frames according to the size specified by the MDFs.
         iraf.nsreduce(inimages='n//@QHflats.list,n//@IRflats.list,n//@arcs.list,n//@pinholes.list', outimages='', \
             outprefix='r', fl_cut='yes', section='', fl_corner='yes', fl_process_cut='yes', fl_nsappwave='no', \
             nsappwavedb='gnirs$data/nsappwave.fits', crval='INDEF', cdelt='INDEF', fl_dark='no', darkimage='', \
@@ -457,8 +468,15 @@ def prepareCalibrations(bpmfile, overwrite):
             debug='no', force='no', mode='al')
     else:
         if overwrite:
-            logger.warning('Removing old rnN*.fits files.')
+            logger.warning('Removing old nN*.fits and rnN*.fits files.')
             [os.remove(filename) for filename in oldfiles]
+            iraf.nsprepare(inimages='@QHflats.list,@IRflats.list,@arcs.list,@pinholes.list', rawpath='', outimages='',\
+                outprefix='n', bpm=bpmfile, logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', \
+                fl_cravg='no', crradius=0.0, fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', \
+                fl_nonlinear='yes', fl_checkwcs='yes', fl_forcewcs='yes', arraytable='gnirs$data/array.fits', \
+                configtable='gnirs$data/config.fits', specsec='[*,*]', offsetsec='none', pixscale='0.15', \
+                shiftimage='', shiftx='INDEF', shifty='INDEF', obstype='FLAT', fl_inter=nsprepareInter, verbose='yes',\
+                mode='al')
             iraf.nsreduce(inimages='n//@QHflats.list,n//@IRflats.list,n//@arcs.list,n//@pinholes.list', outimages='', \
                 outprefix='r', fl_cut='yes', section='', fl_corner='yes', fl_process_cut='yes', fl_nsappwave='no', \
                 nsappwavedb='gnirs$data/nsappwave.fits', crval='INDEF', cdelt='INDEF', fl_dark='no', darkimage='', \
@@ -469,11 +487,12 @@ def prepareCalibrations(bpmfile, overwrite):
                 flatimage='', flatmin=0.0, fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, \
                 verbose='yes', debug='no', force='no', mode='al')
         else:
-            logger.info("Output files exist and -overwrite not set - skipping nsreduce for all calibration frames.")
+            logger.warning("Output exists and -overwrite not set - skipping nsprepare and nsreduce for all ")
+            logger.warning("calibration frames.")
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeFlat(overwrite):
+def makeFlat(masterflat, nsflatInter, overwrite):
     """
     Make flat field and bad pixel masks.
 
@@ -483,11 +502,11 @@ def makeFlat(overwrite):
     Use FXCOPY followed by FXINSERT to produce the final flat by grouping order 3 of IRflats and orders 4-18 of 
     QHflats. The output from this task is used as the flatfield image for further reduction.
 
-    NOTE:  Sometimes nsflat crashes with a fixpix or other, unknown error. In such a situation, tweaking the lthresh 
-    parameter sometimes helps. XDGNIRS loops through a fixed list of lthresh values until it (hopefully) runs without
-    an error in three trials after which it fails and exits. The nsflat function in this pipeline is currently not set 
-    to run through a loop; it simply uses the specified lthresh. However, it can be made to run through a loop of
-    random lthresh values in a specified range until it runs without an error to avoid the system exit.
+    TODO(Viraja):  Sometimes nsflat crashes with a fixpix or other, unknown error. In such a situation, tweaking the 
+    lthresh parameter sometimes helps. XDGNIRS loops through a fixed list of lthresh values until it (hopefully) runs
+    without an error in three trials after which it fails and exits. The nsflat function in this pipeline is currently
+    not set to run through a loop; it simply uses the specified lthresh. However, it can be made to run through a loop
+    of random lthresh values in a specified range until it runs without an error to avoid a system exit.
     """
     logger = log.getLogger('gnirsBaselineCalibration.makeFlat')
 
@@ -500,24 +519,28 @@ def makeFlat(overwrite):
             os.remove(QHflat)
             QHflat_flag = False
         else:
-            logger.warning("Old %s exists and -overwrite not set - using existing output file for further ")
-            logger.warning("reduction.", QHflat)
+            logger.warning("Old %s exists and -overwrite not set - using existing output for further ", QHflat)
+            logger.warning("reduction.")
             QHflat_flag = True
+    else:
+        QHflat_flag = False
     if os.path.exists(QHflat_bpm):
         if overwrite:
             logger.warning('Removing old %s', QHflat_bpm)
             os.remove(QHflat_bpm)
             QHflat_bpm_flag = False
         else:
-            logger.warning("Old %s exists and -overwrite not set - using existing output for further ")
-            logger.warning("reduction.", QHflat_bpm)
+            logger.warning("Old %s exists and -overwrite not set - using existing output for further ", QHflat_bpm)
+            logger.warning("reduction.")
             QHflat_bpm_flag = True
+    else:
+        QHflat_bpm_flag = False
     if QHflat_flag and QHflat_bpm_flag:
         pass
     else:
         iraf.nsflat(lampson='rn//@QHflats.list', darks='', flatfile=QHflat, darkfile='', fl_corner='yes', \
             fl_save_darks='no', flattitle='default', bpmtitle='default', bpmfile=QHflat_bpm, process="fit", \
-            statsec='MDF', fitsec='MDF', thr_flo=0.35, thr_fup=4.0, thr_dlo=-20, thr_dup=100, fl_inter='no', \
+            statsec='MDF', fitsec='MDF', thr_flo=0.35, thr_fup=4.0, thr_dlo=-20, thr_dup=100, fl_inter=nsflatInter, \
             fl_range='no', fl_fixbad='yes', fixvalue=1.0, function='spline3', order=5, normstat='midpt', \
             combtype='default', rejtype='ccdclip', masktype='goodvalue', maskvalue=0.0, scale='median', zero='none', \
             weight='none', lthreshold=50.0, hthreshold='INDEF', nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=3.0, \
@@ -535,24 +558,28 @@ def makeFlat(overwrite):
             os.remove(IRflat)
             IRflat_flag = False
         else:
-            logger.warning("Old %s exists and -overwrite not set - using existing output for further ")
-            logger.warning("reduction.", IRflat)
+            logger.warning("Old %s exists and -overwrite not set - using existing output for further ", IRflat)
+            logger.warning("reduction.")
             IRflat_flag = True
+    else:
+        IRflat_flag = False
     if os.path.exists(IRflat_bpm):
         if overwrite:
             logger.warning('Removing old %s', IRflat_bpm)
             os.remove(IRflat_bpm)
             IRflat_bpm_flag = False
         else:
-            logger.warning("Old %s exists and -overwrite not set - using existing output for further ")
-            logger.warning("reduction.", IRflat_bpm)
+            logger.warning("Old %s exists and -overwrite not set - using existing output for further ", IRflat_bpm)
+            logger.warning("reduction.")
             IRflat_bpm_flag = True
+    else:
+        IRflat_bpm_flag = False
     if IRflat_flag and IRflat_bpm_flag:
         pass
     else:
         iraf.nsflat(lampson='rn//@IRflats.list', darks='', flatfile=IRflat, darkfile='', fl_corner='yes', \
-            fl_save_darks='no', flattitle='default', bpmtitle=IRflat_bpm, bpmfile='default', process="fit", \
-            statsec='MDF', fitsec='MDF', thr_flo=0.35, thr_fup=1.5, thr_dlo=-20, thr_dup=100, fl_inter='no', \
+            fl_save_darks='no', flattitle='default', bpmtitle='default', bpmfile=IRflat_bpm, process="fit", \
+            statsec='MDF', fitsec='MDF', thr_flo=0.35, thr_fup=1.5, thr_dlo=-20, thr_dup=100, fl_inter=nsflatInter, \
             fl_range='no', fl_fixbad='yes', fixvalue=1.0, function='spline3', order=10, normstat='midpt', \
             combtype='default', rejtype='ccdclip', masktype='goodvalue', maskvalue=0.0, scale='none', zero='none', \
             weight='none', lthreshold=50.0, hthreshold='INDEF', nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=3.0, \
@@ -562,9 +589,8 @@ def makeFlat(overwrite):
             tr_grow=0.0, ap_lower=-30, ap_upper=30, fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, \
             verbose='yes', mode='al')
 
-    # Group order 3 of IRflats and orders 4-18 of QHflats to create the final flat field image. Output flat field file 
-    # will have name "masterflat.fits".
-    masterflat = "masterflat.fits"
+    # Group order 3 of IRflats and orders 4-18 of QHflats to create the final flat field image. Output flat field image 
+    # will be "masterflat.fits".
     if os.path.exists(masterflat):
         if overwrite:
             logger.warning('Removing old %s', masterflat)
@@ -572,17 +598,17 @@ def makeFlat(overwrite):
             iraf.fxcopy(input=IRflat, output=masterflat, group="0-3", new_file='yes', verbose='no', mode='ql')
             iraf.fxinsert(input=QHflat, output=masterflat+'[3]', groups="4-18", verbose='no', mode='ql')
         else:
-            logger.warning("Output exists and -overwrite not set - skipping fxcopy and fxinsert to create the ")
-            logger.warning("masterflat.")
+            logger.warning("Old %s exists", masterflat, " and -overwrite not set - skipping fxcopy and fxinsert to ")
+            logger.warning("create the masterflat.")
     else:
         iraf.fxcopy(input=IRflat, output=masterflat, group="0-3", new_file='yes', verbose='no', mode='ql')
         iraf.fxinsert(input=QHflat, output=masterflat+'[3]', groups="4-18", verbose='no', mode='ql')
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeSdistortion(pinholelist, pinhole_coordlist, overwrite):
+def makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, overwrite):
     """
-    Establish Spatial-distortion calibration.
+    Establish Spatial distortion calibration.
 
     NSSDIST uses the information in the pinhole calibration images to calibrate the spatial distorion of the GNIRS 
     field. The pinhole frame is a dispersed flat field image with a slit-mask in the field so that the illumination on 
@@ -594,8 +620,8 @@ def makeSdistortion(pinholelist, pinhole_coordlist, overwrite):
    
     oldfiles = glob.glob('./database/idrn*')
     if not oldfiles:
-        iraf.nssdist(inimages='rn'+pinholelist[0].strip(), outsuffix='_sdist', pixscale=1.0, dispaxis=1, database='', \
-            firstcoord=0.0, coordlist=pinhole_coordlist, aptable='gnirs$data/apertures.fits', fl_inter='no', \
+        iraf.nssdist(inimages=sdistrefimage, outsuffix='_sdist', pixscale=1.0, dispaxis=1, database='', \
+            firstcoord=0.0, coordlist=pinhole_coordlist, aptable='gnirs$data/apertures.fits', fl_inter=nssdistInter, \
             fl_dbwrite='yes', section='default', nsum=30, ftype='emission', fwidth=10.0, cradius=10.0, \
             threshold=1000.0, minsep=5.0, match=-6.0, function="legendre", order=5, sample='', niterate=3, \
             low_reject=5.0, high_reject=5.0, grow=0.0, refit='yes', step=10, trace='no', nlost=0, aiddebug='', \
@@ -604,40 +630,31 @@ def makeSdistortion(pinholelist, pinhole_coordlist, overwrite):
         if overwrite:
             logger.warning('Removing old /database/idrn* files.')
             [os.remove(filename) for filename in oldfiles]
-            iraf.nssdist(inimages='rn'+pinholelist[0].strip(), outsuffix='_sdist', pixscale=1.0, dispaxis=1, \
-                database='', firstcoord=0.0, coordlist=pinhole_coordlist, aptable='gnirs$data/apertures.fits', \
-                fl_inter='no', fl_dbwrite='yes', section='default', nsum=30, ftype='emission', fwidth=10.0, \
+            iraf.nssdist(inimages=sdistrefimage, outsuffix='_sdist', pixscale=1.0, dispaxis=1, database='', \
+                firstcoord=0.0, coordlist=pinhole_coordlist, aptable='gnirs$data/apertures.fits', \
+                fl_inter=nssdistInter, fl_dbwrite='yes', section='default', nsum=30, ftype='emission', fwidth=10.0, \
                 cradius=10.0, threshold=1000.0, minsep=5.0, match=-6.0, function="legendre", order=5, sample='', \
                 niterate=3, low_reject=5.0, high_reject=5.0, grow=0.0, refit='yes', step=10, trace='no', nlost=0, \
                 aiddebug='', logfile=logger.root.handlers[0].baseFilename, verbose='no', debug='no', force='no', \
                 mode='al')
         else:
-            logger.warning("Output exists and -overwrite not set - skipping the spatial-distortion correction ")
+            logger.warning("Output exists and -overwrite not set - skipping the spatial distortion correction ")
             logger.warning("calculation for pinholes.")
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite):
+def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, waveCal_coordlist, overwrite):
     """
     Determine the wavelength solution of the combined arc.
 
-    Uses NSWAVELENGTH to calibrate arc data (after cutting and optionally applying a flatfield with NSREDUCE 
-    previously).
-
-    DATA REDUCTION HINT -
-    For the nswavelength call, the different wavelength settings use different values for some of the parameters. For 
-    optimal auto results, use:
-
-    ????
+    Uses NSWAVELENGTH to calibrate arcs (after cutting and optionally applying a flatfield with NSREDUCE previously).
 
     Note that better RMS fits can be obtained by running the wavelength calibration interactively and identifying all 
-    of the lines manually. Tedious, but will give more accurate results than the automatic mode (i.e., fl_inter-). Use 
-    fl_inter+ for manual mode.
+    of the lines manually. Tedious, but will give more accurate results than the automatic mode (i.e., fl_inter-).
     """
     logger = log.getLogger('gnirsBaselineCalibration.makeWaveCal')
     
-    # Combine arc frames. Output combined file will have the name "arc_comb.fits".
-    combinedarc = 'arc_comb.fits'
+    # Combine arc frames.
     if os.path.exists(combinedarc):
         if overwrite:
             logger.warning('Removing old %s', combinedarc)
@@ -648,8 +665,8 @@ def makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite):
                 masktype='goodvalue', maskvalue=0.0, statsec='[*,*]', scale='none', zero='none', weight='none', \
                 lthreshold='INDEF', hthreshold='INDEF', nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=5.0, hsigma=5.0,\
                 ron=0.0, gain=1.0, snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', \
-                fl_inter='no', logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no', \
-                mode='al')
+                fl_inter=nscombineInter, logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', \
+                force='no', mode='al')
         else:
             logger.warning("Output file exists and -overwrite not set - skipping combining arcs.")
     else:
@@ -658,7 +675,7 @@ def makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite):
             boundary='nearest', constant=0.0, combtype='average', rejtype='sigclip', masktype='goodvalue', \
             maskvalue=0.0, statsec='[*,*]', scale='none', zero='none', weight='none', lthreshold='INDEF', \
             hthreshold='INDEF', nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=5.0, hsigma=5.0, ron=0.0, gain=1.0, \
-            snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', fl_inter='no', \
+            snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', fl_inter=nscombineInter, \
             logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no', mode='al')
 
     oldfiles_combinedarc = glob.glob('./*f'+combinedarc)
@@ -670,9 +687,9 @@ def makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite):
         logger.info("Running nsfitcoords and nstransform on the combined arc to spatially rectify it before running ") 
         logger.info("nswavelength.")
         iraf.nsfitcoords(inimages=combinedarc, outspectra='', outprefix='f', lamptransf='', \
-            sdisttransf=sdistrefimage, dispaxis=1, database='', fl_inter='no', fl_align='no', function='chebyshev', \
-            lxorder=2, lyorder=4, sxorder=4, syorder=4, pixscale=1.0, logfile=logger.root.handlers[0].baseFilename, \
-            verbose='yes', debug='no', force='no', mode='al')
+            sdisttransf=sdistrefimage, dispaxis=1, database='', fl_inter=nsfitcoordsInter, fl_align='no', \
+            function='chebyshev', lxorder=2, lyorder=4, sxorder=4, syorder=4, pixscale=1.0, \
+            logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no', mode='al')
         iraf.nstransform(inimages='f'+combinedarc, outspectra='', outprefix='t', dispaxis=1, database='', \
             fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
             logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
@@ -680,7 +697,7 @@ def makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite):
         logger.info("The arc lines might still be a bit tilted because of the detector rotation. Running ")
         logger.info("nswavelength on the transformed arc with fl_median-.")
         iraf.nswavelength(lampspectra='tf'+combinedarc, outspectra='', outprefix='w', crval='INDEF', cdelt='INDEF', \
-            crpix='INDEF', dispaxis=2, database='', coordlist=waveCal_coordlist, fl_inter='no', \
+            crpix='INDEF', dispaxis=2, database='', coordlist=waveCal_coordlist, fl_inter=nswavelengthInter, \
             nsappwavedb='gnirs$data/nsappwave.fits', fl_median='no', sdist='', sdorder=4, xorder=2, yorder=2, \
             aptable='gnirs$data/apertures.fits', section='auto', nsum=10, ftype='emission', fwidth=5.0, cradius=5.0, \
             threshold=300.0, minsep=2.0, match=-6.0, function='chebyshev', order=4, sample='*', niterate=10, \
@@ -691,22 +708,22 @@ def makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite):
         logger.info("Calling nsfitcoords to produce the combined arc with horizontal lines and then nstransform on ")
         logger.info("the transformed arc using the output from nswavelength for the 'lamptrans' parameter.")
         iraf.nsfitcoords(inimages='tf'+combinedarc, outspectra='', outprefix='f', lamptrans='wtf'+combinedarc, \
-            sdisttransf='', dispaxis=1, database='', fl_inter='no', fl_align='no', function='chebyshev', lxorder=2, \
-            lyorder=4, sxorder=4, syorder=4, pixscale=1.0, logfile=logger.root.handlers[0].baseFilename, \
+            sdisttransf='', dispaxis=1, database='', fl_inter=nsfitcoordsInter, fl_align='no', function='chebyshev', \
+            lxorder=2, lyorder=4, sxorder=4, syorder=4, pixscale=1.0, logfile=logger.root.handlers[0].baseFilename, \
             verbose='yes', debug='no', force='no', mode='al')
         iraf.nstransform(inimages='ftf'+combinedarc, outspectra='', outprefix='t', dispaxis=1, database='', \
             fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
             logfile=logger.root.handlers[0].baseFilename, verbose='no', debug='no', mode='al')
     else:
         if overwrite:
-            logger.warning('Removing old files.')
+            logger.warning("Removing old /*f%s", combinedarc, "/database/idwtf*, /database/*_sdist, and ")
+            logger.info("/database/*_lamp files.")
             [os.remove(filename) for filename in oldfiles]
-            logger.info('Removing old files.')
 
             logger.info("Running nsfitcoords and nstransform on the combined arc to spatially rectify it before ") 
             logger.info("running nswavelength.")
             iraf.nsfitcoords(inimages=combinedarc, outspectra='', outprefix='f', lamptransf='', \
-                sdisttransf=sdistrefimage, dispaxis=1, database='', fl_inter='no', fl_align='no', \
+                sdisttransf=sdistrefimage, dispaxis=1, database='', fl_inter=nsfitcoordsInter, fl_align='no', \
                 function='chebyshev', lxorder=2, lyorder=4, sxorder=4, syorder=4, pixscale=1.0, \
                 logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no', mode='al')
             iraf.nstransform(inimages='f'+combinedarc, outspectra='', outprefix='t', dispaxis=1, database='', \
@@ -716,26 +733,27 @@ def makeWaveCal(sdistrefimage, waveCal_coordlist, overwrite):
             logger.info("The arc lines might still be a bit tilted because of the detector rotation. Running ")
             logger.info("nswavelength on the transformed arc with fl_median-.")
             iraf.nswavelength(lampspectra='tf'+combinedarc, outspectra='', outprefix='w', crval='INDEF', \
-                cdelt='INDEF', crpix='INDEF', dispaxis=2, database='', coordlist=waveCal_coordlist, fl_inter='no', \
-                nsappwavedb='gnirs$data/nsappwave.fits', fl_median='no', sdist='', sdorder=4, xorder=2, yorder=2, \
-                aptable='gnirs$data/apertures.fits', section='auto', nsum=10, ftype='emission', fwidth=5.0, \
-                cradius=5.0, threshold=300.0, minsep=2.0, match=-6.0, function='chebyshev', order=4, sample='*', \
-                niterate=10, low_reject=3.0, high_reject=3.0, grow=0.0, refit='yes', step=2, trace='no', nlost=10, \
-                fl_overwrite='yes', aiddebug='', fmatch=0.2, nfound=6, sigma=0.05, rms=0.1, \
-                logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
+                cdelt='INDEF', crpix='INDEF', dispaxis=2, database='', coordlist=waveCal_coordlist, \
+                fl_inter=nswavelengthInter, nsappwavedb='gnirs$data/nsappwave.fits', fl_median='no', sdist='', \
+                sdorder=4, xorder=2, yorder=2, aptable='gnirs$data/apertures.fits', section='auto', nsum=10, \
+                ftype='emission', fwidth=5.0, cradius=5.0, threshold=300.0, minsep=2.0, match=-6.0, \
+                function='chebyshev', order=4, sample='*', niterate=10, low_reject=3.0, high_reject=3.0, grow=0.0, \
+                refit='yes', step=2, trace='no', nlost=10, fl_overwrite='yes', aiddebug='', fmatch=0.2, nfound=6, \
+                sigma=0.05, rms=0.1, logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', \
+                mode='al')
             
             logger.info("Calling nsfitcoords to produce the combined arc with horizontal lines and then nstransform ")
             logger.info("on the transformed arc using the output from nswavelength for the 'lamptrans' parameter.")
             iraf.nsfitcoords(inimages='tf'+combinedarc, outspectra='', outprefix='f', lamptrans='wtf'+combinedarc, \
-                sdisttransf='', dispaxis=1, database='', fl_inter='no', fl_align='no', \
+                sdisttransf='', dispaxis=1, database='', fl_inter=nsfitcoordsInter, fl_align='no', \
                 function='chebyshev', lxorder=2, lyorder=4, sxorder=4, syorder=4, pixscale=1.0, \
                 logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no', mode='al')
             iraf.nstransform(inimages='ftf'+combinedarc, outspectra='', outprefix='t', dispaxis=1, database='', \
                 fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
                 logfile=logger.root.handlers[0].baseFilename, verbose='no', debug='no', mode='al')
         else:
-            logger.warning("Output files exist and -overwrite not set - skipping wavelength calibration and ")
-            logger.warning("spatial-distortion correction of arcs.")
+            logger.warning("Output exidts and -overwrite not set - skipping wavelength calibration and spatial ")
+            logger.warning("distortion correction of arcs.")
 
 #---------------------------------------------------------------------------------------------------------------------#
 

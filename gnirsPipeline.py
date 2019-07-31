@@ -190,12 +190,12 @@ def start(args):
     if scienceReduction:
         if manualMode:
             a = raw_input('About to enter gnirsReduce to reduce science observations.')
-        gnirsReduce.start(args.config)
+        gnirsReduce.start('Science', args.config)
 
     if telluricReduction:
         if manualMode:
             a = raw_input('About to enter gnirsReduce to reduce telluric observations.')
-        gnirsReduce.start(args.config)
+        gnirsReduce.start('Telluric', args.config)
 
     ###########################################################################
     ##                      STEP 6: Combine 2D spectra                       ##
