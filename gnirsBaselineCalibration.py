@@ -275,6 +275,11 @@ def start(configfile):
                     if manualMode:
                         a = raw_input("About to enter step 2: preparing all calibration frames.")
                     
+                    # Use the most appropriate bad pixel mask. For data taken Before the summer 2012 lens replacement,
+                    # use 'gnirs$data/gnirsn_2011apr07_bpm.fits'; after summer 2012, use 
+                    # 'gnirs$data/gnirsn_2012dec05_bpm.fits'. Use keyword 'ARRAYID' in the raw file header to check
+                    # which camera was used for observations, and accordingly set parameter 'bpm' for the bpmfile to be
+                    # used from the gnirs$database.
                     arrayid = rawHeader['ARRAYID'].strip()
                     if arrayid == 'SN7638228.1':
                         bpmfile = 'gnirs$data/gnirsn_2011apr07_bpm.fits'
@@ -395,7 +400,7 @@ def start(configfile):
                     logger.error("########################################################################")
                     logger.error("########################################################################")
                     logger.error("#                                                                      #")
-                    logger.error("#  ERROR in calibrate: %d", valindex, " is not valid. Exiting script.  #")
+                    logger.error("#  ERROR in calibrate: %d", valindex + " is not valid. Exiting script.  #")
                     logger.error("#                                                                      #")
                     logger.error("########################################################################")
                     logger.error("########################################################################\n")
