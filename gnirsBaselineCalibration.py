@@ -400,7 +400,7 @@ def start(configfile):
                     logger.error("########################################################################")
                     logger.error("########################################################################")
                     logger.error("#                                                                      #")
-                    logger.error("#  ERROR in calibrate: %d", valindex + " is not valid. Exiting script.  #")
+                    logger.error("#  ERROR in calibrate: %d", valindex, " is not valid. Exiting script.  #")
                     logger.error("#                                                                      #")
                     logger.error("########################################################################")
                     logger.error("########################################################################\n")
