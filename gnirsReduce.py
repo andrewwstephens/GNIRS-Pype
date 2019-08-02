@@ -118,8 +118,7 @@ def start(kind, configfile):
     # Read general config.
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
-    
-    if kind == 'Science':  # science reduction specific config
+    if kind == 'Science':  ## scienceReduction specific config
         observationSection = 'ScienceDirectories'
         start = config.getint('scienceReduction','Start')
         stop = config.getint('scienceReduction','Stop')
@@ -128,7 +127,7 @@ def start(kind, configfile):
         radiationThreshold = config.getfloat('scienceReduction','radiationThreshold')
         nsprepareInter = config.getboolean('interactive','nsprepareInter')
         calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
-    elif kind == 'Telluric':  # telluric reduction specific config
+    elif kind == 'Telluric':  ## telluricReduction specific config
         observationSection = 'TelluricDirectories'
         start = config.getint('telluricReduction','Start')
         stop = config.getint('telluricReduction','Stop')
@@ -176,9 +175,12 @@ def start(kind, configfile):
 
             # Print the current directory of observations being reduced.
             logger.info("Currently working on reductions in %s\n", obspath)
-
-            tempObspath = obspath.split(os.sep)            
-            calpath = "/".join(tempObspath[:-1])+'/Calibrations'
+            
+            if kind == 'Science':
+                tempObspath = obspath.split(os.sep)            
+                calpath = "/".join(tempObspath[:-1])+'/Calibrations'
+            else:
+                calpath = obspath+'/Calibrations'
             # Print the directory from which reduced calibratios are being used.
             logger.info("The path to the calibrations is %s\n", calpath)
             
@@ -187,16 +189,17 @@ def start(kind, configfile):
             allobslist = open(allobsfilename, "r").readlines()                                 
             allobslist = [filename.strip() for filename in allobslist]
             rawHeader = fits.open(allobslist[0])[0].header
-            skylistfilename = 'sky.list'
-            # Check if there is a sky.list in obspath
-            if os.path.exists(skylistfilename):
-                skylist = open(skylistfilename, "r").readlines()
-                skylist = [filename.strip() for filename in skylist]
-            else:
-                logger.warning("No sky image list (%s) found in the observations directory.", obspath)
-                logger.warning("Setting the 'calculateSpectrumSNR' parameter for the current set of observations to ")
-                logger.warning("'False'.\n")
-                calculateSpectrumSNR = False
+            if calculateSpectrumSNR:
+                # Check if there is a list of sky images in obspath
+                skylistfilename = 'sky.list'
+                if os.path.exists(skylistfilename):
+                    skylist = open(skylistfilename, "r").readlines()
+                    skylist = [filename.strip() for filename in skylist]
+                else:
+                    logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but a list of sky images not ")
+                    logger.warning("available in %s . Setting the 'calculateSpectrumSNR' parameter for the ", obspath)
+                    logger.warning("the current set of observations to 'False'.\n")
+                    calculateSpectrumSNR = False
             nodAlistfilename = 'nodA.list'
             nodAlist = open(nodAlistfilename, "r").readlines()
             nodAlist = [filename.strip() for filename in nodAlist]
@@ -368,14 +371,13 @@ def start(kind, configfile):
 
                     min_nodA = 'min_nodA.fits'
                     min_nodB = 'min_nodB.fits'
+                    minimagelist = [min_nodA, min_nodB]
+                    nodlist = [nodAlist, nodBlist]
 
                     if radiationCorrectionMethod == 'fixpix':
                         createMinimumImage(nodAlistfilename, nodAlist, min_nodA, overwrite)
-                        radiationCorrectionFixpix(nodAlistfilename, nodAlist, min_nodA, radiationThreshold, rdnoise, \
-                            gain, overwrite)
                         createMinimumImage(nodBlistfilename, nodBlist, min_nodB, overwrite)
-                        radiationCorrectionFixpix(nodBlistfilename, nodBlist, min_nodB, radiationThreshold, rdnoise, \
-                            gain, overwrite)
+                        radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, overwrite)
                     
                     elif radiationCorrectionMethod == 'dqplane':
                         createMinimumImage(nodAlistfilename, nodAlist, min_nodA, overwrite)
@@ -398,11 +400,9 @@ def start(kind, configfile):
                             logger.info("correction using the 'fixpix' method.\n")
                             radiationCorrectionMethod = 'fixpix'
                             createMinimumImage(nodAlistfilename, nodAlist, min_nodA, overwrite)
-                            radiationCorrectionFixpix(nodAlistfilename, nodAlist, min_nodA, radiationThreshold, \
-                                rdnoise, gain, overwrite)
                             createMinimumImage(nodBlistfilename, nodBlist, min_nodB, overwrite)
-                            radiationCorrectionFixpix(nodBlistfilename, nodBlist, min_nodB, radiationThreshold, \
-                                rdnoise, gain, overwrite)
+                            radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, \
+                                overwrite)
                         else:
                             logger.info("Observation date is " + str(date) + ". GNIRS data from 2012B not affected ")
                             logger.info("by radiation events. Skipping radiation event correction.\n")
@@ -571,7 +571,7 @@ def createMinimumImage(inlistfilename, inlist, minimage, overwrite):
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def radiationCorrectionFixpix(inlist, minimagelist, radiationThreshold, rdnoise, gain, overwrite):
+def radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, overwrite):
     """
     Prepare bad pixel masks for all observations (science or telluric) using a radiation threshold value and 
     correct the bad pixels by interpolation method.
@@ -589,10 +589,10 @@ def radiationCorrectionFixpix(inlist, minimagelist, radiationThreshold, rdnoise,
     oldfiles = oldfiles_masks + oldfiles_gmasks + oldfiles_radiationcleaned + oldfiles_combinedmasks
     if not oldfiles:
         logger.info("Creating initial masks for all observations.")
-        for i in range(len(inlist)):
-            for image in inlist[i]:
+        for i in range(len(nodlist)):
+            for image in nodlist[i]:
                 iraf.imexpr("(a-b)>"+str(radiationThreshold)+"*sqrt("+str(rdnoise)+"**2+2*b/"+str(gain)+") ? 1 : 0", \
-                    output='mask'+image[:-5]+'_mask.pl', a='n'+image+'[SCI]', b=minimagelist[i]+'[SCI]', dims="auto", 
+                    output='mask'+image[:-5]+'.pl', a='n'+image+'[SCI]', b=minimagelist[i]+'[SCI]', dims="auto", 
                     intype="int", outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., \
                     rangecheck='yes', verbose='yes', exprdb="none")
 
@@ -606,8 +606,8 @@ def radiationCorrectionFixpix(inlist, minimagelist, radiationThreshold, rdnoise,
 
         logger.info("Adding bad pixels from the [DQ] plane generated by nsprepare to the masks so that they can be ")
         logger.info("corrected as well.\n")
-        for i in range(len(inlist)):
-            for image in inlist[i]:
+        for i in range(len(nodlist)):
+            for image in nodlist[i]:
                 iraf.copy(input='n'+image, output='ln'+image, verbose='yes')
                 iraf.imexpr(expr="a||b", output='bgmask'+image[:-5]+'.pl', a='gmask'+image[:-5]+'.pl', \
                     b=minimagelist[i]+'[DQ]', dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0, \
@@ -618,9 +618,9 @@ def radiationCorrectionFixpix(inlist, minimagelist, radiationThreshold, rdnoise,
         if overwrite:
             logger.warning('Removing old mask*, gmask*.pl, lnN*.fits, and bgmask*.pl files.')
             [os.remove(filename) for filename in oldfiles]
-            logger.info("Creating initial masks for all observations.)
-            for i in range(len(inlist)):
-                for image in inlist[i]:
+            logger.info("Creating initial masks for all observations.")
+            for i in range(len(nodlist)):
+                for image in nodlist[i]:
                     iraf.imexpr("(a-b)>"+str(radiationThreshold)+"*sqrt("+str(rdnoise)+"**2+2*b/"+str(gain)+") ? 1 : 0",\
                         output='mask'+image[:-5]+'.pl', a='n'+image+'[SCI]', b=minimagelist[i]+'[SCI]', dims="auto", \
                         intype="int", outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0., \
@@ -636,8 +636,8 @@ def radiationCorrectionFixpix(inlist, minimagelist, radiationThreshold, rdnoise,
 
             logger.info("Adding bad pixels from the [DQ] plane generated by nsprepare to the masks so that they can ")
             logger.info("be corrected as well.\n")
-            for i in range(len(inlist)):
-                for image in inlist[i]:
+            for i in range(len(nodlist)):
+                for image in nodlist[i]:
                     iraf.copy(input='n'+image, output='ln'+image, verbose='yes')
                     iraf.imexpr(expr="a||b", output='bgmask'+image[:-5]+'.pl', a='gmask'+image[:-5]+'.pl', \
                         b=minimagelist[i]+'[DQ]', dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0, \
@@ -646,7 +646,7 @@ def radiationCorrectionFixpix(inlist, minimagelist, radiationThreshold, rdnoise,
                         cinterp="INDEF", verbose='yes', pixels='no')
         else:
             logger.warning("Output exists and -overwrite not set - skipping radiation correction by 'fixpix' method ")
-            logger.warning("for all observations.)
+            logger.warning("for all observations.")
             
 #---------------------------------------------------------------------------------------------------------------------#
 
@@ -713,9 +713,9 @@ def radiationCorrectionDQplane(allobslist, inlist, minimage, overwrite):
 
 def reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiationThreshold, overwrite):
     """
-    Flat field and sky subtract observations with nsreduce. If 'calcSNRspectrum' is set, observations will be reduced
-    without sky subtraction too and prefix 'k' will be added before the input filenames; otherwise, sky subtraction
-    will be performed and the prefix will be 'r'.
+    Flat field and sky subtract observations with nsreduce. If 'calculateSpectrumSNR' is set, observations will be
+    reduced without sky subtraction too and prefix 'k' will be added before the input filenames; otherwise, sky 
+    subtraction will be performed and the prefix will be 'r'.
 
     NSREDUCE is used for basic reduction of raw data - it provides a single, unified interface to several tasks and 
     also allows the subtraction of dark frames (not done for GNIRS data) and dividing by the flat.

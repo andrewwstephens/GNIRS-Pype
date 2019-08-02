@@ -65,12 +65,7 @@ def start(configfile):
                 - overwrite (boolean): Overwrite old files? Default: False
                 # And gnirsReduce specific settings
     """
-    logger = log.getLogger('gnirsReduce.start')
-
-    # TODO(nat): Right now the pipeline will crash if you decide to skip, say, doing a bad pixel correction. This is 
-    # because each step adds a prefix to the frame name, and most following steps depend on that prefix being there.
-    # One way to fix this is if a step is to be skipped, iraf.copy() is called instead to copy the frame and add the 
-    # needed prefix. Messy but it might work for now.
+    logger = log.getLogger('gnirsExtractSpectra1D.start')
 
     ###########################################################################
     ##                                                                       ##
@@ -85,7 +80,7 @@ def start(configfile):
     logger.info('#                                                  #')
     logger.info('#        Start Extracting GNIRS 1D Spectra         #')
     logger.info('#                                                  #')
-    logger.info('####################################################')
+    logger.info('####################################################\n')
 
     # Set up/prepare IRAF.
     iraf.gemini()
@@ -118,16 +113,16 @@ def start(configfile):
     # Read general config.
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
-
     # config required for extracting 1D spectra
     observationSections = ['ScienceDirectories','TelluricDirectories']
     nsextractInter = config.getboolean('interactive','nsextractInter')
-    
+    calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
     # extract1Spectra1D specific config
-    useApall = config.getboolean('extract1Spectra1D','useApall')
-    extractionApertureRadius = config.getfloat('extract1Spectra1D','extractionApertureRadius')
-    extractStepwise = config.getboolean('extract1Spectra1D','extractStepwise')
-    extractionStepsize = config.getfloat('extract1Spectra1D','extractionStepsize')
+    useApall = config.getboolean('extractSpectra1D','useApall')
+    extractionApertureRadius = config.getfloat('extractSpectra1D','extractionApertureRadius')
+    toleranceOffset = config.getfloat('extractSpectra1D','toleranceOffset')
+    extractStepwise = config.getboolean('extractSpectra1D','extractStepwise')
+    extractionStepsize = config.getfloat('extractSpectra1D','extractionStepsize')
 
     ###########################################################################
     ##                                                                       ##
@@ -159,78 +154,42 @@ def start(configfile):
                 # Print the current directory of observations being reduced.
                 logger.info("Currently working on extracting 1D spectra in %s\n", obspath)
                 
-                allobsfilename = 'all.list'
-                allobslist = open(allobsfilename, "r").readlines()                                 
-                allobslist = [filename.strip() for filename in allobslist]
-                rawHeader = fits.open(allobslist[0])[0].header
-                srclistfilename = 'src.list'
-                srclist = open(srclistfilename, "r").readlines()
-                srclist = [filename.strip() for filename in srclist]
-                skylistfilename = 'sky.list'
-                skylist = open(skylistfilename, "r").readlines()
-                skylist = [filename.strip() for filename in skylist]
+                # Check if required combined spectra available in the observations directory path
+                logger.info("Checking if required combined spectra available in %s", obspath)
 
-                # Check if calibrations done in the calibrations directory path
-                logger.info("Checking if required calibrations available in %s", calpath)
-                
-                QHflatslist = open(calpath+'/QHflats.list', "r").readlines()
-                mdfshiftimage = calpath+'/n'+QHflatslist[0].strip()
-                logger.debug("%s", mdfshiftimage) 
-                if os.path.exists(mdfshiftimage):  ## Check for the reference image to calculate MDF
-                    logger.info("Reference image to calculate MDF information available.")
-                    calflag = True  ## calflag defined here
+                srccombimage = 'src_comb.fits'
+                if os.path.exists(srccombimage):
+                    logger.info("Required combined source image available.")
                 else:
-                    logger.warning("Reference image to calculate MDF information not available.")
-                    calflag = False  ## calflag defined here
-                
-                masterflat = calpath+'/masterflat.fits'
-                if os.path.exists(masterflat):  ## Check for the masterflat
-                    logger.info("Masterflat to apply flat field correction available.")
-                    calflag = calflag and True
-                else:
-                    logger.warning("Masterflat to apply flat field correction not available.")
-                    calflag = calflag and False
-                
-                databasepath = calpath+'/database'  
-                if os.path.exists(databasepath):  ## Check for /database directory (possibly) containing calibration files
-                    logger.info("Reference /database directory (possibly) containing calibration files available.")
-                    calflag = calflag and True
-                else:
-                    logger.warning("Reference /database directory (possibly) containing calibration files not available.")
-                    calflag = calflag and False
-                
-                sdistfiles = glob.glob(databasepath+'/*_sdist')
-                if not sdistfiles:  ## Check for spatial distortion correction calibration files
-                    logger.info("Reference files to apply spatial distortion correction not available in the /database ")
-                    logger.info("directory.")
-                    calflag = calflag and False
-                else:
-                    logger.warning("Reference files to apply spatial distortion correction available in the /database ")
-                    logger.warning("directory.")
-                    calflag = calflag and True
-                    sdistfileslength = len(sdistfiles)
-                
-                wavecallampfiles = glob.glob(databasepath+'/*_lamp')
-                if not wavecallampfiles:  ## Check for spectral transformation calibration files
-                    logger.info("Reference files to apply spectral transformation not available in the /database ")
-                    logger.info("directory.")
-                    calflag = calflag and False
-                else:
-                    logger.warning("Reference files to apply spectral transformation available in the /database ")
-                    logger.warning("directory.")
-                    calflag = calflag and True
-                    wavecallampfileslength = len(wavecallampfiles)
-                
-                logger.info("Calibrations check complete.")
-                if calflag:
-                    logger.info("All reference calibration files available in %s", calpath)
-                else:
-                    logger.warning("One or more reference calibration files not available in %s ", calpath + ". Please ")
-                    logger.warning("run gnirsBaselineCalibration.py to create the required calibration files or update ")
-                    logger.warning("them manually. Exiting script.")
+                    logger.warning("Required combined source image not available. Please run ")
+                    logger.warning("gnirsCombineSpectra2D.pyto create the combined source image or provide it ")
+                    logger.warning("manually. Exiting script.\n")
                     raise SystemExit
+                if calculateSpectrumSNR:
+                    skycombimage = obspath+'/sky_comb.fits'
+                    if os.path.exists(srccombimage):
+                        logger.info("Required combined sky image available.")
+                    else:
+                        logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required combined sky image ")
+                        logger.warning("not available. Setting the 'calculateSpectrumSNR' parameter for the current ")
+                        logger.warning("set of observations to 'False'.\n")
+                        calculateSpectrumSNR = False
+                
+                logger.info("Required combined spectra check complete.")
+                
 
-                combinedarc = 'arc_comb.fits'  ## The combined arc filename used in the calibrations directory path
+                if 'Telluric' in section:
+                    calpath = obspath+'/Calibrations'
+                    logger.debug("obspath: %s", obspath)
+                    logger.debug("calpath: %s", calpath)
+                
+
+
+                '''
+                # Make an extraction database directory in the observations directory path
+                extractdatabasepath = os.mkdir('/database')
+                # Print the extraction database directory path
+                logger.info("The path to the extraction database is %s\n", extractiondatabasepath)
                 
                 ###########################################################################
                 ##                                                                       ##
@@ -240,43 +199,30 @@ def start(configfile):
                 ###########################################################################
                     
                 if manualMode:
-                    a = raw_input("About to enter step 7: extract 1D spectra.")
+                    a = raw_input("About to enter extract 1D spectra.")
 
-                if kind == 'Telluric':
-                    allcomb = 'all_comb.fits'
+                if useApall:
+                    # This performs a weighted extraction
+                    apertureTracingColumns = 20
+                    extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
+                        extractionApertureRadius, extractdatabasepath, overwrite)
+                else:
+                    apertureTracingColumns = 10
+                    extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
+                        extractionApertureRadius, extractdatabasepath, overwrite)
+                # If the parameter 'calculateSpectrumSNR' is set to 'yes', the script will extract spectra from 
+                # the combined sky image; else, it will only extract spectra from the combined source image.
+                if calculateSpectrumSNR:
+                    logger.info("Extracting the combined sky spectrum reduced without sky subtraction.\n")
                     if useApall:
                         apertureTracingColumns = 20
-                        extract1Dspectra(allcomb, useApall, apertureTracingColumns, databasepath, \
-                            extractionApertureRadius, overwrite)
+                        extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
+                            extractionApertureRadius, extractdatabasepath, overwrite)
                     else:
                         apertureTracingColumns = 10
-                        extract1Dspectra(allcomb, useApall, apertureTracingColumns, databasepath, \
-                            extractionApertureRadius, overwrite)
-                if kind == 'Science':
-                    # For science frames, only the source combined spectrum is extracted unless the user has 
-                    # specified that the SNR spectrum is to be calculated in which case the sky combined spectrum 
-                    # will also be extracted.
-                    srccomb = 'src_comb.fits'
-                    if useApall:
-                        # This performs a weighted extraction
-                        apertureTracingColumns = 20
-                        extract1Dspectra(srccomb, useApall, apertureTracingColumns, databasepath, \
-                            extractionApertureRadius, overwrite)
-                        if calcSNRspectrum:
-                            logger.info("Extracting the combined sky spectrum reduced without sky subtraction.\n")
-                            skycomb = 'sky_comb.fits'
-                            extract1Dspectra(skycomb, useApall, apertureTracingColumns, databasepath, \
-                                extractionApertureRadius, overwrite)
-                    else:
-                        apertureTracingColumns = 10
-                        extract1Dspectra(srccomb, useApall, apertureTracingColumns, databasepath, \
-                            extractionApertureRadius, overwrite)
-                        if calcSNRspectrum:
-                            logger.info("Extracting the combined sky spectrum reduced without sky subtraction.\n")
-                            skycomb = 'sky_comb.fits'
-                            extract1Dspectra(skycomb, useApall, apertureTracingColumns, databasepath, \
-                                extractionApertureRadius, overwrite)
-
+                        extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
+                            extractionApertureRadius, extractdatabasepath, overwrite)
+                '''
             logger.info("##############################################################################")
             logger.info("#                                                                            #")
             logger.info("#  COMPLETE - Extracting 1D spectra completed for                            #")
@@ -293,7 +239,7 @@ def start(configfile):
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
 
-def extract1Dspectra(combinedimage, useApall, apertureTracingColumns, databasepath, extractionApertureRadius, overwrite):
+def extractSpectra1D(combinedimage, nsextractInter, useApall, apertureTracingColumns, extractionApertureRadius, extractdatabasepath, overwrite):
     """
     Extracting 1D spectra from the combined 2D spectra using nsextract.
     """
@@ -303,26 +249,93 @@ def extract1Dspectra(combinedimage, useApall, apertureTracingColumns, databasepa
         if overwrite:
             logger.warning("Removing old v%s", combinedimage)
             os.remove('v'+combinedimage)
-            iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, database=databasepath, \
-                line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
-                lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', \
-                fl_skylines='yes', fl_inter='no', fl_apall=useApall, fl_trace='no', \
-                aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', \
-                fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', \
-                tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, \
-                weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
+            iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, \
+                database=extractdatabasepath, line=700, nsum=apertureTracingColumns, ylevel='INDEF', \
+                upper=str(extractionApertureRadius), lower='-'+str(extractionApertureRadius), background='none', \
+                fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, \
+                fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', \
+                fl_project='yes', fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, \
+                tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, \
+                tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, \
+                verbose='yes', mode='al')
         else:
             logger.warning("Old %s exists and -overwrite not set - skipping nsextract for observations.", combinedimage)
     else:
-        iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, database=databasepath, \
+        iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, database=extractdatabasepath,\
             line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
             lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', \
-            fl_skylines='yes', fl_inter='no', fl_apall=useApall, fl_trace='no', aptable='gnirs$data/apertures.fits', \
-            fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', bgsample='*', trace='', tr_nsum=10,\
-            tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, \
-            tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, weights='variance', \
-            logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
+            fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, fl_trace='no', \
+            aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', \
+            fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', \
+            tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, \
+            weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
 
+#---------------------------------------------------------------------------------------------------------------------#
+'''
+def func():
+    if nsextinter== 'no':
+        std_peak = column_lookup('database/apstandard_comb_SCI_') 
+        tgt_peak = column_lookup('database/aptarget_comb_SCI_')
+        
+        posfile = open ('../LISTS/qoffsets.txt')
+        tgtq = float(posfile.readline())
+        stdq = float(posfile.readline())
+        obs = pyfits.open(target)
+        pixscale = obs[0].header["PIXSCALE"]
+        diff = (tgtq - stdq)/pixscale 
+        reExtract = False
+        found_spectrum = []
+        #nsextract should find spectrum within 'tolerance' pixels of expected location
+        #depends on how well the observer centred the target along the slit. 5 pix is an initial guess at what's reasonable.
+        #(rather than an offset, would be better to use some measure of whether the peak found by nsextract was real, e.g. counts + FWHM. Not recorded in database, though.)
+        tolerance = 5 
+        for i in range (0,6):
+            expected = '%s' % float('%.4g' % (std_peak[i] + diff))
+            if tgt_peak[i] == 'not found':
+                print 'In extension '+str(i+1)+' nscombine did not extract anything. Re-extracting with the aperture forced to be at '+expected
+                found_spectrum.append(0)
+                reExtract=True
+            else:    
+                found = '%s' % float('%.4g' % tgt_peak[i])
+                if abs((tgt_peak[i] - diff) - std_peak[i]) < tolerance:
+                    print '***CHECK: In extension '+str(i+1)+' nscombine detected the target spectrum close to the expected location along slit (x = '+found+' vs expected x = '+expected+')'
+                    found_spectrum.append(1)
+                else:
+                    print '***WARNING: In extension '+str(i+1)+' nscombine extracted an unexpected location along the slit (x = '+found+' vs expected x = '+expected+'). It is probably extracting noise; re-extracting with the aperture forced to be at the expected location.'
+                    found_spectrum.append(0)
+                    reExtract=True
+            
+        if reExtract:        
+            #Re-extract science target spectrum if needed
+            for i in range (0,6):
+                #create new aperture files in database   
+                #ran into trouble when only replacing ones that weren't well centred, so just replacing them all 
+                #(but using nsextract peak for target when it seemed to be in the right place)
+                if os.path.isfile('database/aptarget_comb_SCI_'+str(i+1)+'_'):
+                    os.remove ('database/aptarget_comb_SCI_'+str(i+1)+'_')
+                apfile = open ('database/apstandard_comb_SCI_'+str(i+1)+'_', 'r')
+                newapfile = open ('database/apnewstandard_comb_SCI_'+str(i+1)+'_', 'w')
+                if found_spectrum[i] == 0:
+                    clean  = apfile.read().replace(str(std_peak[i]), str(std_peak[i] + diff)+' ').replace('standard_comb','newstandard_comb')
+                else:
+                    clean  = apfile.read().replace(str(std_peak[i]), str(tgt_peak[i])+' ').replace('standard_comb','newstandard_comb')
+                newapfile.write(clean)
+                apfile.close()
+                newapfile.close()
+            shutil.copy(standard, 'new'+standard)
+            iraf.imdelete(images='v'+target)
+            #Using these settings in nsextract will force it to use the aperture size and centre in the edited "apnewstandard_comb" files
+            iraf.nsextract(inimages=target,outspectra='',outprefix='v',dispaxis=1,database='',line=700,nsum=20,ylevel='INDEF',upper=aperture_plus,lower=aperture_minus,background='none',fl_vardq='yes',fl_addvar='no',fl_skylines='yes',fl_inter=nsextinter,fl_apall='yes',fl_trace='no',aptable=path_to_nsextract+'config/apertures.fits',fl_usetabap='no',fl_flipped='yes',fl_project='yes',fl_findneg='no',bgsample='*',trace='newstandard_comb',tr_nsum=10,tr_step=10,tr_nlost=3,tr_function='legendre',tr_order=5,tr_sample='*',tr_naver=1,tr_niter=0,tr_lowrej=3.0,tr_highrej=3.0,tr_grow=0.0,weights='variance',logfile='',verbose='yes',mode='al')
+
+        #Slight complication - we occasionally find that nsextract locates the aperture too close to the end of the slit
+        #Then it exits with an "Aperture too large" error and spectra aren't extracted for one or more extensions
+        #But we work around that above, so when we check for errors in XDpiped.csh, we ignore this error
+        #But maybe that error can happen for other reasons
+        #So to be on the safe side, will check that all extensions are present in the extracted target file (should really add other files as well...)
+        check_extn = iraf.gemextn(inimages=target,check='exists,mef',process='expand',index='',extname='SCI',extversion='',ikparams='',omit='',replace='',outfile='STDOUT',logfile='',Stdout=1,glogpars='',verbose='no',fail_count='0', count='20', status='0')
+        if len(check_extn) != 6:
+            print "ERROR: target_comb file contains only ", len(check_extn), 'extensions. Exiting script.'
+'''
 #---------------------------------------------------------------------------------------------------------------------#
 
 if __name__ == '__main__':

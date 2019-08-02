@@ -113,10 +113,10 @@ def start(configfile):
     # Read general config.
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
-    
     # config required for combining 2D spectra
     observationSections = ['ScienceDirectories','TelluricDirectories']
     nscombineInter = config.getboolean('interactive','nscombineInter')
+    calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
 
     ###########################################################################
     ##                                                                       ##
@@ -149,7 +149,19 @@ def start(configfile):
                 logger.info("Currently working on combining 2D spectra in %s\n", obspath)           
 
                 srclistfilename = 'src.list'
-                skylistfilename = 'sky.list'
+                srclist = open(srclistfilename, "r").readlines()
+                srclist = [filename.strip() for filename in srclist]
+                if calculateSpectrumSNR:
+                    # Check if there is a list of sky images in obspath
+                    skylistfilename = 'sky.list'
+                    if os.path.exists(skylistfilename):
+                        skylist = open(skylistfilename, "r").readlines()
+                        skylist = [filename.strip() for filename in skylist]
+                    else:
+                        logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but a list of sky images not ")
+                        logger.warning("available in %s . Setting the 'calculateSpectrumSNR' parameter for ", obspath)
+                        logger.warning("the current set of observations to 'False'.\n")
+                        calculateSpectrumSNR = False
                 nodAlistfilename = 'nodA.list'
                 nodAlist = open(nodAlistfilename, "r").readlines()
                 nodAlist = [filename.strip() for filename in nodAlist]
@@ -163,19 +175,19 @@ def start(configfile):
                 reduce_outputPrefix = 'r'
                 srccomblist = sorted(glob.glob('ttf'+reduce_outputPrefix+'lnN*.fits'))
                 if not srccomblist:  ## Check for spectral transformation calibration files
-                    logger.warning("Required 2D source spectra for combining not available.")
+                    logger.warning("Required 2D source spectra not available.")
                 else:
-                    logger.info("Required 2D spectra for combining available.")
+                    logger.info("Required 2D spectra available.")
                 if calculateSpectrumSNR:
                     reduce_outputPrefix = 'k'
                     skycomblist = sorted(glob.glob('ttf'+reduce_outputPrefix+'lnN*.fits'))
                     if not skycomblist:  ## Check for spectral transformation calibration files
-                        logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required 2D sky spectra for ")
-                        logger.warning("combining not available. Setting the 'calculateSpectrumSNR' parameter for ")
-                        logger.warning("the current set of observations to 'False'.\n")
+                        logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required 2D sky spectra not ")
+                        logger.warning("available. Setting the 'calculateSpectrumSNR' parameter for the current set ")
+                        logger.warning("of observations to 'False'.\n")
                         calculateSpectrumSNR = False
                     else:
-                        logger.info("Required 2D sky spectra for combining available.\n")
+                        logger.info("Required 2D sky spectra available.\n")
                 
                 logger.info("Required 2D spectra check complete.")
                 
@@ -192,34 +204,34 @@ def start(configfile):
                 reduce_outPrefix = 'r'
                 srccombimage = 'src_comb.fits'
                 crossCorrelation = 'yes'
-                combineSpectra2D(srccomblistfilename, reduce_outputPrefix, combinedimage, crossCorrelation, overwrite)
+                combineSpectra2D(srclistfilename, srclist, nscombineInter, reduce_outputPrefix, srccombimage, \
+                    crossCorrelation, overwrite)
                 shiftsMatch_flag = shiftsMatch(nodAlist, nodBlist, srccombimage)
                 if not shiftsMatch_flag:
                     crossCorrelation = 'no'
-                    combineSpectra2D(srccomblistfilename, reduce_outputPrefix, combinedimage, crossCorrelation, \
-                        overwrite)
+                    combineSpectra2D(srclistfilename, srclist, nscombineInter, reduce_outputPrefix, srccombimage, \
+                        crossCorrelation, overwrite)
                     shiftsMatch_flag = shiftsMatch(nodAlist, nodBlist, srccombimage)
                     if not shiftsMatch_flag:
                         logger.warning("Shifts calculated by nscombine with fl_cross='%s' not ", crossCorrelation)
                         logger.warning("within the acceptable range. The script already tried using nscombine with ")
-                        logger.warning("fl_cross='%s'. This looks like the nscombine bug.\n", crossCorrelation)
+                        logger.warning("fl_cross='yes'. This looks like the nscombine bug issue.\n")
                     else:
                         logger.info("Shifts calculated by nscombine with fl_cross='%s' within the ", crossCorrelation)
                         logger.info("acceptable range.\n")
                 else:
                     logger.info("Combining 2D spectra using nscombine with fl_cross='%s' worked.\n", crossCorrelation)
                     
-                # If the parameter 'calculateSpectrumSNR' is set to 'yes' in the configuration file, the script will
-                # combine the all observations reduced without sky subtraction that have reduce_outputPrefix is 'k'; 
-                # else, all observations reduced with sky subtraction only (with the reduce_outputPrefix 'r') will be 
-                # combined.
+                # If the parameter 'calculateSpectrumSNR' is set to 'yes', the script will combine all observations 
+                # reduced without sky subtraction (having reduce_outputPrefix 'k'); else, all observations reduced 
+                # with sky subtraction only (having reduce_outputPrefix 'r') will be combined.
                 if calculateSpectrumSNR:
                     logger.info("Combining the sky observations reduced without sky subtraction.\n")
                     reduce_outputPrefix = 'k'
                     skycombimage = 'sky_comb.fits'
-                    crossCorrelation = 'yes'
-                    combineSpectra2D(skycomblistfilesname, reduce_outputPrefix, combinedimage, crossCorrelation, \
-                        overwrite)
+                    crossCorrelation = 'no'
+                    combineSpectra2D(skylistfilesname, skylist, nscombineInter, reduce_outputPrefix, skycombimage, \
+                        crossCorrelation, overwrite)
             
             logger.info("##############################################################################")
             logger.info("#                                                                            #")
@@ -237,35 +249,36 @@ def start(configfile):
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
 
-def combineSpectra2D(combinlist, reduce_outputPrefix, combinedimage, crossCorrelation, overwrite):
+def combineSpectra2D(combinlistfilename, combinlist, nscombineInter, reduce_outputPrefix, combinedimage, crossCorrelation, overwrite):
     """
     Combining the transformed science or telluric frames.
     """
     logger = log.getLogger('gnirsReduce.combineSpectra2D')
-    
+
     if os.path.exists(combinedimage):
         if overwrite:
             logger.warning("Removing old %s\n", combinedimage)
             os.remove(combinedimage)
-            iraf.nscombine(inimages='ttf'+reduce_outputPrefix+'ln//@'+combinlist, tolerance=0.5, output=combinedimage,\
-                output_suffix='', bpm="", dispaxis=1, pixscale=1., fl_cross=crossCorrelation, fl_keepshift='no', \
-                fl_shiftint='yes', interptype="linear", boundary="nearest", constant=0., combtype="average", \
-                rejtype="none", masktype="none", maskvalue=0., statsec="[*,*]", scale="none",zero="none", \
-                weight="none", lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, mclip='yes', \
-                lsigma=5., hsigma=5., ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, \
-                nrejfile='', fl_vardq='yes', fl_inter='no', logfile=logger.root.handlers[0].baseFilename, \
-                verbose='yes', debug='no', force='no')
+            iraf.nscombine(inimages='ttf'+reduce_outputPrefix+'ln//@'+combinlistfilename, tolerance=0.5, \
+                output=combinedimage, output_suffix='', bpm="", dispaxis=1, pixscale=1., fl_cross=crossCorrelation, \
+                fl_keepshift='no', fl_shiftint='yes', interptype="linear", boundary="nearest", constant=0., \
+                combtype="average", rejtype="none", masktype="none", maskvalue=0., statsec="[*,*]", scale="none", \
+                zero="none", weight="none", lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, \
+                mclip='yes', lsigma=5., hsigma=5., ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, \
+                grow=0.0, nrejfile='', fl_vardq='yes', fl_inter=nscombineInter, \
+                logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
         else:
             logger.warning("Old %s exists and -overwrite not set - skipping nscombine for ", combinedimage)
-            logger.warning("observations in the input list %s.\n", combinlist)
+            logger.warning("observations in the input list %s.\n", combinlistfilename)
     else:
-        iraf.nscombine(inimages='ttf'+reduce_outputPrefix+'ln//@'+inlist, tolerance=0.5, output=combinedimage, \
-            output_suffix='', bpm="", dispaxis=1, pixscale=1., fl_cross=crossCorrelation, fl_keepshift='no', \
-            fl_shiftint='yes', interptype="linear", boundary="nearest", constant=0., combtype="average", \
-            rejtype="none", masktype="none", maskvalue=0., statsec="[*,*]", scale="none",zero="none", weight="none", \
-            lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=5., hsigma=5., \
-            ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', \
-            fl_inter='no', logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
+        iraf.nscombine(inimages='ttf'+reduce_outputPrefix+'ln//@'+combinlistfilename, tolerance=0.5, \
+            output=combinedimage, output_suffix='', bpm="", dispaxis=1, pixscale=1., fl_cross=crossCorrelation, \
+            fl_keepshift='no', fl_shiftint='yes', interptype="linear", boundary="nearest", constant=0., \
+            combtype="average", rejtype="none", masktype="none", maskvalue=0., statsec="[*,*]", scale="none", \
+            zero="none", weight="none", lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0, mclip='yes',\
+            lsigma=5., hsigma=5., ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', \
+            fl_vardq='yes', fl_inter=nscombineInter, logfile=logger.root.handlers[0].baseFilename, verbose='yes', \
+            debug='no', force='no')
 
 #---------------------------------------------------------------------------------------------------------------------#
 
@@ -279,8 +292,12 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage):
     frames. For science frames, XDGNIRS checks whether the shifts used by nscombine with fl_cross='yes' were 
     reasonable; else, it runs nscombine with fl_cross = 'no'.
     """
-    logger = log.getLogger('gnirsReduce.checkShifts')
+    logger = log.getLogger('gnirsReduce.matchShifts')
 
+    # TODO(Viraja):  Currently, the nod Q offsets are only calculated for the first set of images in the different nod
+    # lists. This assumes that the Q offsets for the remaining set of images in the lists give the same nod value. A 
+    # robust way of doing this will be calculating the shifts between every two consecutive image sets from the nod 
+    # lists and checking if the shift is within the acceptable range; and warn the user if it is not.
     nodAheader = fits.open(nodAlist[0])[0].header
     nodBheader = fits.open(nodBlist[0])[0].header
     nodQoffset = abs(nodAheader['QOFFSET'] - nodBheader['QOFFSET'])
@@ -288,7 +305,7 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage):
         pixelscale = 0.05
     else:
         pixelscale = 0.15
-    nodQpixels = - nodQoffset/pixelscale
+    nodQpixels = nodQoffset/pixelscale
 
     shifts = iraf.hselect(images=combinedimage+'[0]', fields='NSCHLX*', expr='yes', missing='INDEF', Stdout=1)
     shifts = [shift.replace('\t', ',') for shift in shifts]
@@ -296,14 +313,14 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage):
     shiftsMatch_flag = True
     for shift in shifts[0].split(','):
         if shift != '0.00' and abs(float(shift) - nodQpixels) > 1.5:
-            logger.warning("Shift of %s ", shift + "pixels in %s ", combinedimage + "(NSCHLX* keyword) does not ")
-            logger.warning("match the expected value of %s ", nodpix + "pixels. Likely, the target was not bright ")
+            logger.warning("Shift of %s pixels in %s (NSCHLX* keyword) does not ", shift, combinedimage)
+            logger.warning("match the expected value of %s pixels. Likely, the target was not bright ", nodQpixels)
             logger.warning("enough to use nscombine with fl_cross='yes'. Rerunning nscombine with fl_cross='no'.\n")
             shiftsMatch_flag = shiftsMatch_flag and False
             break
         else:
-            logger.info("Shift of %s ", shift + "pixels in %s ", combinedimage + "(NSCHLX* keyword) is 0.0 or close ")
-            logger.info("to the expected value of %s ", nodpixels, "pixels.")
+            logger.info("Shift of %s pixels in %s (NSCHLX* keyword) is 0.0 or close ", shift, combinedimage)
+            logger.info("to the expected value of %s pixels.", nodQpixels)
             shiftsMatch_flag = shiftsMatch_flag and True
             continue
     
