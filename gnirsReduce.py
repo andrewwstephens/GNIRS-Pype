@@ -176,15 +176,16 @@ def start(kind, configfile):
             # Print the current directory of observations being reduced.
             logger.info("Currently working on reductions in %s\n", obspath)
             
+            # TODO(Viraja)?:  If kind is 'Telluric', check if /Calibrations directory exists in the observations path
             if kind == 'Science':
-                tempObspath = obspath.split(os.sep)            
+                tempObspath = obspath.split(os.sep)        
                 calpath = "/".join(tempObspath[:-1])+'/Calibrations'
             else:
                 calpath = obspath+'/Calibrations'
             # Print the directory from which reduced calibratios are being used.
             logger.info("The path to the calibrations is %s\n", calpath)
             
-            # TODO(Viraja):  Define a function to extract the lists by specifying their filenames
+            # TODO(Viraja)?:  Define a function to extract the lists by specifying their filenames
             allobsfilename = 'all.list'  
             allobslist = open(allobsfilename, "r").readlines()                                 
             allobslist = [filename.strip() for filename in allobslist]
@@ -210,56 +211,56 @@ def start(kind, configfile):
             # Check if calibrations available in the calibrations directory path
             logger.info("Checking if required calibrations available in %s\n", calpath)
             
+            # Check for the reference image to calculate MDF
             QHflatslist = open(calpath+'/QHflats.list', "r").readlines()
             mdfshiftimage = calpath+'/n'+QHflatslist[0].strip()
-            logger.debug("%s", mdfshiftimage) 
-            if os.path.exists(mdfshiftimage):  ## Check for the reference image to calculate MDF
+            if os.path.exists(mdfshiftimage):
                 logger.info("Reference image to calculate MDF information available.")
-                calflag = True  ## calflag defined here
+                calCheck_flag = True  ## calCheck_flag defined here
             else:
                 logger.warning("Reference image to calculate MDF information not available.")
-                calflag = False  ## calflag defined here
-            
+                calCheck_flag = False  ## calCheck_flag defined here
+            # Check for the masterflat
             masterflat = calpath+'/masterflat.fits'
-            if os.path.exists(masterflat):  ## Check for the masterflat
+            if os.path.exists(masterflat):  
                 logger.info("Masterflat to apply flat field correction available.")
-                calflag = calflag and True
+                calCheck_flag = calCheck_flag and True
             else:
                 logger.warning("Masterflat to apply flat field correction not available.")
-                calflag = calflag and False
-            
+                calCheck_flag = calCheck_flag and False
+            # Check for /database directory (possibly) containing calibration files
             databasepath = calpath+'/database'  
-            if os.path.exists(databasepath):  ## Check for /database directory (possibly) containing calibration files
+            if os.path.exists(databasepath):  
                 logger.info("Reference /database directory (possibly) containing calibration files available.")
-                calflag = calflag and True
+                calCheck_flag = calCheck_flag and True
             else:
                 logger.warning("Reference /database directory (possibly) containing calibration files not available.")
-                calflag = calflag and False
-            
+                calCheck_flag = calCheck_flag and False
+            # Check for spatial distortion correction calibration files
             sdistfiles = glob.glob(databasepath+'/*_sdist')
-            if not sdistfiles:  ## Check for spatial distortion correction calibration files
+            if not sdistfiles:  
                 logger.warning("Reference files to apply spatial distortion correction not available in the ")
                 logger.warning("/database directory.")
-                calflag = calflag and False
+                calCheck_flag = calCheck_flag and False
             else:
                 logger.info("Reference files to apply spatial distortion correction available in the /database ")
                 logger.info("directory.")
-                calflag = calflag and True
                 sdistfileslength = len(sdistfiles)
-            
+                calCheck_flag = calCheck_flag and True
+            # Check for spectral transformation calibration files
             wavecallampfiles = glob.glob(databasepath+'/*_lamp')
-            if not wavecallampfiles:  ## Check for spectral transformation calibration files
+            if not wavecallampfiles:  
                 logger.warning("Reference files to apply spectral transformation not available in the /database ")
                 logger.warning("directory.\n")
-                calflag = calflag and False
+                calCheck_flag = calCheck_flag and False
             else:
                 logger.info("Reference files to apply spectral transformation available in the /database ")
                 logger.info("directory.\n")
-                calflag = calflag and True
                 wavecallampfileslength = len(wavecallampfiles)
+                calCheck_flag = calCheck_flag and True
             
             logger.info("Calibrations check complete.\n")
-            if calflag:
+            if calCheck_flag:
                 logger.info("All reference calibration files available in %s\n", calpath)
             else:
                 logger.warning("One or more reference calibration files not available in %s ", calpath + ". Please ")

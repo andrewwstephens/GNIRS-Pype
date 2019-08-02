@@ -114,7 +114,8 @@ def start(configfile):
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
     # config required for extracting 1D spectra
-    observationSections = ['ScienceDirectories','TelluricDirectories']
+    observationSections = ['TelluricDirectories','ScienceDirectories']
+    # Above order of sections is important to later check for plausible peaks located for science targets by nsextract
     nsextractInter = config.getboolean('interactive','nsextractInter')
     calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
     # extract1Spectra1D specific config
@@ -177,20 +178,66 @@ def start(configfile):
                 
                 logger.info("Required combined spectra check complete.")
                 
+                # TODO(Viraja)?:  If 'Science' in section, check if /Tel_* directory exists in the observations path
+                if 'Science' in section:
+                    # Check if nsextractInter is set: if no, check if checkPeaksMatch is set: if yes, check if the
+                    # required telluric extraction reference files available in the telluric /database directory; else, 
+                    # warn the user that both nsextractInter and checkPeaksMatch are not set, request the user to 
+                    # manually check if the science target peak identified by task nsextract might 
+                    # identify a wrong peak if the science target is not bright enough. 
+                    if nsextractInter:
+                        pass
+                    else:  ## conditions if nsextract is not run interactively
+                        if checkPeaksMatch:
+                            # Check if the paths to the telluric /database direcory and the telluric extraction reference 
+                            # files therein exist
+                            logger.info("Checking if the required telluric extraction reference files available.")
 
-                if 'Telluric' in section:
-                    calpath = obspath+'/Calibrations'
-                    logger.debug("obspath: %s", obspath)
-                    logger.debug("calpath: %s", calpath)
-                
+                            # TODO(Viraja):  Check with Andy if there is a better way of getting the absolute path to
+                            # the telluric directory
+                            telpath = (glob.glob(obspath+'/Tel_*')).pop()
+                            # Print the telluric directory path
+                            logger.info("The path to the telluric directory is %s\n", telpath)
+                            # Check for the telluric /database directory in the current science observation directory
+                            teldatabasepath = telpath+'/database'
+                            if os.path.exists(teldatabasepath):  
+                                logger.info("Telluric /database directory (possibly) containing telluric extraction ")
+                                logger.info("reference files available.")
+                                telCheck_flag = True
+                            else:
+                                logger.warning("Telluric /database directory (possibly) containing telluric ")
+                                logger.warning("extraction reference files not available.")
+                                telCheck_flag = False
+                            # Check for telluric extraction aperture reference files
+                            telapfiles = glob.glob(teldatabasepath+'/ap*')
+                            if not telapfiles:
+                                logger.warning("Reference files containing telluric extraction aperture details not ")
+                                logger.warning("available in the telluric /database directory.")
+                                telCheck_flag = telCheck_flag and False
+                            else:
+                                logger.info("Reference files containing telluric extraction aperture details ")
+                                logger.info("available in the telluric /database directory.")
+                                telapfileslength = len(telapfiles)
+                                telCheck_flag = telCheck_flag and True
 
+                            logger.info("Required telluric extraction reference files check complete.\n")
+                            
+                            if telCheck_flag:
+                                logger.info("All telluric extraction reference files available in %s\n", teldatabasepath)
+                            else:
+                                logger.warning("Parameter 'checkPeakMatch' is set to 'True', but one or more ")
+                                logger.warning("telluric extraction reference files not available in ")
+                                logger.warning("%s . Setting 'checkPeaksMatch' to 'False'.\n", teldatabasepath)
+                                checkPeaksMatch = False
+                                # TODO(Viraja):  Can ask the user if they want to perform checkPeaksMatch and set it at 
+                                # this point. This would probably need the checks to be called as a function because the 
+                                # script must check for the required telluric extraction reference files once the 
+                                # parameter 'checkPeaksMatch' is set to 'True'.
+                        else:
+                            logger.warning("Parameters 'nsextractInter' and 'checkPeaksMatch' both set to 'False'. ")
+                            logger.warning("After the science spectra extraction, please check manually if nsextract ")
+                            logger.warning("identified the science peaks at expected locations.\n")
 
-                '''
-                # Make an extraction database directory in the observations directory path
-                extractdatabasepath = os.mkdir('/database')
-                # Print the extraction database directory path
-                logger.info("The path to the extraction database is %s\n", extractiondatabasepath)
-                
                 ###########################################################################
                 ##                                                                       ##
                 ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
@@ -222,7 +269,18 @@ def start(configfile):
                         apertureTracingColumns = 10
                         extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
                             extractionApertureRadius, extractdatabasepath, overwrite)
-                '''
+                
+                if not nsextractInter:
+                    if peaksMatch:
+                        logger.info("Finding palusible aperture peak locations used by nsextract.")
+                        telpeaks = peaksFind(teldatabasepath, telapfileslength, telcombfilename) 
+                        scipeaks = peaksFind(scidatabasepath, sciapfileslength, scicombfilename)
+                        logger.info("Completed finding palusible aperture peak locations used by nsextract.")
+
+                        peaksMatch
+
+
+
             logger.info("##############################################################################")
             logger.info("#                                                                            #")
             logger.info("#  COMPLETE - Extracting 1D spectra completed for                            #")
@@ -271,71 +329,106 @@ def extractSpectra1D(combinedimage, nsextractInter, useApall, apertureTracingCol
             weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
 
 #---------------------------------------------------------------------------------------------------------------------#
-'''
-def func():
-    if nsextinter== 'no':
-        std_peak = column_lookup('database/apstandard_comb_SCI_') 
-        tgt_peak = column_lookup('database/aptarget_comb_SCI_')
-        
-        posfile = open ('../LISTS/qoffsets.txt')
-        tgtq = float(posfile.readline())
-        stdq = float(posfile.readline())
-        obs = pyfits.open(target)
-        pixscale = obs[0].header["PIXSCALE"]
-        diff = (tgtq - stdq)/pixscale 
-        reExtract = False
-        found_spectrum = []
-        #nsextract should find spectrum within 'tolerance' pixels of expected location
-        #depends on how well the observer centred the target along the slit. 5 pix is an initial guess at what's reasonable.
-        #(rather than an offset, would be better to use some measure of whether the peak found by nsextract was real, e.g. counts + FWHM. Not recorded in database, though.)
-        tolerance = 5 
-        for i in range (0,6):
-            expected = '%s' % float('%.4g' % (std_peak[i] + diff))
-            if tgt_peak[i] == 'not found':
-                print 'In extension '+str(i+1)+' nscombine did not extract anything. Re-extracting with the aperture forced to be at '+expected
+
+def peaksFind(databasepath, apfileslength, combinedimage):
+    """
+    Check the telluric or science extraction reference files in the telluric directory databases to find the location 
+    of the respective peaks.
+    """
+    logger = log.getLogger('gnirsReduce.peaksFind')
+
+    peakLocations = []
+    for i in range(apfileslength):
+        apfile = open(databasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(i)+'_', 'r') 
+        for line in apfile:
+            # Get the peak location, which is the number in the second column of the line beginning with 'center'
+            if 'center' in line:
+                peak.append(float(line.split()[1]))
+            else:
+                peak.append('Peak not found')
+    return peakLocations
+
+def peaksMatch(sciapfileslength, scisrccomb, telsrccomb, toleranceOffset):
+    """
+    Checks is NSEXTRACT located the peak of the science at a resonable location along the slit given the aperture
+    center of extraction of the telluric.
+
+    For faint targets, NSEXTRACT often finds a noise peak instead of the science peak. In such cases, it is advisable  
+    to check the aperture center of extraction of the science with respect to the telluricre and re-extract at the 
+    expected location. Sometimes the peak is so close to the end of the slit that the extraction fails with an 
+    "aperture too large error"). So here,
+        First, check that all the extensions of the combined 2D image have been extracted.
+        Third, look the science and telluric absolute Q offsets and determine if the relative location of the target 
+        peak was correct.
+    If not, re-extract at the expected location.
+    """
+    logger = log.getLogger('gnirsReduce.peaksMatch')
+    
+    # Find absolute Q offsets of the combined science and telluric images from their respective last acquisition images
+    sciacqheader = fits.open(sciacq)[0].header
+    scisrccombheader = fits.open(scisrccomb)[0].header
+    scisrccombQoffset = abs(sciacqheader['QOFFSET'] - scisrccombheader['QOFFSET'])
+
+    telacqheader = fits.open(telacq)[0].header
+    telsrccombheader = fits.open(telsrccomb)[0].header
+    telsrccombQoffset = abs(telacqheader['QOFFSET'] - telsrccombheader['QOFFSET'])
+
+    pixelscale = scisrccombheader['PIXSCALE']
+    pixeldifference = (scisrccombQoffset - telsrccombQoffset)/pixelscale 
+    reExtract = False
+    found_spectrum = []
+    # nsextract should find the spectrum within a 'tolerance' pixels of expected location. This depends on how well the 
+    # observer centred the target along the slit. Here, we use 5 pixels as a reasonable tolerance level. A more robust
+    # way would be to use some measure of whether the peak found by nsextract was real, e.g. counts + FWHM. However, 
+    # this information is not recorded in database.
+    for i in range(sciapfileslength):
+        expected = '%s' % float('%.4g' % (std_peak[i] + diff))
+        if tgt_peak[i] == 'not found':
+            print 'In extension '+str(i+1)+' nscombine did not extract anything. Re-extracting with the aperture forced to be at '+expected
+            found_spectrum.append(0)
+            reExtract=True
+        else:    
+            found = '%s' % float('%.4g' % tgt_peak[i])
+            if abs((tgt_peak[i] - diff) - std_peak[i]) < tolerance:
+                print '***CHECK: In extension '+str(i+1)+' nscombine detected the target spectrum close to the expected location along slit (x = '+found+' vs expected x = '+expected+')'
+                found_spectrum.append(1)
+            else:
+                print '***WARNING: In extension '+str(i+1)+' nscombine extracted an unexpected location along the slit (x = '+found+' vs expected x = '+expected+'). It is probably extracting noise; re-extracting with the aperture forced to be at the expected location.'
                 found_spectrum.append(0)
                 reExtract=True
-            else:    
-                found = '%s' % float('%.4g' % tgt_peak[i])
-                if abs((tgt_peak[i] - diff) - std_peak[i]) < tolerance:
-                    print '***CHECK: In extension '+str(i+1)+' nscombine detected the target spectrum close to the expected location along slit (x = '+found+' vs expected x = '+expected+')'
-                    found_spectrum.append(1)
-                else:
-                    print '***WARNING: In extension '+str(i+1)+' nscombine extracted an unexpected location along the slit (x = '+found+' vs expected x = '+expected+'). It is probably extracting noise; re-extracting with the aperture forced to be at the expected location.'
-                    found_spectrum.append(0)
-                    reExtract=True
-            
-        if reExtract:        
-            #Re-extract science target spectrum if needed
-            for i in range (0,6):
-                #create new aperture files in database   
-                #ran into trouble when only replacing ones that weren't well centred, so just replacing them all 
-                #(but using nsextract peak for target when it seemed to be in the right place)
-                if os.path.isfile('database/aptarget_comb_SCI_'+str(i+1)+'_'):
-                    os.remove ('database/aptarget_comb_SCI_'+str(i+1)+'_')
-                apfile = open ('database/apstandard_comb_SCI_'+str(i+1)+'_', 'r')
-                newapfile = open ('database/apnewstandard_comb_SCI_'+str(i+1)+'_', 'w')
-                if found_spectrum[i] == 0:
-                    clean  = apfile.read().replace(str(std_peak[i]), str(std_peak[i] + diff)+' ').replace('standard_comb','newstandard_comb')
-                else:
-                    clean  = apfile.read().replace(str(std_peak[i]), str(tgt_peak[i])+' ').replace('standard_comb','newstandard_comb')
-                newapfile.write(clean)
-                apfile.close()
-                newapfile.close()
-            shutil.copy(standard, 'new'+standard)
-            iraf.imdelete(images='v'+target)
-            #Using these settings in nsextract will force it to use the aperture size and centre in the edited "apnewstandard_comb" files
-            iraf.nsextract(inimages=target,outspectra='',outprefix='v',dispaxis=1,database='',line=700,nsum=20,ylevel='INDEF',upper=aperture_plus,lower=aperture_minus,background='none',fl_vardq='yes',fl_addvar='no',fl_skylines='yes',fl_inter=nsextinter,fl_apall='yes',fl_trace='no',aptable=path_to_nsextract+'config/apertures.fits',fl_usetabap='no',fl_flipped='yes',fl_project='yes',fl_findneg='no',bgsample='*',trace='newstandard_comb',tr_nsum=10,tr_step=10,tr_nlost=3,tr_function='legendre',tr_order=5,tr_sample='*',tr_naver=1,tr_niter=0,tr_lowrej=3.0,tr_highrej=3.0,tr_grow=0.0,weights='variance',logfile='',verbose='yes',mode='al')
 
-        #Slight complication - we occasionally find that nsextract locates the aperture too close to the end of the slit
-        #Then it exits with an "Aperture too large" error and spectra aren't extracted for one or more extensions
-        #But we work around that above, so when we check for errors in XDpiped.csh, we ignore this error
-        #But maybe that error can happen for other reasons
-        #So to be on the safe side, will check that all extensions are present in the extracted target file (should really add other files as well...)
-        check_extn = iraf.gemextn(inimages=target,check='exists,mef',process='expand',index='',extname='SCI',extversion='',ikparams='',omit='',replace='',outfile='STDOUT',logfile='',Stdout=1,glogpars='',verbose='no',fail_count='0', count='20', status='0')
-        if len(check_extn) != 6:
-            print "ERROR: target_comb file contains only ", len(check_extn), 'extensions. Exiting script.'
-'''
+        
+    if reExtract:        
+        #Re-extract science target spectrum if needed
+        for i in range (0,6):
+            #create new aperture files in database   
+            #ran into trouble when only replacing ones that weren't well centred, so just replacing them all 
+            #(but using nsextract peak for target when it seemed to be in the right place)
+            if os.path.isfile('database/aptarget_comb_SCI_'+str(i+1)+'_'):
+                os.remove ('database/aptarget_comb_SCI_'+str(i+1)+'_')
+            apfile = open ('database/apstandard_comb_SCI_'+str(i+1)+'_', 'r')
+            newapfile = open ('database/apnewstandard_comb_SCI_'+str(i+1)+'_', 'w')
+            if found_spectrum[i] == 0:
+                clean  = apfile.read().replace(str(std_peak[i]), str(std_peak[i] + diff)+' ').replace('standard_comb','newstandard_comb')
+            else:
+                clean  = apfile.read().replace(str(std_peak[i]), str(tgt_peak[i])+' ').replace('standard_comb','newstandard_comb')
+            newapfile.write(clean)
+            apfile.close()
+            newapfile.close()
+        shutil.copy(standard, 'new'+standard)
+        iraf.imdelete(images='v'+target)
+        #Using these settings in nsextract will force it to use the aperture size and centre in the edited "apnewstandard_comb" files
+        iraf.nsextract(inimages=target,outspectra='',outprefix='v',dispaxis=1,database='',line=700,nsum=20,ylevel='INDEF',upper=aperture_plus,lower=aperture_minus,background='none',fl_vardq='yes',fl_addvar='no',fl_skylines='yes',fl_inter=nsextinter,fl_apall='yes',fl_trace='no',aptable=path_to_nsextract+'config/apertures.fits',fl_usetabap='no',fl_flipped='yes',fl_project='yes',fl_findneg='no',bgsample='*',trace='newstandard_comb',tr_nsum=10,tr_step=10,tr_nlost=3,tr_function='legendre',tr_order=5,tr_sample='*',tr_naver=1,tr_niter=0,tr_lowrej=3.0,tr_highrej=3.0,tr_grow=0.0,weights='variance',logfile='',verbose='yes',mode='al')
+
+    #Slight complication - we occasionally find that nsextract locates the aperture too close to the end of the slit
+    #Then it exits with an "Aperture too large" error and spectra aren't extracted for one or more extensions
+    #But we work around that above, so when we check for errors in XDpiped.csh, we ignore this error
+    #But maybe that error can happen for other reasons
+    #So to be on the safe side, will check that all extensions are present in the extracted target file (should really add other files as well...)
+    check_extn = iraf.gemextn(inimages=target,check='exists,mef',process='expand',index='',extname='SCI',extversion='',ikparams='',omit='',replace='',outfile='STDOUT',logfile='',Stdout=1,glogpars='',verbose='no',fail_count='0', count='20', status='0')
+    if len(check_extn) != 6:
+        print "ERROR: target_comb file contains only ", len(check_extn), 'extensions. Exiting script.'
+
 #---------------------------------------------------------------------------------------------------------------------#
 
 if __name__ == '__main__':
