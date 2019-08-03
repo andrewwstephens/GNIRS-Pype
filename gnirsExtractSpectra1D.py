@@ -252,11 +252,11 @@ def start(configfile):
                     # This performs a weighted extraction
                     apertureTracingColumns = 20
                     extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
-                        extractionApertureRadius, extractdatabasepath, overwrite)
+                        extractionApertureRadius, overwrite)
                 else:
                     apertureTracingColumns = 10
                     extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
-                        extractionApertureRadius, extractdatabasepath, overwrite)
+                        extractionApertureRadius, overwrite)
                 # If the parameter 'calculateSpectrumSNR' is set to 'yes', the script will extract spectra from 
                 # the combined sky image; else, it will only extract spectra from the combined source image.
                 if calculateSpectrumSNR:
@@ -264,20 +264,32 @@ def start(configfile):
                     if useApall:
                         apertureTracingColumns = 20
                         extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
-                            extractionApertureRadius, extractdatabasepath, overwrite)
+                            extractionApertureRadius, overwrite)
                     else:
                         apertureTracingColumns = 10
                         extractSpectra1D(srccombimage, nsextractInter, useApall, apertureTracingColumns, \
-                            extractionApertureRadius, extractdatabasepath, overwrite)
+                            extractionApertureRadius, overwrite)
                 
                 if not nsextractInter:
                     if peaksMatch:
-                        logger.info("Finding palusible aperture peak locations used by nsextract.")
+                        logger.info("Finding palusible peaks used by nsextract.")
                         telpeaks = peaksFind(teldatabasepath, telapfileslength, telcombfilename) 
                         scipeaks = peaksFind(scidatabasepath, sciapfileslength, scicombfilename)
-                        logger.info("Completed finding palusible aperture peak locations used by nsextract.")
+                        logger.info("Completed finding palusible peaks used by nsextract.")
 
                         peaksMatch
+
+
+
+                        #Re-extract science target spectrum if needed
+                        
+
+                Parameter 'extractionApertureRadius' is set to 23 pixels here (-/+ 23 pixels about the aperture covers the 6.9", almost whole length of slit),
+                apertureTracingColumns = 20
+                extractionApertureRadius = 23
+
+                Extraction in steps on either side of the peak
+	            # Setting fl_apall='yes' this time,
 
 
 
@@ -297,7 +309,7 @@ def start(configfile):
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
 
-def extractSpectra1D(combinedimage, nsextractInter, useApall, apertureTracingColumns, extractionApertureRadius, extractdatabasepath, overwrite):
+def extractSpectra1D(combinedimage, nsextractInter, useApall, apertureTracingColumns, extractionApertureRadius, overwrite):
     """
     Extracting 1D spectra from the combined 2D spectra using nsextract.
     """
@@ -308,7 +320,7 @@ def extractSpectra1D(combinedimage, nsextractInter, useApall, apertureTracingCol
             logger.warning("Removing old v%s", combinedimage)
             os.remove('v'+combinedimage)
             iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, \
-                database=extractdatabasepath, line=700, nsum=apertureTracingColumns, ylevel='INDEF', \
+                database='', line=700, nsum=apertureTracingColumns, ylevel='INDEF', \
                 upper=str(extractionApertureRadius), lower='-'+str(extractionApertureRadius), background='none', \
                 fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, \
                 fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', \
@@ -319,7 +331,7 @@ def extractSpectra1D(combinedimage, nsextractInter, useApall, apertureTracingCol
         else:
             logger.warning("Old %s exists and -overwrite not set - skipping nsextract for observations.", combinedimage)
     else:
-        iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, database=extractdatabasepath,\
+        iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='v', dispaxis=1, database='',\
             line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
             lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', \
             fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, fl_trace='no', \
@@ -337,26 +349,27 @@ def peaksFind(databasepath, apfileslength, combinedimage):
     """
     logger = log.getLogger('gnirsReduce.peaksFind')
 
-    peakLocations = []
+    peaks = []
     for i in range(apfileslength):
         apfile = open(databasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(i)+'_', 'r') 
         for line in apfile:
             # Get the peak location, which is the number in the second column of the line beginning with 'center'
             if 'center' in line:
-                peak.append(float(line.split()[1]))
+                peaks.append(line.split()[1])
             else:
-                peak.append('Peak not found')
-    return peakLocations
+                peaks.append('Peak not found')
+    return peaks
 
-def peaksMatch(sciapfileslength, scisrccomb, telsrccomb, toleranceOffset):
+#---------------------------------------------------------------------------------------------------------------------#
+
+def peaksMatch(scisrccomb, telsrccomb, scipeaks, telpeaks, toleranceOffset):
     """
     Checks is NSEXTRACT located the peak of the science at a resonable location along the slit given the aperture
     center of extraction of the telluric.
 
     For faint targets, NSEXTRACT often finds a noise peak instead of the science peak. In such cases, it is advisable  
     to check the aperture center of extraction of the science with respect to the telluricre and re-extract at the 
-    expected location. Sometimes the peak is so close to the end of the slit that the extraction fails with an 
-    "aperture too large error"). So here,
+    expected location. Here,
         First, check that all the extensions of the combined 2D image have been extracted.
         Third, look the science and telluric absolute Q offsets and determine if the relative location of the target 
         peak was correct.
@@ -365,60 +378,71 @@ def peaksMatch(sciapfileslength, scisrccomb, telsrccomb, toleranceOffset):
     logger = log.getLogger('gnirsReduce.peaksMatch')
     
     # Find absolute Q offsets of the combined science and telluric images from their respective last acquisition images
-    sciacqheader = fits.open(sciacq)[0].header
-    scisrccombheader = fits.open(scisrccomb)[0].header
-    scisrccombQoffset = abs(sciacqheader['QOFFSET'] - scisrccombheader['QOFFSET'])
+    sciacqHeader = fits.open(sciacq)[0].header
+    scisrccombHeader = fits.open(scisrccomb)[0].header
+    scisrccombQoffset = abs(sciacqHeader['QOFFSET'] - scisrccombHeader['QOFFSET'])
 
-    telacqheader = fits.open(telacq)[0].header
-    telsrccombheader = fits.open(telsrccomb)[0].header
-    telsrccombQoffset = abs(telacqheader['QOFFSET'] - telsrccombheader['QOFFSET'])
+    telacqHeader = fits.open(telacq)[0].header
+    telsrccombHeader = fits.open(telsrccomb)[0].header
+    telsrccombQoffset = abs(telacqHeader['QOFFSET'] - telsrccombHeader['QOFFSET'])
 
-    pixelscale = scisrccombheader['PIXSCALE']
-    pixeldifference = (scisrccombQoffset - telsrccombQoffset)/pixelscale 
-    reExtract = False
-    found_spectrum = []
+    pixelscale = scisrccombHeader['PIXSCALE']
+    pixeldifference = (scisrccombQoffset - telsrccombQoffset)/pixelscale  ## units: [pixels]
+    peaks_flag = []
     # nsextract should find the spectrum within a 'tolerance' pixels of expected location. This depends on how well the 
     # observer centred the target along the slit. Here, we use 5 pixels as a reasonable tolerance level. A more robust
     # way would be to use some measure of whether the peak found by nsextract was real, e.g. counts + FWHM. However, 
     # this information is not recorded in database.
-    for i in range(sciapfileslength):
-        expected = '%s' % float('%.4g' % (std_peak[i] + diff))
-        if tgt_peak[i] == 'not found':
-            print 'In extension '+str(i+1)+' nscombine did not extract anything. Re-extracting with the aperture forced to be at '+expected
-            found_spectrum.append(0)
-            reExtract=True
+    for i in range(len(scipeaks)):
+        expectedPeak = float(telpeaks[i]) + pixeldifference
+        if scipeaks[i] == 'Peak not found':
+            logger.warning("In extension %d for the science, nsextract did not extract anything. Re-extracting ", i)
+            logger.warning("the spectrum forcing the aperture to be at the expected peak location %.4g", expectedPeak)
+            peaks_flag.append(False)
         else:    
-            found = '%s' % float('%.4g' % tgt_peak[i])
-            if abs((tgt_peak[i] - diff) - std_peak[i]) < tolerance:
-                print '***CHECK: In extension '+str(i+1)+' nscombine detected the target spectrum close to the expected location along slit (x = '+found+' vs expected x = '+expected+')'
-                found_spectrum.append(1)
+            locatedPeak = float(scipeaks[i])
+            if abs(locatedPeak - expectedPeak) < toleranceOffset:
+                logging.info("In extension %d for the science, nsextract detected the spectrum close to the ", i)
+                logging.info("expected peak location along slit (located position = %s vs. expected ", locatedPeak)
+                logging.info("position = %s .", expectedPeak)
+                peaks_flag.append(True)
             else:
-                print '***WARNING: In extension '+str(i+1)+' nscombine extracted an unexpected location along the slit (x = '+found+' vs expected x = '+expected+'). It is probably extracting noise; re-extracting with the aperture forced to be at the expected location.'
-                found_spectrum.append(0)
+                logger.warning("In extension %d for the science, nsextract extracted an unexpected peak location ", i)
+                logger.warning("along the slit (located position = %s vs. expected position = ", locatedPeak)
+                logger.warning("%s . It is probably extracting noise; re-extracting the spectrum ", expectedPeak)
+                logger.warning("forcing the aperture to be at the expected peak location.'")
+                peaks_flag.append(False)
                 reExtract=True
+    return peaks_flag
 
-        
-    if reExtract:        
-        #Re-extract science target spectrum if needed
-        for i in range (0,6):
-            #create new aperture files in database   
-            #ran into trouble when only replacing ones that weren't well centred, so just replacing them all 
-            #(but using nsextract peak for target when it seemed to be in the right place)
-            if os.path.isfile('database/aptarget_comb_SCI_'+str(i+1)+'_'):
-                os.remove ('database/aptarget_comb_SCI_'+str(i+1)+'_')
-            apfile = open ('database/apstandard_comb_SCI_'+str(i+1)+'_', 'r')
-            newapfile = open ('database/apnewstandard_comb_SCI_'+str(i+1)+'_', 'w')
-            if found_spectrum[i] == 0:
-                clean  = apfile.read().replace(str(std_peak[i]), str(std_peak[i] + diff)+' ').replace('standard_comb','newstandard_comb')
-            else:
-                clean  = apfile.read().replace(str(std_peak[i]), str(tgt_peak[i])+' ').replace('standard_comb','newstandard_comb')
-            newapfile.write(clean)
-            apfile.close()
-            newapfile.close()
-        shutil.copy(standard, 'new'+standard)
-        iraf.imdelete(images='v'+target)
-        #Using these settings in nsextract will force it to use the aperture size and centre in the edited "apnewstandard_comb" files
-        iraf.nsextract(inimages=target,outspectra='',outprefix='v',dispaxis=1,database='',line=700,nsum=20,ylevel='INDEF',upper=aperture_plus,lower=aperture_minus,background='none',fl_vardq='yes',fl_addvar='no',fl_skylines='yes',fl_inter=nsextinter,fl_apall='yes',fl_trace='no',aptable=path_to_nsextract+'config/apertures.fits',fl_usetabap='no',fl_flipped='yes',fl_project='yes',fl_findneg='no',bgsample='*',trace='newstandard_comb',tr_nsum=10,tr_step=10,tr_nlost=3,tr_function='legendre',tr_order=5,tr_sample='*',tr_naver=1,tr_niter=0,tr_lowrej=3.0,tr_highrej=3.0,tr_grow=0.0,weights='variance',logfile='',verbose='yes',mode='al')
+#---------------------------------------------------------------------------------------------------------------------#
+
+def reExtractSpectra1D(scidatabasepath, teldatabasepath, combinedimage, peaks_flag):
+    """
+    """
+    logger = log.getLogger('gnirsReduce.reExtractSpectra1D')
+
+    for i in range(len(peaks_flag)):
+        logger.info("Creating new aperture files in database.")   
+        # There is some trouble replacing only the database files for the extracted spectra that were not well centred.
+        # So, simply replacing all science database files but using the ones for which nsextract located the peaks at 
+        # the right positions.
+        oldapfile = scidatabasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(i)+'_'
+        if os.path.exists(oldapfile):
+            os.remove(oldapfile)
+        apfile = open ('database/apstandard_comb_SCI_'+str(i+1)+'_', 'r')
+        newapfile = open ('database/apnewstandard_comb_SCI_'+str(i+1)+'_', 'w')
+        if found_spectrum[i] == 0:
+            clean  = apfile.read().replace(str(std_peak[i]), str(std_peak[i] + diff)+' ').replace('standard_comb','newstandard_comb')
+        else:
+            clean  = apfile.read().replace(str(std_peak[i]), str(tgt_peak[i])+' ').replace('standard_comb','newstandard_comb')
+        newapfile.write(clean)
+        apfile.close()
+        newapfile.close()
+    shutil.copy(standard, 'new'+standard)
+    iraf.imdelete(images='v'+target)
+    #Using these settings in nsextract will force it to use the aperture size and centre in the edited "apnewstandard_comb" files
+    iraf.nsextract(inimages=target,outspectra='',outprefix='v',dispaxis=1,database='',line=700,nsum=20,ylevel='INDEF',upper=aperture_plus,lower=aperture_minus,background='none',fl_vardq='yes',fl_addvar='no',fl_skylines='yes',fl_inter=nsextinter,fl_apall='yes',fl_trace='no',aptable=path_to_nsextract+'config/apertures.fits',fl_usetabap='no',fl_flipped='yes',fl_project='yes',fl_findneg='no',bgsample='*',trace='newstandard_comb',tr_nsum=10,tr_step=10,tr_nlost=3,tr_function='legendre',tr_order=5,tr_sample='*',tr_naver=1,tr_niter=0,tr_lowrej=3.0,tr_highrej=3.0,tr_grow=0.0,weights='variance',logfile='',verbose='yes',mode='al')
 
     #Slight complication - we occasionally find that nsextract locates the aperture too close to the end of the slit
     #Then it exits with an "Aperture too large" error and spectra aren't extracted for one or more extensions
@@ -428,6 +452,55 @@ def peaksMatch(sciapfileslength, scisrccomb, telsrccomb, toleranceOffset):
     check_extn = iraf.gemextn(inimages=target,check='exists,mef',process='expand',index='',extname='SCI',extversion='',ikparams='',omit='',replace='',outfile='STDOUT',logfile='',Stdout=1,glogpars='',verbose='no',fail_count='0', count='20', status='0')
     if len(check_extn) != 6:
         print "ERROR: target_comb file contains only ", len(check_extn), 'extensions. Exiting script.'
+
+#---------------------------------------------------------------------------------------------------------------------#
+
+def stepwiseExtractSpectra1D(combinedimage, nsextractInter, useApall, apertureTracingColumns):
+    """
+    Extracts science spectra along (approximately) the full slit. 
+    
+    This method is appropriate for objects centred along length of slit (absolute Q offset for the science = 0). The 
+    effect, if nsextract does not find a spectrum centred along the slit, is not known at this point.
+    
+    CAUTION NOTE:  From XDGNIRS, full slit and stepwise extractions have not been used or tested thoroughly. So, 
+    please double check your results.
+    """
+    logger = log.getLogger('gnirsReduce.stepwiseExtractSpectra1D')
+
+    iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='a', dispaxis=1, database='', line=700, \
+        nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
+        lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes',\
+        fl_inter=nsextractInter, fl_apall=useApall, fl_trace='no', aptable='gnirs$data/apertures.fits', \
+        fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', bgsample='*', trace='', tr_nsum=10, \
+        tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, \
+        tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, \
+        verbose='yes', mode='al')
+
+    # First trace the peak to make sure that the same part of the object is extracted in each step along the slit for  
+    # all orders. This is required when there is complex, e.g., structure varying in the spectral direction in an  
+    # extended object such as a galaxy; otherwise the spectra can have offsets between orders.
+    
+    # This first nsextract step performed outside the loop gets the trace into the science extraction database to be 
+    # used during the actual stepwise extraction.
+    iraf.nsextract(inimages=target, outspectra='trace_ref', outprefix='x', dispaxis=1, database='', line=700, nsum=20, ylevel='INDEF', upper=3, \
+        lower=-3, background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, fl_trace='yes', \
+        aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='no', fl_findneg='no', bgsample='*', trace='', \
+        tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='300:1000', tr_naver=1, tr_niter=0, tr_lowrej=3.0, \
+        tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
+    
+    # This step is never done interactively, because it uses info from the previous call (and it would be very tedious)
+    n = 0
+    for j in range (-21,21,step):
+        n = n + 1
+        iraf.nsextract(inimages=target, outspectra='', outprefix='s'+str(n), dispaxis=1, database='', line=700, nsum=20, ylevel='INDEF', \
+            upper=j+step, lower=j, background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, \
+            fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', \
+            bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, \
+            tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
+		
+    nsteps = open ("nsteps.txt", "w")
+    nsteps.write (str(n))
+    nsteps.close()
 
 #---------------------------------------------------------------------------------------------------------------------#
 
