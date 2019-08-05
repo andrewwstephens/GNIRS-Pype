@@ -3,49 +3,62 @@
 """
 Obslog handler
 
-For the GNIRS pipeline:
-- The necessary date_obsid_obslog.txt files should be in the rawdata directory.  If they are not then download them.
-- An obslog.csv should be put into each top-level Obs-ID directory.
-- We may want to provide some stand-alone obslog handling functionality.
-
-The sort routine will put the FITS files where they need to be.
-After sorting all the files we will have a list of all the obsids that were sorted.
-Sort will go through the list of ObsIDs and call 'writecsv' to put in each folder.
-
 This library provides methods to:
 - download the raw obslog.txt from the archive
 - parse the raw obslog.txt
 - extract the relevant obslog data for a particular Obs-ID
-- output a csv file with all the original info PLUS header info: P, Q, (corrected for acq offsets), config
+- output a csv file for the requested Obs-ID with the original header info plus (P,Q) corrected for acq offsets
 - read an obslog.csv and return a dictionary of the relevant FITS header keywords (all the FITS header keywords?)
+We may want to provide some stand-alone obslog handling functionality.
 """
-
 import csv
 import dateutil.parser
 import gnirsHeaders
 import log
 import re
+import urllib
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def download(program, date):
+def download(progid, date):
+    """
+    Download an observing log from the Gemini archive.
+    :param progid: string program ID
+    :param date: string date, format YYYYMMDD
+    """
     logger = log.getLogger('obslog.download')
-    # https://archive.gemini.edu/file/20110516_GN-2011A-Q-126_obslog.txt
+
+    if not re.match(r'^G[NS]-[0-9]{4}[AB]-([CQ]|DD|FT|LP|SV)-[0-9]{0,3}$', progid):
+        logger.error('This does not look like a program ID: %s', progid)
+        raise SystemExit
+
+    obslog = date + '_' + progid + '_obslog.txt'
+    url = 'https://archive.gemini.edu/file/' + obslog
+    logger.debug('URL: %s', url)
+    logger.info('Downloading %s...', obslog)
+    urllib.urlretrieve(url, obslog)
     return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def writecsv(obsid, date, output='obslog.csv'):
+def writecsv(obsid, date, output='obslog.csv', rawpath=None):
     """
     Extract the data for the requested Obs-ID from the obslog text file
     Find the last acquisition image before the requested obsid
     Extract the P,Q of that acquisition image
     Add new keys for the absolute P and Q offsets (header offsets - acquisition offsets)
+    Write the header info to a csv file
+    :param obsid: string observation ID
+    :param date: string date, format YYYYMMDD
+    :param rawpath: string path to raw data and obslog text file
+    :param output: string output file name
     """
     logger = log.getLogger('obslog.writecsv')
     progid = obsid[:obsid.rfind('-')]
     logger.debug('Program ID: %s', progid)
     obslog = date + '_' + progid + '_obslog.txt'
+    if rawpath:
+        obslog = rawpath + '/' + obslog
     data = readtxt(obslog)
 
     output_data = {}
@@ -64,7 +77,11 @@ def writecsv(obsid, date, output='obslog.csv'):
             break
 
     # Get the header info for the requested images plus the last acquisition image:
-    headerinfo = gnirsHeaders.info([last_acq_file] + sorted(output_data.keys()))
+    if rawpath:
+        fitsfiles = [rawpath + '/' + f for f in ([last_acq_file] + sorted(output_data.keys()))]
+    else:
+        fitsfiles = [last_acq_file] + sorted(output_data.keys())
+    headerinfo = gnirsHeaders.info(fitsfiles)
 
     for f in output_data.keys():  # Add new keys for the absolute P and Q offsets:
         headerinfo[f]['P'] = headerinfo[f]['POFFSET'] - headerinfo[last_acq_file]['POFFSET']
@@ -76,7 +93,6 @@ def writecsv(obsid, date, output='obslog.csv'):
         return a
 
     logger.info('Writing %s...', output)  # Write the info for the requested Obs-ID into a csv file:
-    # https://www.edureka.co/community/1403/how-to-write-nested-dictionaries-to-a-csv-file
     with open(output, mode='w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=['FITSFILE'] + headerinfo[f].keys())
         writer.writeheader()
@@ -88,6 +104,11 @@ def writecsv(obsid, date, output='obslog.csv'):
 
 # ----------------------------------------------------------------------------------------------------------------------
 def readcsv(csvfile):
+    """
+    Read an obslog csv file
+    :param csvfile: text csv obslog filename
+    :return: dictionary of obslog info
+    """
     logger = log.getLogger('obslog.readcsv')
     data = {}
     with open(csvfile, mode='r') as csv_file:
@@ -102,11 +123,12 @@ def readcsv(csvfile):
 def readtxt(obslog):
     """
     Parse the raw obslog .txt file from the archive.
-    This is a bit of a PITA because the file is in fixed-witdth format, but the column width changes between each
-    obslog according to the width of the values in the table.  There are also free-form comments from the observer
-    interspersed in the file with no indication of which lines are comments.  This parser uses the location of the
-    column headers to set the width of the fixed columns and sets patterm match guidelines for the contents of each
-    column.  If any of the parsed columns do not match the expected pattern the whole line is assumed to be a comment.
+    :param obslog: string obslog file name
+    The archived obslog file is in fixed-witdth format, but the column width changes between each obslog according to
+    the width of the values in the table.  There are also free-form comments from the observer interspersed in the file
+    with no indication of which lines are comments.  This parser uses the location of the column headers to set the
+    width of the fixed columns and sets patterm match guidelines for the contents of each column.  If any of the parsed
+    columns do not match the expected pattern the whole line is assumed to be a comment.
     NOTE: Many old obslogs (before 2012-Feb-10) are corrupt and will need to be regenerated by Gemini.
     """
     logger = log.getLogger('obslog.readtxt')
@@ -186,5 +208,6 @@ if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     # readtxt('rawData/20110516_GN-2011A-Q-126_obslog.txt')
     # writecsv('GN-2011A-Q-126-6', '20110516')
-    readcsv('obslog.csv')
-
+    writecsv('GN-2011A-Q-126-6', '20110516', rawpath='/home/astephens/github/GNIRS_PIPELINE/rawData')
+    # readcsv('obslog.csv')
+    # download(progid='GN-2018A-FT-112', date='20180729')
