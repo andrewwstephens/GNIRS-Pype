@@ -163,11 +163,11 @@ def start(configfile):
                     logger.info("Required combined source image available.")
                 else:
                     logger.warning("Required combined source image not available. Please run ")
-                    logger.warning("gnirsCombineSpectra2D.pyto create the combined source image or provide it ")
+                    logger.warning("gnirsCombineSpectra2D.py to create the combined source image or provide it ")
                     logger.warning("manually. Exiting script.\n")
                     raise SystemExit
                 if calculateSpectrumSNR:
-                    skycombimage = obspath+'/sky_comb.fits'
+                    skycombimage = 'sky_comb.fits'
                     if os.path.exists(srccombimage):
                         logger.info("Required combined sky image available.")
                     else:
@@ -417,7 +417,7 @@ def peaksMatch(scisrccomb, telsrccomb, scipeaks, telpeaks, toleranceOffset):
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def reExtractSpectra1D(scidatabasepath, teldatabasepath, combinedimage, peaks_flag):
+def reExtractSpectra1D(scidatabasepath, teldatabasepath, scicombinedimage, telcombinedimage, peaks_flag, telpath, newapfilenameprefix, extensionsnumber):
     """
     """
     logger = log.getLogger('gnirsReduce.reExtractSpectra1D')
@@ -427,31 +427,48 @@ def reExtractSpectra1D(scidatabasepath, teldatabasepath, combinedimage, peaks_fl
         # There is some trouble replacing only the database files for the extracted spectra that were not well centred.
         # So, simply replacing all science database files but using the ones for which nsextract located the peaks at 
         # the right positions.
-        oldapfile = scidatabasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(i)+'_'
+        oldsciapfile = scidatabasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(i)+'_'
         if os.path.exists(oldapfile):
             os.remove(oldapfile)
-        apfile = open ('database/apstandard_comb_SCI_'+str(i+1)+'_', 'r')
-        newapfile = open ('database/apnewstandard_comb_SCI_'+str(i+1)+'_', 'w')
-        if found_spectrum[i] == 0:
-            clean  = apfile.read().replace(str(std_peak[i]), str(std_peak[i] + diff)+' ').replace('standard_comb','newstandard_comb')
+        oldtelapfile = open (teldatabasepath+'ap'+telcombinedimage+'_SCI_'+str(i+1)+'_', 'r')
+        newtelapfile = open (teldatabasepath+'ap'+newapfilenameprefix+telcombinedimage+'_SCI_'+str(i+1)+'_', 'w')
+        if not peaks_flag[i]:
+            # TODO(Viraja):  
+            replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], str(float(telpeaks[i]) + pixeldifference)+' ').replace(telcombinedimage, newapfilenameprefix+telcombinedimage)
         else:
-            clean  = apfile.read().replace(str(std_peak[i]), str(tgt_peak[i])+' ').replace('standard_comb','newstandard_comb')
-        newapfile.write(clean)
-        apfile.close()
-        newapfile.close()
-    shutil.copy(standard, 'new'+standard)
-    iraf.imdelete(images='v'+target)
-    #Using these settings in nsextract will force it to use the aperture size and centre in the edited "apnewstandard_comb" files
-    iraf.nsextract(inimages=target,outspectra='',outprefix='v',dispaxis=1,database='',line=700,nsum=20,ylevel='INDEF',upper=aperture_plus,lower=aperture_minus,background='none',fl_vardq='yes',fl_addvar='no',fl_skylines='yes',fl_inter=nsextinter,fl_apall='yes',fl_trace='no',aptable=path_to_nsextract+'config/apertures.fits',fl_usetabap='no',fl_flipped='yes',fl_project='yes',fl_findneg='no',bgsample='*',trace='newstandard_comb',tr_nsum=10,tr_step=10,tr_nlost=3,tr_function='legendre',tr_order=5,tr_sample='*',tr_naver=1,tr_niter=0,tr_lowrej=3.0,tr_highrej=3.0,tr_grow=0.0,weights='variance',logfile='',verbose='yes',mode='al')
+            replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], telpeaks[i]+' ').replace(telcombinedimage, newapfilenameprefix+telcombinedimage)
+        newtelapfile.write(replacetelapfile)
+        oldtelapfile.close()
+        newtelapfile.close()
+    shutil.copy(telpath+'/'+telcombinedimage, telpath+'/'+newapfilenameprefix+telcombinedimage)
+    
+    os.remove('v'+scicombinedimage)
+    
+    # These settings in nsextract will force it to use the aperture size and center in the revised telluric apfiles
+    iraf.nsextract(inimages=scicombinedimage, outspectra='', outprefix='v', dispaxis=1, database='', line=700, \
+        nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
+        lower=-str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes', \
+        fl_inter=nsextractInter, fl_apall=useApall, fl_trace='no', aptable='gnirs$data/apertures.fits', \
+        fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', bgsample='*', \
+        trace=telpath+'/'+newapfilenameprefix+telcombinedimage, tr_nsum=10, tr_step=10, tr_nlost=3, \
+        tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1 ,tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, \
+        tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
 
-    #Slight complication - we occasionally find that nsextract locates the aperture too close to the end of the slit
-    #Then it exits with an "Aperture too large" error and spectra aren't extracted for one or more extensions
-    #But we work around that above, so when we check for errors in XDpiped.csh, we ignore this error
-    #But maybe that error can happen for other reasons
-    #So to be on the safe side, will check that all extensions are present in the extracted target file (should really add other files as well...)
-    check_extn = iraf.gemextn(inimages=target,check='exists,mef',process='expand',index='',extname='SCI',extversion='',ikparams='',omit='',replace='',outfile='STDOUT',logfile='',Stdout=1,glogpars='',verbose='no',fail_count='0', count='20', status='0')
-    if len(check_extn) != 6:
-        print "ERROR: target_comb file contains only ", len(check_extn), 'extensions. Exiting script.'
+    # NOTE:  There is a slight complication here - we occasionally find that nsextract locates the aperture too close 
+    # to the end of the slit. Due to this, it exits with an "Aperture too large" error and spectra are not extracted 
+    # for one or more extensions.  XDGNIRS works around that in XDpiped.csh, where it ignores this error. However, the 
+    # error can occur for other reasons. So, here we check if all extensions are present in the extracted target file 
+    # (should really add other files as well...)
+    extractedSpectraExtensions = iraf.gemextn(inimages=scicombinedimage, check='exists,mef', process='expand', \
+        index='', extname='SCI', extversion='', ikparams='', omit='', replace='', outfile='STDOUT', \
+        logfile=logger.root.handlers[0].baseFilename, glogpars='', verbose='yes', fail_count='0', count='20', \
+        status='0', Stdout=1)
+    if len(extractedSpectraExtensions) != extensionsnumber:
+        logger.error("The combined science image file contains only %d extensions. Please run ", extensions)
+        logger.error("gnirsCombineSpectra2D.py to create the combined 2D science image with the right number of ")
+        logger.error("extensions or provide the combined science image with the right number of extensions manually. ")
+        logger.error("Exiting script.")
+        raise SystemExit
 
 #---------------------------------------------------------------------------------------------------------------------#
 
@@ -477,30 +494,32 @@ def stepwiseExtractSpectra1D(combinedimage, nsextractInter, useApall, apertureTr
         verbose='yes', mode='al')
 
     # First trace the peak to make sure that the same part of the object is extracted in each step along the slit for  
-    # all orders. This is required when there is complex, e.g., structure varying in the spectral direction in an  
-    # extended object such as a galaxy; otherwise the spectra can have offsets between orders.
+    # all orders. This is required when the structure is complex, e.g., structure varying in the spectral direction in  
+    # an extended object such as a galaxy; otherwise the spectra can have offsets between orders.
     
     # This first nsextract step performed outside the loop gets the trace into the science extraction database to be 
     # used during the actual stepwise extraction.
-    iraf.nsextract(inimages=target, outspectra='trace_ref', outprefix='x', dispaxis=1, database='', line=700, nsum=20, ylevel='INDEF', upper=3, \
-        lower=-3, background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, fl_trace='yes', \
-        aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='no', fl_findneg='no', bgsample='*', trace='', \
-        tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='300:1000', tr_naver=1, tr_niter=0, tr_lowrej=3.0, \
-        tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
+    extractionApertureRadius = 3
+    iraf.nsextract(inimages=combinedimage, outspectra='extractionTraceReference', outprefix='x', dispaxis=1, \
+        database='', line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
+        lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes',\
+        fl_inter=nsextractInter, fl_apall=useApall, fl_trace='yes', aptable='gnirs$data/apertures.fits', \
+        fl_usetabap='no', fl_flipped='yes', fl_project='no', fl_findneg='no', bgsample='*', trace='', tr_nsum=10, \
+        tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='300:1000', tr_naver=1, tr_niter=0, \
+        tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, \
+        verbose='yes', mode='al')
     
-    # This step is never done interactively, because it uses info from the previous call (and it would be very tedious)
-    n = 0
-    for j in range (-21,21,step):
-        n = n + 1
-        iraf.nsextract(inimages=target, outspectra='', outprefix='s'+str(n), dispaxis=1, database='', line=700, nsum=20, ylevel='INDEF', \
-            upper=j+step, lower=j, background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, \
-            fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', \
-            bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, \
-            tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
-		
-    nsteps = open ("nsteps.txt", "w")
-    nsteps.write (str(n))
-    nsteps.close()
+    # This second step is never done interactively, because it uses extraction details from the previous call to 
+    # nsextract
+    nsextractInter = False
+    for i in range(-extractionStepradius,extractionStepradius,extractionStepsize):
+        iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='s'+str(n), dispaxis=1, database='', line=700,\
+            nsum=apertureTracingColumns, ylevel='INDEF', upper=i+extractionStepsize, lower=i, background='none', \
+            fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, \
+            fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', \
+            fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', \
+            tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, \
+            weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
 
 #---------------------------------------------------------------------------------------------------------------------#
 

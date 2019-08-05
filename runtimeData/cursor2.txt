@@ -1,0 +1,17 @@
+15391 0 1 <space bar>
+15491 0 1 <space bar>
+15504 0 1 <space bar>
+15610 0 1 <space bar>
+15640 0 1 <space bar>
+15776 0 1 <space bar>
+15811 0 1 <space bar>
+15971 0 1 <space bar>
+16013 0 1 <space bar>
+16214 0 1 <space bar>
+16309 0 1 <space bar>
+16521 0 1 <space bar>
+16687 0 1 <space bar>
+16942 0 1 <space bar>
+17226 0 1 <space bar>
+17504 0 1 <space bar>
+0 0 1 q

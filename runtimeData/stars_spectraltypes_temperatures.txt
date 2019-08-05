@@ -1,0 +1,102 @@
+# A Modern Dwarf Stellar Effective Temperature Scale Based on 17,842
+# Teff & MK Spectral Type Pairs 
+#
+# Eric Mamajek (U. Rochester) 5/25/2010
+#
+# This table summarizes the median Teff values, standard error of the
+# median for Teff, and 68% confidence interval for the published Teff
+# values for a large sample of stars with published Teff and MK
+# spectral type (or modern extension thereof). The majority of the
+# published Teffs are from the period 1980 to present. Only spectral
+# types with N >= 5 published Teff estimates are included.  Only stars
+# with [Fe/H] or [M/H] > -0.5 are used, when explicitly listed as such
+# (but this option has negligible impact on the reported Teffs within
+# the median uncertainties).  Reported <Teff>s are median values, and
+# hence insensitive to outliers.  Last column is V-band bolometric
+# correction, using the adopted Teff value and the Teff=>BCv relations
+# from Flower (1996) [with corrected typo in coefficients from Willie
+# Torres, priv. comm.].  
+#
+# At the present time, I do *not* recommend the Teff values in this
+# table for the late-K and M-type stars. There appear to be systematic
+# offsets between the median Teffs listed here (which summarize three
+# decades of literature) and the Teffs that I have estimated for
+# K/M-type spectral standards using recent color=>Teff calibrations
+# (e.g. by Casagrande, Ramirez, and others). For the time being, I 
+# do not recommend adopting the Teffs listed in the range K5-M9. 
+#
+# SpT <Teff> s.e.m. stdev #obs   SpT   logT   ulogT  BCv[mag]
+O5V  47011  2667  3548  6     -55.0  4.672  0.033  -4.315
+O6V  38263  1916  4443  5     -54.0  4.583  0.051  -3.654
+O7V  36372  1786  4348  10    -53.0  4.561  0.052  -3.487
+O8V  33980  179   1843  15    -52.0  4.531  0.024  -3.268
+O9V  32258  1004  2963  14    -51.0  4.509  0.040  -3.106
+O9V  31132  472   2000  22    -50.5  4.493  0.028  -2.999
+B0V  31501  102   2132  33    -50.0  4.498  0.029  -3.034
+B0V  26576  867   2761  21    -49.5  4.424  0.045  -2.560
+B1V  25248  73    1955  83    -49.0  4.402  0.034  -2.430
+B1V  21472  267   1879  51    -48.5  4.332  0.038  -2.050
+B2V  19747  314   2039  180   -48.0  4.295  0.045  -1.864
+B2V  18218  315   1830  85    -47.5  4.261  0.044  -1.686
+B3V  17321  45    1663  208   -47.0  4.239  0.042  -1.573
+B4V  16718  167   1694  66    -46.0  4.223  0.044  -1.493
+B5V  15780  37    949	200   -45.0  4.198  0.026  -1.359
+B6V  14850  195   865	95    -44.0  4.172  0.025  -1.215
+B7V  14024  163   1038  82    -43.0  4.147  0.032  -1.075
+B8V  12940  43    1148  268   -42.0  4.112  0.039  -0.874
+B9V  11535  93    1049  301   -41.0  4.062  0.040  -0.583
+B9V  10927  72    688	110   -40.5  4.038  0.027  -0.450
+A0V  9701   70    577	265   -40.0  3.987  0.026  -0.188
+A1V  9172   28    502	192   -39.0  3.962  0.024  -0.090
+A2V  8848   49    357	150   -38.0  3.947  0.018  -0.041
+A3V  8503   16    364	171   -37.0  3.930  0.019  -0.000
+A4V  8269   69    307	63    -36.0  3.917  0.016  0.017
+A5V  8093   66    398	108   -35.0  3.908  0.021  0.023
+A6V  8002   55    383	40    -34.0  3.903  0.021  0.024
+A7V  7857   33    290	117   -33.0  3.895  0.016  0.024
+A8V  7535   50    259	48    -32.0  3.877  0.015  0.033
+A9V  7447   24    327	90    -31.0  3.872  0.019  0.034
+F0V  7109   20    313	310   -30.0  3.852  0.019  0.033
+F2V  6818   10    173	522   -28.0  3.834  0.011  0.025
+F3V  6705   7	  146	829   -27.0  3.826  0.009  0.019
+F5V  6514   7	  141	1480  -25.0  3.814  0.009  0.008
+F6V  6363   9	  144	1037  -24.0  3.804  0.010  -0.004
+F7V  6274   5	  151	945   -23.0  3.798  0.010  -0.013
+F8V  6175   6	  151	874   -22.0  3.791  0.011  -0.023
+F9V  6041   9	  139	319   -21.0  3.781  0.010  -0.039
+G0V  6001   4	  153	1121  -20.0  3.778  0.011  -0.045
+G1V  5902   8	  153	645   -19.0  3.771  0.011  -0.059
+G2V  5881   5	  157	740   -18.0  3.769  0.012  -0.063
+G3V  5860   5	  119	785   -17.0  3.768  0.009  -0.066
+G5V  5737   4	  132	974   -15.0  3.759  0.010  -0.087
+G6V  5625   7	  133	339   -14.0  3.750  0.010  -0.110
+G8V  5493   5	  131	558   -12.0  3.740  0.010  -0.140
+K0V  5294   9	  146	406   -10.0  3.724  0.012  -0.196
+K1V  5171   12    120	228   -9.0   3.714  0.010  -0.237
+K2V  5043   10    115	269   -8.0   3.703  0.010  -0.287
+K3V  4786   13    131	183   -7.0   3.680  0.012  -0.415
+K4V  4596   12    126	67    -6.0   3.662  0.012  -0.535
+K5V  4420   34    252	93    -5.0   3.645  0.025  -0.663
+K6V  4389   83    198	17    -4.0   3.642  0.020  -0.688
+K7V  3964   23    191	82    -3.0   3.598  0.021  -1.179
+M0V  3807   55    279	24    0.0    3.581  0.032  -1.466
+M1V  3596   12    138	33    1.0    3.556  0.017  -1.994
+M2V  3477   28    214	39    2.0    3.541  0.027  -2.387
+M3V  3276   35    148	48    3.0    3.515  0.020  -3.253
+M4V  3136   46    111	34    4.0    3.496  0.015  0.000
+M5V  2870   29    185	19    5.0    3.458  0.028  0.000
+M6V  2741   55    152	33    6.0    3.438  0.024  0.000
+M7V  2626   68    239	18    7.0    3.419  0.040  0.000
+M8V  2562   52    246	21    8.0    3.409  0.042  0.000
+M9V  2281   94    175	25    9.0    3.358  0.033  0.000
+L0V  2202   69    215	9     10.0   3.343  0.043  0.000
+L1V  2258   71    95	5     11.0   3.354  0.018  0.000
+L3V  1924   65    134	10    13.0   3.284  0.030  0.000
+L4V  1791   37    80	8     14.0   3.253  0.019  0.000
+L5V  1752   42    150	17    15.0   3.244  0.037  0.000
+L7V  1601   83    105	5     17.0   3.204  0.029  0.000
+L8V  1400   5	  147	20    18.0   3.146  0.046  0.000
+T2V  1304   67    109	9     22.0   3.115  0.036  0.000
+T6V  977    43    129	12    26.0   2.990  0.058  0.000
+T7V  955    8	  28	9     27.0   2.980  0.013  0.000
+T8V  758    19    41	8     28.0   2.880  0.024  0.000

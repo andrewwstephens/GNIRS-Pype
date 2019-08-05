@@ -1,0 +1,7 @@
+9950 0 1 <space bar>
+10143 0 1 <space bar>
+10673 0 1 <space bar>
+10700 0 1 <space bar>
+10853 0 1 <space bar>
+11038 0 1 <space bar>
+0 0 1 q

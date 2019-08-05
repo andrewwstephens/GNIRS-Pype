@@ -181,6 +181,8 @@ def start(kind, configfile):
                 tempObspath = obspath.split(os.sep)        
                 calpath = "/".join(tempObspath[:-1])+'/Calibrations'
             else:
+                # For telluric, the path to the calibrations directory is the symbolic path to the calibrations
+                # directory in the science directory
                 calpath = obspath+'/Calibrations'
             # Print the directory from which reduced calibratios are being used.
             logger.info("The path to the calibrations is %s\n", calpath)

@@ -142,6 +142,25 @@ def start(configfile):
 
             # Print the current directory of calibrations being processed.
             logger.info("Currently working on calibrations in %s\n", calpath)
+            
+            # Record the right number of order expected according to the GNIRS XD configuration.
+            if 'Long' in calpath and 'SXD' in calpath:
+                orders = [3, 4, 5]
+            elif 'Long' in calapth and 'LXD' in calpath:
+                orders = [3, 4, 5, 6, 7, 8]
+            elif 'Short' in calpath and 'SXD' in calpath:
+                orders = [3, 4, 5, 6, 7, 8]
+                nominal_wavelengths = ([0, 0], [18690,25310], [14020, 18980], [11220, 15180], [9350, 12650], \
+                    [8020, 10840], [7020, 9480]) 
+            else:
+                logger.error("#############################################################################")
+                logger.error("#############################################################################")
+                logger.error("#                                                                           #")
+                logger.error("#    ERROR in calibrate: unknown GNIRS XD configuration. Exiting script.    #")
+                logger.error("#                                                                           #")
+                logger.error("#############################################################################")
+                logger.error("#############################################################################\n")
+                raise SystemExit
 
             # However, don't do the reduction for a Calibrations_"configuration" directory without associated telluric
             # or science data. Check that a Calibrations_"configuration" directory exists at the same level as the 
@@ -260,6 +279,15 @@ def start(configfile):
                         logger.info("######################################################################")
                         logger.info("######################################################################\n")
                     
+                    # NOTE:  At this point in XDGNIRS, StatsAndPrepartXD.py checks for any deviations in statistical
+                    # parameters between the raw and the cleaned images. Since cleaning is not incorporated yet in 
+                    # this pipeline, this check is skipped here.
+
+                    # NOTE:  StatsAndPrepartXD.py also records any deviations in the mean values of cleaned QHfkats 
+                    # and IRflats before preparing calibrations for reduction (here, step 2 prepareCalibrations). If 
+                    # cleaning is skipped, statistics is done on the raw flat frames. This check is skipped in this 
+                    # pipeline for now, but it could be useful to do.
+
                     logger.info("##################################################################")
                     logger.info("#                                                                #")
                     logger.info("#          STEP 1: Clean calibration frames - COMPLETED          #")
@@ -337,8 +365,10 @@ def start(configfile):
 
                     if 'Long' in calpath:
                         pinhole_coordlist = 'gnirs$data/pinholes-long-dense-north.lis'
+                        pinholesnumber = 9
                     elif 'Short' in calpath:
                         pinhole_coordlist = 'gnirs$data/pinholes-short-dense-north.lis'
+                        pinholesnumber = 6
                     else:
                         logger.error("#######################################################################")
                         logger.error("#######################################################################")
@@ -349,7 +379,7 @@ def start(configfile):
                         logger.error("#######################################################################\n")
                         raise SystemExit
 
-                    makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, overwrite)
+                    makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, pinholesnumber, overwrite)
                 
                     logger.info("####################################################################")
                     logger.info("#                                                                  #")
@@ -386,7 +416,7 @@ def start(configfile):
                         raise SystemExit
 
                     makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, \
-                        waveCal_coordlist, overwrite)
+                        waveCal_coordlist, ordersnumber, nominal_wavelengths, overwrite)
                     
                     logger.info("####################################################################")
                     logger.info("#                                                                  #")
@@ -611,7 +641,7 @@ def makeFlat(masterflat, nsflatInter, overwrite):
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, overwrite):
+def makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, pinholesnumber, overwrite):
     """
     Establish Spatial distortion calibration.
 
@@ -631,6 +661,26 @@ def makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, overwrite):
             threshold=1000.0, minsep=5.0, match=-6.0, function="legendre", order=5, sample='', niterate=3, \
             low_reject=5.0, high_reject=5.0, grow=0.0, refit='yes', step=10, trace='no', nlost=0, aiddebug='', \
             logfile=logger.root.handlers[0].baseFilename, verbose='no', debug='no', force='no', mode='al')
+
+        # Check that the right number of pinholes have been identified
+        logger.info("Checking if right number of pinholes identified.\n")
+        idrnfiles = sorted(glob.glob('./database/idrn*'))
+        for i in range(len(idrnfiles)):
+            idrnfile = open(idrnfiles[i], "r"):
+            # Read up to the first occurrence of "features" in the file
+            for line in idrnfile:
+                if "features" in line:
+                    if line.split()[1] != str(pinholesnumber):
+                        logger.warning("Expected %d pinholes to be detected by nssdist, but found ", pinholesnumber)
+                        logger.warning("%s pinholes in extension %d. This can cause problems. ", line.split()[1], i)
+                        logger.warning("Please check the transformed data files (ttf*.fits) later and look for ")
+                        logger.warning("inter-order offsets in 'orders.pdf' file created by gnirsCombineOrdersXD.py.")
+                        break
+                    else:
+                        logger.info("Right number of pinholes detected by nssdist in extension %d", i)
+                        break
+            idrnfile.close()
+        logger.info("Number of pinholes check complete.\n")
     else:
         if overwrite:
             logger.warning('Removing old /database/idrn* files.')
@@ -642,13 +692,33 @@ def makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, overwrite):
                 niterate=3, low_reject=5.0, high_reject=5.0, grow=0.0, refit='yes', step=10, trace='no', nlost=0, \
                 aiddebug='', logfile=logger.root.handlers[0].baseFilename, verbose='no', debug='no', force='no', \
                 mode='al')
+            
+            # Check that the right number of pinholes have been identified
+            logger.info("Checking if right number of pinholes identified.\n")
+            idrnfiles = sorted(glob.glob('./database/idrn*'))
+            for i in range(len(idrnfiles)):
+                idrnfile = open(idrnfiles[i], "r"):
+                # Read up to the first occurrence of "features" in the file
+                for line in idrnfile:
+                    if "features" in line:
+                        if line.split()[1] != str(pinholesnumber):
+                            logger.warning("Expected %d pinholes to be detected by nssdist, but found ", pinholesnumber)
+                            logger.warning("%s pinholes in extension %d. This can cause problems. ", line.split()[1], i)
+                            logger.warning("Please check the transformed data files (ttf*.fits) later and look for ")
+                            logger.warning("inter-order offsets in 'orders.pdf' file created by gnirsCombineOrdersXD.py.")
+                            break
+                        else:
+                            logger.info("Right number of pinholes detected by nssdist in extension %d", i)
+                            break
+                idrnfile.close()
+            logger.info("Number of pinholes check complete.\n")
         else:
             logger.warning("Output exists and -overwrite not set - skipping the spatial distortion correction ")
-            logger.warning("calculation for pinholes.")
+            logger.warning("calculation and check for pinholes.")
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, waveCal_coordlist, overwrite):
+def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, waveCal_coordlist, ordersnumber, nominal_wavelengths, overwrite):
     """
     Determine the wavelength solution of the combined arc.
 
@@ -719,6 +789,72 @@ def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter
         iraf.nstransform(inimages='ftf'+combinedarc, outspectra='', outprefix='t', dispaxis=1, database='', \
             fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
             logfile=logger.root.handlers[0].baseFilename, verbose='no', debug='no', mode='al')
+
+        # Check if wavelength calibration looks reasonable by extracting a single column approximately down the middle
+        # of each order, then combining orders
+        logger.info("Creating a wavelength calibrated arc spectrum.")
+        ## TODO(Viraja):  Check with Andy if it is a good idea to randomize the column selection, within a fixed range
+        columns = [88,77,65,54,53,92]  
+        for i in range(len(orders)):
+            try:
+                iraf.imcopy(input='tftf'+combinedarc+'[SCI,'+str(i+1)+']['+str(columns[i])+',*]', \
+                    output='tftf'+combinedarc+'_'+str(i+1), verbose='yes', mode='ql')
+            except(TypeError,iraf.IrafError) as arcCalibration_error:
+                logger.error(arcCalibration_error)
+                logger.error("A problem was encountered in making the wavelength solution. First, check that the raw ")
+                logger.error("and the reduced arcs look sensible. Second, check that the spectral orders are in the ")
+                logger.error("same place in the array (in the x direction) in all the raw files to within a few ")
+                logger.error("pixels. Third, try running nssdist, nsfitcoords, and nswavelength interactively by ")
+                logger.error("setting nssdistInter, nsfitcoordsInter, and nswavelengthInter, respectively. Exiting ")
+                logger.error("script.\n").
+                sys.exit(0)
+        with open('./arcorders.list', 'a+') as f:
+            for filename in sorted(glob.glob('./tftf'+combinedarc+'_*.fits')):
+                filename = filename[filename.rfind('/')+1:]
+                if filename not in f.read().split('\n'):
+                    f.write(filename + '\n')
+        iraf.odcombine(input='@arcorders.list', output='arc_calibrated.fits', headers='', bpmasks='', rejmask='', \
+            nrejmasks='', expmasks='', sigma='', logfile=logger.root.handlers[0].baseFilename, apertures='', \
+            group='all', first='no', w1='INDEF', w2='INDEF', dw='INDEF', nw='INDEF', log='no', combine='average', \
+            reject='none', outtype='real', outlimits='', smaskformat='bpmspectrum', smasktype='none', smaskvalue=0.0, \
+            blank=0.0, scale='none', zero='none', weight='none', statsec='', expname='', lthreshold='INDEF', \
+            hthreshold='INDEF', nlow=1, nhigh=1, nkeep=1, mclip='yes', lsigma=3.0, hsigma=3.0, rdnoise='0.0', \
+            gain='1.0', snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, offsets='physical', masktype='none', \
+            maskvalue=0.0, mode='al')
+
+        # Check if the starting and ending wavelengths of the orders are reasonable. As of January 2016, we advertised, 
+        # that "wavelength settings ... are accurate to better than 5 percent of the wavelength coverage." (see, note a 
+        # at the bottom of the table here: http://www.gemini.edu/sciops/instruments/gnirs/spectroscopy). 
+        # Take the nominal starting and ending wavelengths from the OT, and check if the ones from the wavelength 
+        # calibration are the same to within the advertised tolerance.
+        logger.info("Checking if the starting and the ending wavelengths of the wavelength solution are reasonable.\n")
+        for i in range(len(orders)):
+            waveStart = iraf.hselect(images='tftfarc_comb[sci,'+str(i)+']', fields='CRVAL2', expr='yes', \
+                missing='INDEF', Stdout=1)
+            waveStart = float(waveStart[0].replace("'",""))
+            waveDelt = iraf.hselect(images='tftfarc_comb[sci,'+str(i)+']', fields='CDELT2', expr='yes', \
+                missing='INDEF', Stdout=1)
+            waveDelt = float(waveDelt[0].replace("'",""))
+            waveEnd = waveStart + (1022 * waveDelt)
+            advertised_accuracy = (nominal_wavelengths[i][1] - nominal_wavelengths[i][0]) * \
+                advertised_accuracy_percent/100
+            if abs(waveStart - nominal_wavelengths[i][0]) > advertised_accuracy:
+                logger.warning("Starting wavelength for extension %d is >%f% away ", i, advertised_accuracy_percent)
+                logger.warning("from the expected value (actual %fum vs. expected ", waveStart)
+                logger.warning("%fum+/-%fum.", nominal_wavelengths[i][0], advertised_accuracy)
+            else:
+                logger.info("Starting wavelength for extension %d is <%f% away ", i, advertised_accuracy_percent)
+                logger.info("from the expected value (actual %fum vs. expected ", waveStart)
+                logger.info("%fum+/-%fum.", + nominal_wavelengths[i][0], advertised_accuracy)
+            if abs(waveEnd - nominal_wavelengths[i][1]) > advertised_accuracy:
+                logger.warning("Ending wavelength for extension %d is >%f% away ", i, advertised_accuracy_percent)
+                logger.warning("from the expected value (actual %fum vs. expected ", waveEnd)
+                logger.warning("%fum+/-%fum.", nominal_wavelengths[i][1], advertised_accuracy)
+            else:
+                logger.info("Ending wavelength for extension %d is <%f% away ", i, advertised_accuracy_percent)
+                logger.info("from the expected value (actual %fum vs. expected ", waveEnd)
+                logger.info("%fum+/-%fum.", nominal_wavelengths[i][1], advertised_accuracy)
+        logger.info("Starting and the ending wavelengths of the wavelength solution check complete.\n")
     else:
         if overwrite:
             logger.warning("Removing old /*f%s", combinedarc, "/database/idwtf*, /database/*_sdist, and ")
@@ -756,6 +892,64 @@ def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter
             iraf.nstransform(inimages='ftf'+combinedarc, outspectra='', outprefix='t', dispaxis=1, database='', \
                 fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0, \
                 logfile=logger.root.handlers[0].baseFilename, verbose='no', debug='no', mode='al')
+            
+            logger.info("Creating a wavelength calibrated arc spectrum.")
+            ## TODO(Viraja):  Check with Andy if it is a good idea to randomize the column selection, within a fixed range
+            columns = [88,77,65,54,53,92]  
+            for i in range(orders):
+                try:
+                    iraf.imcopy(input='tftf'+combinedarc+'[SCI,'+str(i+1)+']['+str(columns[i])+',*]', \
+                        output='tftf'+combinedarc+'_'+str(i+1), verbose='yes', mode='ql')
+                except(TypeError,iraf.IrafError) as arcCalibration_error:
+                    logger.error(arcCalibration_error)
+                    logger.error("A problem was encountered in making the wavelength solution. First, check that the raw ")
+                    logger.error("and the reduced arcs look sensible. Second, check that the spectral orders are in the ")
+                    logger.error("same place in the array (in the x direction) in all the raw files to within a few ")
+                    logger.error("pixels. Third, try running nssdist, nsfitcoords, and nswavelength interactively by ")
+                    logger.error("setting nssdistInter, nsfitcoordsInter, and nswavelengthInter, respectively. Exiting ")
+                    logger.error("script.\n").
+                    sys.exit(0)
+            with open('./arcorders.list', 'a+') as f:
+                for filename in sorted(glob.glob('./tftf'+combinedarc+'_*.fits')):
+                    filename = filename[filename.rfind('/')+1:]
+                    if filename not in f.read().split('\n'):
+                        f.write(filename + '\n')
+            iraf.odcombine(input='@arcorders.list', output='arc_calibrated.fits', headers='', bpmasks='', rejmask='', \
+                nrejmasks='', expmasks='', sigma='', logfile=logger.root.handlers[0].baseFilename, apertures='', \
+                group='all', first='no', w1='INDEF', w2='INDEF', dw='INDEF', nw='INDEF', log='no', combine='average', \
+                reject='none', outtype='real', outlimits='', smaskformat='bpmspectrum', smasktype='none', smaskvalue=0.0, \
+                blank=0.0, scale='none', zero='none', weight='none', statsec='', expname='', lthreshold='INDEF', \
+                hthreshold='INDEF', nlow=1, nhigh=1, nkeep=1, mclip='yes', lsigma=3.0, hsigma=3.0, rdnoise='0.0', \
+                gain='1.0', snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, offsets='physical', masktype='none', \
+                maskvalue=0.0, mode='al')
+
+            logger.info("Checking if the starting and the ending wavelengths of the wavelength solution are reasonable.\n")
+            for i in range(orders):
+                waveStart = iraf.hselect(images='tftfarc_comb[sci,'+str(i)+']', fields='CRVAL2', expr='yes', \
+                    missing='INDEF', Stdout=1)
+                waveStart = float(waveStart[0].replace("'",""))
+                waveDelt = iraf.hselect(images='tftfarc_comb[sci,'+str(i)+']', fields='CDELT2', expr='yes', \
+                    missing='INDEF', Stdout=1)
+                waveDelt = float(waveDelt[0].replace("'",""))
+                waveEnd = waveStart + (1022 * waveDelt)
+                advertised_accuracy = (nominal_wavelengths[i][1] - nominal_wavelengths[i][0]) * \
+                    advertised_accuracy_percent/100
+                if abs(waveStart - nominal_wavelengths[i][0]) > advertised_accuracy:
+                    logger.warning("Starting wavelength for extension %d is >%f% away ", i, advertised_accuracy_percent)
+                    logger.warning("from the expected value (actual %fum vs. expected ", waveStart)
+                    logger.warning("%fum+/-%fum.", nominal_wavelengths[i][0], advertised_accuracy)
+                else:
+                    logger.info("Starting wavelength for extension %d is <%f% away ", i, advertised_accuracy_percent)
+                    logger.info("from the expected value (actual %fum vs. expected ", waveStart)
+                    logger.info("%fum+/-%fum.", + nominal_wavelengths[i][0], advertised_accuracy)
+                if abs(waveEnd - nominal_wavelengths[i][1]) > advertised_accuracy:
+                    logger.warning("Ending wavelength for extension %d is >%f% away ", i, advertised_accuracy_percent)
+                    logger.warning("from the expected value (actual %fum vs. expected ", waveEnd)
+                    logger.warning("%fum+/-%fum.", nominal_wavelengths[i][1], advertised_accuracy)
+                else:
+                    logger.info("Ending wavelength for extension %d is <%f% away ", i, advertised_accuracy_percent)
+                    logger.info("from the expected value (actual %fum vs. expected ", waveEnd)
+                    logger.info("%fum+/-%fum.", nominal_wavelengths[i][1], advertised_accuracy)
         else:
             logger.warning("Output exidts and -overwrite not set - skipping wavelength calibration and spatial ")
             logger.warning("distortion correction of arcs.")

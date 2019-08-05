@@ -301,10 +301,13 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage):
     nodAheader = fits.open(nodAlist[0])[0].header
     nodBheader = fits.open(nodBlist[0])[0].header
     nodQoffset = abs(nodAheader['QOFFSET'] - nodBheader['QOFFSET'])
+    pixelscale = nodAheader['PIXSCALE']
+    '''
     if 'Long' in nodAheader['CAMERA']:
         pixelscale = 0.05
     else:
         pixelscale = 0.15
+    '''
     nodQpixels = nodQoffset/pixelscale
 
     shifts = iraf.hselect(images=combinedimage+'[0]', fields='NSCHLX*', expr='yes', missing='INDEF', Stdout=1)

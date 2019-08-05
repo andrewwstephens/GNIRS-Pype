@@ -1,0 +1,17 @@
+8485 0 1 <space bar>
+8525 0 1 <space bar>
+8529 0 1 <space bar>
+8566 0 1 <space bar>
+8578 0 1 <space bar>
+8623 0 1 <space bar>
+8638 0 1 <space bar>
+8701 0 1 <space bar>
+8713 0 1 <space bar>
+8794 0 1 <space bar>
+8819 0 1 <space bar>
+8918 0 1 <space bar>
+8959 0 1 <space bar>
+9073 0 1 <space bar>
+9164 0 1 <space bar>
+9296 0 1 <space bar>
+0 0 1 q
