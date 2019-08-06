@@ -7,3 +7,4 @@ login.cl
 <module
 pyraf/
 uparm/
+__pycache__/
