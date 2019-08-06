@@ -896,7 +896,7 @@ def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter
             logger.info("Creating a wavelength calibrated arc spectrum.")
             ## TODO(Viraja):  Check with Andy if it is a good idea to randomize the column selection, within a fixed range
             columns = [88,77,65,54,53,92]  
-            for i in range(orders):
+            for i in range(len(orders)):
                 try:
                     iraf.imcopy(input='tftf'+combinedarc+'[SCI,'+str(i+1)+']['+str(columns[i])+',*]', \
                         output='tftf'+combinedarc+'_'+str(i+1), verbose='yes', mode='ql')
@@ -924,7 +924,7 @@ def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter
                 maskvalue=0.0, mode='al')
 
             logger.info("Checking if the starting and the ending wavelengths of the wavelength solution are reasonable.\n")
-            for i in range(orders):
+            for i in range(len(orders)):
                 waveStart = iraf.hselect(images='tftfarc_comb[sci,'+str(i)+']', fields='CRVAL2', expr='yes', \
                     missing='INDEF', Stdout=1)
                 waveStart = float(waveStart[0].replace("'",""))
