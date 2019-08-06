@@ -416,7 +416,7 @@ def start(configfile):
                         raise SystemExit
 
                     makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, \
-                        waveCal_coordlist, ordersnumber, nominal_wavelengths, overwrite)
+                        waveCal_coordlist, orders, nominal_wavelengths, overwrite)
                     
                     logger.info("####################################################################")
                     logger.info("#                                                                  #")
@@ -718,7 +718,7 @@ def makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, pinholesnumb
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, waveCal_coordlist, ordersnumber, nominal_wavelengths, overwrite):
+def makeWaveCal(combinedarc, nscombineInter, nsfitcoordsInter, nswavelengthInter, sdistrefimage, waveCal_coordlist, orders, nominal_wavelengths, overwrite):
     """
     Determine the wavelength solution of the combined arc.
 
