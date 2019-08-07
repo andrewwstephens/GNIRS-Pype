@@ -428,12 +428,12 @@ def reExtractSpectra1D(scidatabasepath, teldatabasepath, scicombinedimage, telco
         # So, simply replacing all science database files but using the ones for which nsextract located the peaks at 
         # the right positions.
         oldsciapfile = scidatabasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(i)+'_'
-        if os.path.exists(oldapfile):
-            os.remove(oldapfile)
+        if os.path.exists(oldsciapfile):
+            os.remove(oldsciapfile)
         oldtelapfile = open (teldatabasepath+'ap'+telcombinedimage+'_SCI_'+str(i+1)+'_', 'r')
         newtelapfile = open (teldatabasepath+'ap'+newapfilenameprefix+telcombinedimage+'_SCI_'+str(i+1)+'_', 'w')
         if not peaks_flag[i]:
-            # TODO(Viraja):  
+            # TODO(Viraja):  Check if there is a better way to replace the peak values then how it is done below.
             replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], str(float(telpeaks[i]) + pixeldifference)+' ').replace(telcombinedimage, newapfilenameprefix+telcombinedimage)
         else:
             replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], telpeaks[i]+' ').replace(telcombinedimage, newapfilenameprefix+telcombinedimage)
@@ -500,7 +500,7 @@ def stepwiseExtractSpectra1D(combinedimage, nsextractInter, useApall, apertureTr
     # This first nsextract step performed outside the loop gets the trace into the science extraction database to be 
     # used during the actual stepwise extraction.
     extractionApertureRadius = 3
-    iraf.nsextract(inimages=combinedimage, outspectra='extractionTraceReference', outprefix='x', dispaxis=1, \
+    iraf.nsextract(inimages=combinedimage, outspectra='extractionStepwiseTraceReference', outprefix='x', dispaxis=1, \
         database='', line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
         lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes',\
         fl_inter=nsextractInter, fl_apall=useApall, fl_trace='yes', aptable='gnirs$data/apertures.fits', \
@@ -517,9 +517,10 @@ def stepwiseExtractSpectra1D(combinedimage, nsextractInter, useApall, apertureTr
             nsum=apertureTracingColumns, ylevel='INDEF', upper=i+extractionStepsize, lower=i, background='none', \
             fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, \
             fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', \
-            fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', \
-            tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, \
-            weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
+            fl_findneg='no', bgsample='*', trace='extractionStepwiseTraceReference', tr_nsum=10, tr_step=10, \
+            tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, \
+            tr_highrej=3.0, tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, \
+            verbose='yes', mode='al')
 
 #---------------------------------------------------------------------------------------------------------------------#
 
