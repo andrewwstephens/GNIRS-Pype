@@ -242,13 +242,13 @@ def start(configfile):
                 
                 # Record the right number of orders (and therefore, file extensions) expected according to the GNIRS \
                 # XD configuration.
-                if 'Long' in scipath and 'SXD' in scipath:
+                if 'Long' in obspath and 'SXD' in obspath:
                     orders = [3, 4, 5]
                     # TODO(Viraja):  Update value for extractionApertureRadius.
-                elif 'Long' in scipath and 'LXD' in scipath:
+                elif 'Long' in obspath and 'LXD' in obspath:
                     orders = [3, 4, 5, 6, 7, 8]
                     # TODO(Viraja):  Update value for extractionApertureRadius.
-                elif 'Short' in scipath and 'SXD' in scipath:
+                elif 'Short' in obspath and 'SXD' in obspath:
                     orders = [3, 4, 5, 6, 7, 8]
                     # extractionApertureRadius = 23 (+/-23 pixels or 6.9" covers almost the entire slit length, but 
                     # this is only appropriate for objects centred along length of slit (with absolute Q offset of 0).
@@ -329,7 +329,7 @@ def start(configfile):
 
                 if extractionStepwise:
                     # Extract in steps on either side of the peak
-	                useApall = 'yes'
+                    useApall = 'yes'
                     pass
                 else:
                     pass

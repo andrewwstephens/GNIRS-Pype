@@ -188,8 +188,8 @@ def start(kind, configfile):
             logger.info("The path to the calibrations is %s\n", calpath)
             
             # TODO(Viraja)?:  Define a function to extract the lists by specifying their filenames
-            allobsfilename = 'all.list'  
-            allobslist = open(allobsfilename, "r").readlines()                                 
+            allobsfilename = 'all.list'
+            allobslist = open(allobsfilename, "r").readlines()
             allobslist = [filename.strip() for filename in allobslist]
             rawHeader = fits.open(allobslist[0])[0].header
             if calculateSpectrumSNR:

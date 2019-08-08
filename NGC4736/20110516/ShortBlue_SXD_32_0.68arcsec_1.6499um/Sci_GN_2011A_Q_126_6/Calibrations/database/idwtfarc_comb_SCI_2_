@@ -1,4 +1,4 @@
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][76,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -45,7 +45,7 @@ begin	identify wtfarc_comb[SCI,2][76,*]
 		4.6099525705956
 		1.788004350921367
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][74,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -91,7 +91,7 @@ begin	identify wtfarc_comb[SCI,2][74,*]
 		4.68747167905246
 		1.810646869558533
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][72,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -138,7 +138,7 @@ begin	identify wtfarc_comb[SCI,2][72,*]
 		4.815491753587245
 		1.723760169650825
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][70,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -185,7 +185,7 @@ begin	identify wtfarc_comb[SCI,2][70,*]
 		4.79602115904865
 		1.758270423782971
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][68,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -232,7 +232,7 @@ begin	identify wtfarc_comb[SCI,2][68,*]
 		4.793475292841566
 		1.757899140668019
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][66,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -279,7 +279,7 @@ begin	identify wtfarc_comb[SCI,2][66,*]
 		4.830583632041413
 		1.750626903790162
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][64,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -326,7 +326,7 @@ begin	identify wtfarc_comb[SCI,2][64,*]
 		4.810404686674246
 		1.755831068580348
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][62,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -373,7 +373,7 @@ begin	identify wtfarc_comb[SCI,2][62,*]
 		4.802665815061859
 		1.736764370528787
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][60,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -419,7 +419,7 @@ begin	identify wtfarc_comb[SCI,2][60,*]
 		4.767265028300927
 		1.870248369043013
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][58,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -465,7 +465,7 @@ begin	identify wtfarc_comb[SCI,2][58,*]
 		5.073049155918009
 		1.93524168483349
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][56,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -511,7 +511,7 @@ begin	identify wtfarc_comb[SCI,2][56,*]
 		5.016120753393686
 		1.812315164814692
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][54,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -556,7 +556,7 @@ begin	identify wtfarc_comb[SCI,2][54,*]
 		4.974343635523318
 		1.811206398898657
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][52,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -596,7 +596,7 @@ begin	identify wtfarc_comb[SCI,2][52,*]
 		5.007219054583437
 		1.891107263561767
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][50,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -634,7 +634,7 @@ begin	identify wtfarc_comb[SCI,2][50,*]
 		2.699225190820606
 		0.7736590727542101
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][78,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -680,7 +680,7 @@ begin	identify wtfarc_comb[SCI,2][78,*]
 		4.732748223246804
 		1.717092322570079
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][80,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -727,7 +727,7 @@ begin	identify wtfarc_comb[SCI,2][80,*]
 		4.560925763709022
 		1.553593551689832
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][82,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -774,7 +774,7 @@ begin	identify wtfarc_comb[SCI,2][82,*]
 		4.736636945054008
 		1.442615291891672
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][84,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -820,7 +820,7 @@ begin	identify wtfarc_comb[SCI,2][84,*]
 		4.553991905901248
 		1.608125911670767
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][86,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -867,7 +867,7 @@ begin	identify wtfarc_comb[SCI,2][86,*]
 		4.522552320151527
 		1.305228555375152
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][88,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -913,7 +913,7 @@ begin	identify wtfarc_comb[SCI,2][88,*]
 		4.411560214802356
 		1.569846182159743
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][90,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -959,7 +959,7 @@ begin	identify wtfarc_comb[SCI,2][90,*]
 		4.439814343818403
 		1.622517039083881
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][92,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -1006,7 +1006,7 @@ begin	identify wtfarc_comb[SCI,2][92,*]
 		4.61685559171168
 		1.762299349092019
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][94,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -1053,7 +1053,7 @@ begin	identify wtfarc_comb[SCI,2][94,*]
 		4.758110083773551
 		1.952120049229151
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][96,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -1098,7 +1098,7 @@ begin	identify wtfarc_comb[SCI,2][96,*]
 		4.907490803013214
 		1.941462458683462
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][98,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify
@@ -1139,7 +1139,7 @@ begin	identify wtfarc_comb[SCI,2][98,*]
 		5.64491663706251
 		1.737462979076424
 
-# Tue 14:22:50 30-Jul-2019
+# Thu 01:23:27 08-Aug-2019
 begin	identify wtfarc_comb[SCI,2][100,*]
 	id	wtfarc_comb[SCI,2]
 	task	identify

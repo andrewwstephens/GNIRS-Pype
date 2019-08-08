@@ -298,8 +298,8 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage):
     # lists. This assumes that the Q offsets for the remaining set of images in the lists give the same nod value. A 
     # robust way of doing this will be calculating the shifts between every two consecutive image sets from the nod 
     # lists and checking if the shift is within the acceptable range; and warn the user if it is not.
-    nodAheader = fits.open(nodAlist[0])[0].header
-    nodBheader = fits.open(nodBlist[0])[0].header
+    nodAheader = fits.open('n'+nodAlist[0])[0].header
+    nodBheader = fits.open('n'+nodBlist[0])[0].header
     nodQoffset = abs(nodAheader['QOFFSET'] - nodBheader['QOFFSET'])
     pixelscale = nodAheader['PIXSCALE']
     '''
