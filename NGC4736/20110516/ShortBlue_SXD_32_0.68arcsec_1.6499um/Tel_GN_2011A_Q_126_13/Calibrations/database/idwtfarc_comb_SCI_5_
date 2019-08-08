@@ -1,0 +1,953 @@
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][53,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][53,*]
+	units	Angstrom
+	features	7
+	        100.02 10676.4829    10676.5   5.0 1 1 
+	        173.71 10472.9287    10472.9   5.0 1 1 200 UKIRT
+	        421.45 9787.20487   9787.184   5.0 1 1 200 NIRSPEC
+	        467.27 9660.33998 9660.42969   5.0 1 1 
+	        576.98 9356.89693  9356.7852   5.0 1 1 NOAO
+	        624.02 9226.99157  9227.0293   5.0 1 1 
+	        660.82 9125.45294  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.0194549560547
+		660.8187866210936
+		9900.889197520955
+		-775.7600184342507
+		0.07871772752223099
+		0.2450446849362758
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][51,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][51,*]
+	units	Angstroms
+	features	7
+	         99.98 10676.4872    10676.5   5.0 1 1 
+	        173.66 10472.9219    10472.9   5.0 1 1 200 UKIRT
+	        421.39 9787.18171   9787.184   5.0 1 1 200 NIRSPEC
+	        467.20 9660.39034 9660.42969   5.0 1 1 
+	        576.97 9356.84909  9356.7852   5.0 1 1 NOAO
+	        623.99 9227.01024  9227.0293   5.0 1 1 
+	        660.82 9125.45737  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.97732543945312
+		660.8168334960938
+		9900.835577533527
+		-775.7683181660311
+		0.1367213177606086
+		0.2533896043161476
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][49,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][49,*]
+	units	Angstroms
+	features	7
+	         99.96 10676.4879    10676.5   5.0 1 1 
+	        173.63 10472.9207    10472.9   5.0 1 1 200 UKIRT
+	        421.37 9787.17929   9787.184   5.0 1 1 200 NIRSPEC
+	        467.18 9660.39897 9660.42969   5.0 1 1 
+	        576.96 9356.82843  9356.7852   5.0 1 1 NOAO
+	        623.97 9227.03316  9227.0293   5.0 1 1 
+	        660.80 9125.44941  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.95536804199218
+		660.8038330078125
+		9900.82377005776
+		-775.7603123378009
+		0.1448954608049438
+		0.2410609115995272
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][47,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][47,*]
+	units	Angstroms
+	features	7
+	         99.94 10676.4871    10676.5   5.0 1 1 
+	        173.60 10472.9219    10472.9   5.0 1 1 200 UKIRT
+	        421.35  9787.1822   9787.184   5.0 1 1 200 NIRSPEC
+	        467.16 9660.39597 9660.42969   5.0 1 1 
+	        576.95 9356.81182  9356.7852   5.0 1 1 NOAO
+	        623.94 9227.06482  9227.0293   5.0 1 1 
+	        660.79 9125.43411  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.93856048583984
+		660.7886962890624
+		9900.800826529811
+		-775.7499033625433
+		0.1597654460168764
+		0.2234221781971801
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][45,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][45,*]
+	units	Angstroms
+	features	7
+	         99.90 10676.4914    10676.5   5.0 1 1 
+	        173.58 10472.9142    10472.9   5.0 1 1 200 UKIRT
+	        421.32 9787.19364   9787.184   5.0 1 1 200 NIRSPEC
+	        467.13 9660.39457 9660.42969   5.0 1 1 
+	        576.94 9356.79174  9356.7852   5.0 1 1 NOAO
+	        623.92 9227.08033  9227.0293   5.0 1 1 
+	        660.77 9125.43207  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.90342712402343
+		660.7746582031249
+		9900.802619089407
+		-775.7590940485872
+		0.1591036108488158
+		0.2294426448038374
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][43,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][43,*]
+	units	Angstroms
+	features	7
+	         99.85 10676.4888    10676.5   5.0 1 1 
+	        173.54 10472.9188    10472.9   5.0 1 1 200 UKIRT
+	        421.30 9787.18525   9787.184   5.0 1 1 200 NIRSPEC
+	        467.10 9660.40047 9660.42969   5.0 1 1 
+	        576.92 9356.78635  9356.7852   5.0 1 1 NOAO
+	        623.90 9227.09453  9227.0293   5.0 1 1 
+	        660.77 9125.42372  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.85231781005859
+		660.7655029296875
+		9900.807919546682
+		-775.7782571521993
+		0.1483167154972407
+		0.2457391561981526
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][41,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][41,*]
+	units	Angstroms
+	features	7
+	         99.82 10676.4934    10676.5   5.0 1 1 
+	        173.52 10472.9107    10472.9   5.0 1 1 200 UKIRT
+	        421.28 9787.19031   9787.184   5.0 1 1 200 NIRSPEC
+	        467.09 9660.40962 9660.42969   5.0 1 1 
+	        576.91 9356.76019  9356.7852   5.0 1 1 NOAO
+	        623.87 9227.11001  9227.0293   5.0 1 1 
+	        660.74  9125.4237  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.81919860839843
+		660.7420043945312
+		9900.824847997579
+		-775.7778509367543
+		0.1337060691590579
+		0.2429962428388351
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][39,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][39,*]
+	units	Angstroms
+	features	7
+	         99.79 10676.4893    10676.5   5.0 1 1 
+	        173.49 10472.9178    10472.9   5.0 1 1 200 UKIRT
+	        421.26  9787.1829   9787.184   5.0 1 1 200 NIRSPEC
+	        467.07 9660.41069 9660.42969   5.0 1 1 
+	        576.89 9356.75406  9356.7852   5.0 1 1 NOAO
+	        623.84   9227.135  9227.0293   5.0 1 1 
+	        660.73 9125.40817  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.7851333618164
+		660.7330322265625
+		9900.827456967295
+		-775.7967864057436
+		0.1212738937279789
+		0.2562274562301027
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][37,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][37,*]
+	units	Angstroms
+	features	7
+	         99.74 10676.4875    10676.5   5.0 1 1 
+	        173.47 10472.9212    10472.9   5.0 1 1 200 UKIRT
+	        421.25 9787.16977   9787.184   5.0 1 1 200 NIRSPEC
+	        467.04 9660.42357 9660.42969   5.0 1 1 
+	        576.86 9356.75665  9356.7852   5.0 1 1 NOAO
+	        623.82 9227.12805  9227.0293   5.0 1 1 
+	        660.72 9125.41109  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.73551177978515
+		660.7181396484376
+		9900.85130205065
+		-775.8309801121389
+		0.09799486812457216
+		0.2927741687211382
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][35,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][35,*]
+	units	Angstroms
+	features	7
+	         99.75 10676.4899    10676.5   5.0 1 1 
+	        173.49 10472.9177    10472.9   5.0 1 1 200 UKIRT
+	        421.29 9787.15238   9787.184   5.0 1 1 200 NIRSPEC
+	        467.06 9660.45394 9660.42969   5.0 1 1 
+	        576.90 9356.75091  9356.7852   5.0 1 1 NOAO
+	        623.87   9227.104  9227.0293   5.0 1 1 
+	        660.76 9125.42899  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.7460479736328
+		660.7568359374999
+		9900.865239241159
+		-775.822812629372
+		0.09422132537806549
+		0.2923449435609755
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][33,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][33,*]
+	units	Angstroms
+	features	7
+	         99.98 10676.4725    10676.5   5.0 1 1 
+	        173.71 10472.9449    10472.9   5.0 1 1 200 UKIRT
+	        421.49 9787.24419   9787.184   5.0 1 1 200 NIRSPEC
+	        467.37 9660.25785 9660.42969   5.0 1 1 
+	        577.06 9356.91765  9356.7852   5.0 1 1 NOAO
+	        624.10 9227.06404  9227.0293   5.0 1 1 
+	        660.96 9125.39673  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.98045349121094
+		660.9632568359375
+		9900.880223092332
+		-775.8177641701601
+		0.05438184342939335
+		0.2798932851756487
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][31,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][31,*]
+	units	Angstroms
+	features	7
+	        100.10 10676.4528    10676.5   5.0 1 1 
+	        173.81 10472.9783    10472.9   5.0 1 1 200 UKIRT
+	        421.60 9787.25219   9787.184   5.0 1 1 200 NIRSPEC
+	        467.50  9660.1815 9660.42969   5.0 1 1 
+	        577.12 9357.01592  9356.7852   5.0 1 1 NOAO
+	        624.18 9227.04737  9227.0293   5.0 1 1 
+	        661.04  9125.3698  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.1047439575195
+		661.0426025390625
+		9900.880653413285
+		-775.8128002554192
+		0.03063571198145027
+		0.2713109553870117
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][29,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][29,*]
+	units	Angstroms
+	features	7
+	        100.24 10676.4398    10676.5   5.0 1 1 
+	        173.93 10473.0013    10472.9   5.0 1 1 200 UKIRT
+	        421.72  9787.2292   9787.184   5.0 1 1 200 NIRSPEC
+	        467.62 9660.16969 9660.42969   5.0 1 1 
+	        577.19 9357.07852  9356.7852   5.0 1 1 NOAO
+	        624.29 9227.00988  9227.0293   5.0 1 1 
+	        661.12  9125.3695  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.235969543457
+		661.1248168945311
+		9900.893736586265
+		-775.7999523645045
+		0.01090585007998037
+		0.2648058013212655
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][27,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][27,*]
+	units	Angstroms
+	features	7
+	        100.51  10676.508    10676.5   5.0 1 1 
+	        174.12 10472.8838    10472.9   5.0 1 1 200 UKIRT
+	        421.93 9787.25709   9787.184   5.0 1 1 200 NIRSPEC
+	        467.80 9660.36077 9660.42969   5.0 1 1 
+	        577.60 9356.72678  9356.7852   5.0 1 1 NOAO
+	        624.48 9227.14282  9227.0293   5.0 1 1 
+	        661.29 9125.41871  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.5082397460938
+		661.2874755859374
+		9900.865256085966
+		-775.5980461349563
+		0.09807589901054861
+		0.05342413670392483
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][25,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][25,*]
+	units	Angstroms
+	features	6
+	        100.96   10676.49    10676.5   5.0 1 1 
+	        174.46 10472.9195    10472.9   5.0 1 1 200 UKIRT
+	        422.32 9787.10196   9787.184   5.0 1 1 200 NIRSPEC
+	        468.10 9660.51613 9660.42969   5.0 1 1 
+	        624.95 9227.00163  9227.0293   5.0 1 1 NOAO
+	        661.68 9125.48341  9125.4697   5.0 1 1 
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.9577407836914
+		661.684326171875
+		9900.734880535257
+		-775.4767720716823
+		0.2518362979813042
+		-0.02653123354574483
+
+# Tue 14:22:52 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][23,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][23,*]
+	units	Angstroms
+	features	3
+	        175.00    10472.9    10472.9   5.0 1 1 
+	        468.61 9660.42969 9660.42969   5.0 1 1 200 UKIRT
+	        662.29  9125.4697  9125.4697   5.0 1 1 200 NIRSPEC
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	7
+		1.
+		3.
+		175.
+		662.2932128906249
+		9798.865446609891
+		-673.7151499999985
+		0.3194033901099083
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][55,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][55,*]
+	units	Angstroms
+	features	7
+	        100.03 10676.4847    10676.5   5.0 1 1 
+	        173.71 10472.9274    10472.9   5.0 1 1 200 UKIRT
+	        421.44 9787.14659   9787.184   5.0 1 1 200 NIRSPEC
+	        467.22 9660.43019 9660.42969   5.0 1 1 
+	        577.00 9356.85656  9356.7852   5.0 1 1 NOAO
+	        624.04 9226.97768  9227.0293   5.0 1 1 
+	        660.85 9125.47475  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.0274200439453
+		660.8512573242187
+		9900.830164172706
+		-775.7591925320687
+		0.1495527006452197
+		0.2542216044500138
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][57,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][57,*]
+	units	Angstroms
+	features	7
+	        100.05 10676.4888    10676.5   5.0 1 1 
+	        173.73 10472.9206    10472.9   5.0 1 1 200 UKIRT
+	        421.46 9787.14159   9787.184   5.0 1 1 200 NIRSPEC
+	        467.23 9660.44878 9660.42969   5.0 1 1 
+	        577.03 9356.84645  9356.7852   5.0 1 1 NOAO
+	        624.07 9226.96276  9227.0293   5.0 1 1 
+	        660.87 9125.48888  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.0463638305664
+		660.8726806640625
+		9900.83377755181
+		-775.7555596152886
+		0.1550762101175055
+		0.2555882918965384
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][59,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][59,*]
+	units	Angstroms
+	features	7
+	        100.08 10676.4838    10676.5   5.0 1 1 
+	        173.75 10472.9299    10472.9   5.0 1 1 200 UKIRT
+	        421.48 9787.11742   9787.184   5.0 1 1 200 NIRSPEC
+	        467.24 9660.46851 9660.42969   5.0 1 1 
+	        577.04 9356.85005  9356.7852   5.0 1 1 NOAO
+	        624.10 9226.96172  9227.0293   5.0 1 1 
+	        660.90 9125.48651  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.0795364379883
+		660.9002685546874
+		9900.80737542069
+		-775.7554008465227
+		0.1777756650699643
+		0.2567575273962855
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][61,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][61,*]
+	units	Angstroms
+	features	7
+	        100.11  10676.482    10676.5   5.0 1 1 
+	        173.77 10472.9335    10472.9   5.0 1 1 200 UKIRT
+	        421.51 9787.10061   9787.184   5.0 1 1 200 NIRSPEC
+	        467.25 9660.48841 9660.42969   5.0 1 1 
+	        577.07  9356.8404  9356.7852   5.0 1 1 NOAO
+	        624.12 9226.96871  9227.0293   5.0 1 1 
+	        660.93 9125.48431  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.1120529174805
+		660.9266967773438
+		9900.785737741443
+		-775.7464828657198
+		0.197393356857299
+		0.2476633318338028
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][63,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][63,*]
+	units	Angstroms
+	features	7
+	        100.14 10676.4843    10676.5   5.0 1 1 
+	        173.80 10472.9298    10472.9   5.0 1 1 200 UKIRT
+	        421.53 9787.09463   9787.184   5.0 1 1 200 NIRSPEC
+	        467.26 9660.50225 9660.42969   5.0 1 1 
+	        577.09 9356.83941  9356.7852   5.0 1 1 NOAO
+	        624.15 9226.95043  9227.0293   5.0 1 1 
+	        660.95 9125.49709  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.1440582275391
+		660.9452514648436
+		9900.784046686318
+		-775.7432147881806
+		0.2066301300416069
+		0.2496324501314143
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][65,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][65,*]
+	units	Angstroms
+	features	7
+	        100.17 10676.4876    10676.5   5.0 1 1 
+	        173.83 10472.9243    10472.9   5.0 1 1 200 UKIRT
+	        421.54 9787.09636   9787.184   5.0 1 1 200 NIRSPEC
+	        467.27 9660.50523 9660.42969   5.0 1 1 
+	        577.10 9356.85509  9356.7852   5.0 1 1 NOAO
+	        624.18 9226.91028  9227.0293   5.0 1 1 
+	        660.96 9125.51906  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.1739196777344
+		660.9647827148437
+		9900.777635023775
+		-775.7450145889855
+		0.2256980925702605
+		0.2607424280605268
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][67,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][67,*]
+	units	Angstroms
+	features	7
+	        100.20 10676.4886    10676.5   5.0 1 1 
+	        173.86 10472.9226    10472.9   5.0 1 1 200 UKIRT
+	        421.56 9787.09785   9787.184   5.0 1 1 200 NIRSPEC
+	        467.29 9660.50253 9660.42969   5.0 1 1 
+	        577.11 9356.87259  9356.7852   5.0 1 1 NOAO
+	        624.21 9226.88091  9227.0293   5.0 1 1 
+	        660.98 9125.53275  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.2022018432617
+		660.9820556640625
+		9900.773755838248
+		-775.749345151282
+		0.2369247540319442
+		0.2714120478686609
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][69,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][69,*]
+	units	Angstroms
+	features	7
+	        100.23 10676.4947    10676.5   5.0 1 1 
+	        173.89 10472.9122    10472.9   5.0 1 1 200 UKIRT
+	        421.56 9787.10797   9787.184   5.0 1 1 200 NIRSPEC
+	        467.30 9660.50135 9660.42969   5.0 1 1 
+	        577.12 9356.88499  9356.7852   5.0 1 1 NOAO
+	        624.24 9226.83841  9227.0293   5.0 1 1 
+	        660.99 9125.55828  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.2271347045899
+		660.9880981445312
+		9900.778528185943
+		-775.7421352896632
+		0.2479379288143575
+		0.2739444416779848
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][71,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][71,*]
+	units	Angstroms
+	features	7
+	        100.12 10676.5029    10676.5   5.0 1 1 
+	        173.79  10472.898    10472.9   5.0 1 1 200 UKIRT
+	        421.46 9787.10988   9787.184   5.0 1 1 200 NIRSPEC
+	        467.19 9660.52908 9660.42969   5.0 1 1 
+	        577.04 9356.82686  9356.7852   5.0 1 1 NOAO
+	        624.13 9226.87568  9227.0293   5.0 1 1 
+	        660.89  9125.5555  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		100.1204452514648
+		660.8906860351561
+		9900.778520934636
+		-775.743961234851
+		0.2506587775380586
+		0.2702788579659348
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][73,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][73,*]
+	units	Angstroms
+	features	7
+	         99.97 10676.5163    10676.5   5.0 1 1 
+	        173.63 10472.8748    10472.9   5.0 1 1 200 UKIRT
+	        421.29 9787.11272   9787.184   5.0 1 1 200 NIRSPEC
+	        467.01 9660.57383 9660.42969   5.0 1 1 
+	        576.90 9356.73762  9356.7852   5.0 1 1 NOAO
+	        623.93 9226.92767  9227.0293   5.0 1 1 
+	        660.69 9125.55494  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.97472381591796
+		660.6912231445312
+		9900.784456723034
+		-775.7093690456761
+		0.2511773235316665
+		0.2286758689042571
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][75,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][75,*]
+	units	Angstroms
+	features	7
+	         99.93 10676.5112    10676.5   5.0 1 1 
+	        173.54 10472.8833    10472.9   5.0 1 1 200 UKIRT
+	        421.23 9787.11387   9787.184   5.0 1 1 200 NIRSPEC
+	        466.95 9660.55845 9660.42969   5.0 1 1 
+	        576.83  9356.7458  9356.7852   5.0 1 1 NOAO
+	        623.84 9226.94691  9227.0293   5.0 1 1 
+	        660.60 9125.53828  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.92537689208983
+		660.5994873046874
+		9900.774063758532
+		-775.6728909216846
+		0.2506917577496124
+		0.1864187822585761
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][77,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][77,*]
+	units	Angstroms
+	features	7
+	         99.84 10676.5087    10676.5   5.0 1 1 
+	        173.42 10472.8875    10472.9   5.0 1 1 200 UKIRT
+	        421.13 9787.11715   9787.184   5.0 1 1 200 NIRSPEC
+	        466.86 9660.54868 9660.42969   5.0 1 1 
+	        576.73 9356.74108  9356.7852   5.0 1 1 NOAO
+	        623.71 9226.97196  9227.0293   5.0 1 1 
+	        660.46 9125.52287  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.83678436279296
+		660.4588012695311
+		9900.781687273825
+		-775.6241506518579
+		0.2340818239550642
+		0.1312507629247143
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][79,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][79,*]
+	units	Angstroms
+	features	7
+	         99.67 10676.2998    10676.5   5.0 1 1 
+	        173.20 10473.2507    10472.9   5.0 1 1 200 UKIRT
+	        420.94 9786.91187   9787.184   5.0 1 1 200 NIRSPEC
+	        466.69 9660.14917 9660.42969   5.0 1 1 
+	        576.00 9357.68091  9356.7852   5.0 1 1 NOAO
+	        623.47 9226.63212  9227.0293   5.0 1 1 
+	        660.21 9125.37334  9125.4697   5.0 1 1 NOAO
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.66586303710936
+		660.205078125
+		9900.712756596
+		-775.8471655337473
+		0.1238065828984
+		0.3839429037611276
+
+# Tue 14:22:53 30-Jul-2019
+begin	identify wtfarc_comb[SCI,5][81,*]
+	id	wtfarc_comb[SCI,5]
+	task	identify
+	image	wtfarc_comb[SCI,5][81,*]
+	units	Angstroms
+	features	6
+	         99.74 10676.4185    10676.5   5.0 1 1 
+	        172.77 10473.0411    10472.9   5.0 1 1 200 UKIRT
+	        420.46 9787.03966   9787.184   5.0 1 1 200 NIRSPEC
+	        466.28 9660.42826 9660.42969   5.0 1 1 
+	        622.90 9227.34884  9227.0293   5.0 1 1 NOAO
+	        659.77  9125.2364  9125.4697   5.0 1 1 
+	function chebyshev
+	order 4
+	sample *
+	naverage 1
+	niterate 10
+	low_reject 3.
+	high_reject 3.
+	grow 0.
+	coefficients	8
+		1.
+		4.
+		99.7379379272461
+		659.7659301757811
+		9900.191890185299
+		-775.2110380207054
+		0.6355381541686147
+		-0.3799946008068499
+

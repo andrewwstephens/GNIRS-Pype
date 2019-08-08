@@ -30,7 +30,7 @@ import log, glob, shutil, os, glob, ConfigParser, scipy.ndimage.interpolation
 import astropy.coordinates as coord
 import numpy as np
 import matplotlib.pyplot as plt
-#from astropy.table import Table
+from astropy.table import Table
 from astropy.io import fits
 from astropy import units as u
 from astroquery.simbad import Simbad
@@ -933,7 +933,7 @@ def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinu
         if not oldfiles:
             logger.info("Dividing the H line corrected telluric 1D source spectrum, extension %d, by the", extension)
             logger.info("telluric continuum fit.")
-
+            
             iraf.imarith(operand1=telluric_divideContinuumInput, operand2=telluricContinuumFit, op='/', \
                 result=telluric_divideContinuumOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', calctype='',\
                 verbose='yes', noact='no', mode='al')
@@ -942,13 +942,18 @@ def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinu
             # astropy/numpy solution. Open the image and the scalar we will be dividing it by.
             # TODO(Viraja):  Incorporate this commented section later if the imarith way from XDGNIRS is found to not
             # work properly.
-            operand1 = fits.open(telluric_divideContinuumInput)[0].data
-            operand2 = fits.open(telluric_fitContinuumOutput)[0].data
+            operand1 = fits.open(telluric_divideContinuumInput)[1].data
+            operand2 = fits.open(telluricContinuumFit)[0].data
             # Create a new data array
-            if operand2 != 0:
-                operand3 = operand1 / operand2
-            else:
-                operand3 = 0.0
+            multiplied = np.array(operand1, copy=True)
+            for i in range(len(telluric_divideContinuumOutput_SEF)):
+                if operand2[1] != 0:
+                    multiplied[1] = operand1[1] / operand2[1]
+                else:
+                    multiplied[i] = 0.0
+                    # Viraja:  Why is operand3 set to 0.0?
+            table = Table(multiplied)
+            table.write(telluric_divideContinuumOutput_SEF, format='fits')
             '''
             # TODO(Viraja):  Check if a new MEF with the same filename as the previous one-extension image can be 
             # created sucessfully.
@@ -963,7 +968,7 @@ def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinu
                 # Divide the H line corrected telluric 1D source spectra by the continuum fit.
                 logger.info("Dividing the H line corrected telluric 1D source spectrum, extension %d, by", extension)
                 logger.info("the telluric continuum fit.")
-
+    
                 iraf.imarith(operand1=telluric_divideContinuumInput, operand2=telluricContinuumFit, op='/', \
                     result=telluric_divideContinuumOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', \
                     calctype='', verbose='yes', noact='no', mode='al')
@@ -972,14 +977,16 @@ def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinu
                 # an astropy/numpy solution. Open the image and the scalar we will be dividing it by.
                 # TODO(Viraja):  Incorporate this commented section later if the imarith way from XDGNIRS is found to 
                 # not work properly.
-                operand1 = fits.open(telluric_divideContinuumInput)[0].data
-                operand2 = fits.open(telluric_fitContinuumOutput)[0].data
+                operand1 = fits.open(telluric_divideContinuumInput)[1].data
+                operand2 = fits.open(telluricContinuumFit)[0].data
                 # Create a new data array
-                if operand2 != 0:
-                    operand3 = operand1 / operand2
-                else:
-                    operand3 = 0.0
-                    # Viraja:  Why is operand3 set to 0.0?
+                telluric_divideContinuumOutput_SEF = np.array(operand1, copy=True)
+                for i in range(len(telluric_divideContinuumOutput_SEF)):
+                    if operand2[1] != 0:
+                        telluric_divideContinuumOutput_SEF[1] = operand1[1] / operand2[1]
+                    else:
+                        telluric_divideContinuumOutput_SEF[i] = 0.0
+                        # Viraja:  Why is operand3 set to 0.0?
                 '''
                 # TODO(Viraja):  Check if a new MEF with the same filename as the previous one-extension image can be 
                 # created sucessfully.
@@ -1014,22 +1021,28 @@ def divideTelluricLines(scisrcextractedspectrum, telluric_dividedContinuum, scie
         science_divideTelluricLinesOutput_SEF = science_dividedTelluricLines+'_order'+str(extension)+'_SEF.fits'
         science_divideTelluricLinesOutput_MEF = science_dividedTelluricLines+'_order'+str(extension)+'_MEF.fits'
         
+#        calibrationInput = "ref.fits"
         logger.debug("science_divideTelluricLinesInput: %s", science_divideTelluricLinesInput)
         logger.debug("science_divideTelluricLinesOutput_SEF: %s", science_divideTelluricLinesOutput_SEF)
+        logger.debug("telluric_dividedContinuum: %s", telluric_dividedContinuum)
         logger.debug("calibrationInput: %s", calibrationInput)
         logger.debug("telluricInter: %s", telluricInter)
         logger.debug("telluric_telluricRegions_sample: %s", telluric_telluricRegions_sample)
-        logger.debug("sciAirmass: %s", sciAirmass)
+        logger.debug("sciAirmass: %.4f", sciAirmass)
+
+
+#        iraf.telluric('vsrc_comb.fits[SCI,1]', 'test2.fits', 'ref.fits', 1.263, thresh=0.1, inter='')
+
 
         oldfiles = glob.glob(science_dividedTelluricLines+'_order'+str(extension)+'*.fits')
         if not oldfiles:
             logger.info("Removing telluric lines from the science 1D source spectrum, extension %d.", extension)     
-            science_telluricLinesInfo = iraf.telluric(input=science_divideTelluricLinesInput, \
+            science_telluricLinesInfo = iraf.telluric(input='temporary.fits[1]', \
                 output=science_divideTelluricLinesOutput_SEF, cal=calibrationInput, ignoreaps='yes', xcorr='yes', \
                 tweakrms='yes', interactive=telluricInter, sample=telluric_telluricRegions_sample, threshold=0.1, \
-                lag=3, shift=0., dshift=0.1, scale=1.0, dscale=0.1, offset=1, smooth=1, cursor='', \
+                lag=3.0, shift=0.0, dshift=0.05, scale=1.0, dscale=0.05, offset=1, smooth=1, cursor='', \
                 airmass=sciAirmass, answer='yes', mode='al', Stdout=1)
-            
+    
             # Record shift and scale info for future reference in the script
             scitelinfo = open(scitelinfofile,'w')
             scitelinfo.write(str(science_telluricLinesInfo)+'\n')
@@ -1084,7 +1097,7 @@ def divideTelluricLines(scisrcextractedspectrum, telluric_dividedContinuum, scie
                 science_telluricLinesInfo = iraf.telluric(input=science_divideTelluricLinesInput, \
                     output=science_divideTelluricLinesOutput_SEF, cal=calibrationInput, ignoreaps='yes', xcorr='yes', \
                     tweakrms='yes', interactive=telluricInter, sample=telluric_telluricRegions_sample, threshold=0.1, \
-                    lag=3, shift=0., dshift=0.1, scale=1.0, dscale=0.1, offset=1, smooth=1, cursor='', \
+                    lag=3, shift=0.0, dshift=0.1, scale=1.0, dscale=0.1, offset=1, smooth=1, cursor='', \
                     airmass=sciAirmass, answer='yes', mode='al', Stdout=1)
                 
                 # Record shift and scale info for future reference in the script
