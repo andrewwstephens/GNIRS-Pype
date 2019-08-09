@@ -27,17 +27,12 @@
 ################################################################################
 
 import log, glob, shutil, os, glob, ConfigParser, scipy.ndimage.interpolation
-import astropy.coordinates as coord
-import numpy as np
 import matplotlib.pyplot as plt
-from astropy.table import Table
 from astropy.io import fits
-from astropy import units as u
-from astroquery.simbad import Simbad
 from pyraf import iraf, iraffunctions
 
 # TODO: Should the runtimedata be in each science directory?
-# TODO: Should we require astroquery?
+
 
 def start(configfile):
     """
@@ -60,7 +55,7 @@ def start(configfile):
     iraf.gnirs()
 
     # Reset to default parameters the used IRAF tasks.
-    iraf.unlearn(iraf.gemini,iraf.gemtools,iraf.gnirs,)
+    iraf.unlearn(iraf.gemini,iraf.gemtools,iraf.gnirs)
 
     # From http://bishop.astro.pomona.edu/Penprase/webdocuments/iraf/beg/beg-image.html:
     # Before doing anything involving image display the environment variable stdimage must be set to the correct frame 
@@ -82,11 +77,10 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
-    # Read general config.
+    # Read general config
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
-    # config required for extracting 1D spectra
-#    observationSections = ['ScienceDirectories','TelluricDirectories']
+    # config required for doing telluric correction
     hLineInter = config.getboolean('interactive','hLineInter')
     continuumInter = config.getboolean('interactive','continuumInter')
     telluricInter = config.getboolean('interactive','telluricInter')
@@ -97,12 +91,7 @@ def start(configfile):
     start = config.getint('telluricCorrection','Start')
     stop = config.getint('telluricCorrection','Stop')
     hLineMethod = config.get('telluricCorrection','hLineMethod')
-    telluricRA = config.get('telluricCorrection','telluricRA')
-    telluricDEC = config.get('telluricCorrection','telluricDEC')
-    telluricSpectralType = config.get('telluricCorrection','telluricSpectralType')
-    telluricMagnitude = config.get('telluricCorrection','telluricMagnitude')
-    telluricTemperature = config.get('telluricCorrection','telluricTemperature')
-#    telluricBand = config.get('telluricCorrection','telluricBand')
+
 
     for scipath in config.options("ScienceDirectories"):
         if config.getboolean("ScienceDirectories",scipath):
@@ -133,23 +122,12 @@ def start(configfile):
 
             # Check if required runtime data files and extracted spectra available in their respective paths
             logger.info("Checking if required runtime data files and extracted spectra available in %s", runtimedatapath)
-            logger.info("and %s, respectively.", scipath)
-
-            reference_startable_filename = 'stars_spectraltypes_temperatures.txt'
-            if os.path.exists(runtimedatapath+'/'+reference_startable_filename):
-                logger.info("Required reference star table of spectral types and temperatures available.")
-                reference_startable = open(runtimedatapath+'/'+reference_startable_filename, "r").readlines()
-#                reference_startable.close()
-            else:
-                logger.warning("Required reference star table of spectral types and temperatures not available.")
-                logger.warning("Please provide the star table in %s. Exiting script.\n", runtimedatapath)
-                raise SystemExit
+            logger.info("and %s, respectively.\n", scipath)
             
             telluric_hLineRegions_filename = 'telluric_hLineRegions.dat'
             if os.path.exists(runtimedatapath+'/'+telluric_hLineRegions_filename):
                 logger.info("Required telluric H line regions reference file available.")
                 telluric_hLineRegions = open(runtimedatapath+'/'+telluric_hLineRegions_filename, "r").readlines()
-#                telluric_hLineRegions.close()
             else:
                 logger.warning("Required telluric H line regions reference file not available. Please provide the ")
                 logger.warning("file in %s. Exiting script.\n", runtimedatapath)
@@ -159,7 +137,6 @@ def start(configfile):
             if os.path.exists(runtimedatapath+'/'+telluric_continuumRegions_filename):
                 logger.info("Required telluric continuum regions reference file available.")
                 telluric_continuumRegions = open(runtimedatapath+'/'+telluric_continuumRegions_filename, "r").readlines()
-#                telluric_continuumRegions.close()
             else:
                 logger.warning("Required telluric continuum regions reference file not available. Please provide the ")
                 logger.warning("file in %s. Exiting script.\n", runtimedatapath)
@@ -173,7 +150,6 @@ def start(configfile):
                         chunk = line.split()
                         telluricRegions[chunk[0]] = chunk[1]
                 logger.debug('TelluricRegions: %s', telluricRegions)
-#
             else:
                 logger.warning("Required telluric regions reference file not available. Please provide the file in")
                 logger.warning("%s. Exiting script.\n", runtimedatapath)
@@ -214,6 +190,7 @@ def start(configfile):
                 logger.warning("gnirsExtarctSpectra1D.py to create the extracted spectrum or provide it manually in")
                 logger.warning("%s. Exiting script.\n", telpath)
                 raise SystemExit
+
             '''
             if extractionStepwise:
             '''
@@ -290,35 +267,17 @@ def start(configfile):
                 logger.warning("#####################################################################")
                 logger.warning("#####################################################################\n")
 
-                valindex = int(raw_input("Please enter a valid start value (1 to 6, default 1): "))
-                stop = int(raw_input("Please enter a valid stop value (1 to 6, default 6): "))
+                valindex = int(raw_input("Please enter a valid start value (1 to 5, default 1): "))
+                stop = int(raw_input("Please enter a valid stop value (1 to 5, default 5): "))
 
             while valindex <= stop:
 
                 #############################################################################
-                ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-                ##          from the configuration file.                                   ##
-                ##  Output: An ascii file containing telluric information.                 ##
-                #############################################################################
-                
-                if valindex == 1:
-                    
-                    telinfofile = telpath+'/telluric_info.txt'
-                    getTelluricInfo(telHeader, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, \
-                        telluricTemperature, reference_startable, telinfofile, overwrite)
-
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-
-                #############################################################################
-                ##  STEP 2: H line removal.                                                ##
+                ##  STEP 1: H line removal.                                                ##
                 ##  Output: H line corrected telluric 1D source spectra.                   ##
                 #############################################################################
 
-                elif valindex == 2:
+                elif valindex == 1:
                     
                     telhlineinfofile = telpath+'/telluric_hLineInfo.txt'
                     hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, \
@@ -327,48 +286,48 @@ def start(configfile):
 
                     logger.info("##################################################################")
                     logger.info("#                                                                #")
-                    logger.info("#       STEP 2: H line removal - COMPLETED                       #")
+                    logger.info("#       STEP 1: H line removal - COMPLETED                       #")
                     logger.info("#                                                                #")
                     logger.info("##################################################################\n")
 
                 #############################################################################
-                ##  STEP 3: Fit telluric continuum.                                        ##
+                ##  STEP 2: Fit telluric continuum.                                        ##
                 ##  Output: 1D Fit to the telluric continuum.                              ##
                 #############################################################################
 
-                elif valindex == 3:
+                elif valindex == 2:
                     
                     fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter, \
                         orders, telluric_continuumRegions, tempInter, overwrite)
                     
                     logger.info("##################################################################")
                     logger.info("#                                                                #")
-                    logger.info("#       STEP 3: Fit telluric continuum - COMPLETED               #")
+                    logger.info("#       STEP 2: Fit telluric continuum - COMPLETED               #")
                     logger.info("#                                                                #")
                     logger.info("##################################################################\n")
 
                 #############################################################################################
-                ##  STEP 4: Division of telluric by the telluric continuum.                                ##
+                ##  STEP 3: Division of telluric by the telluric continuum.                                ##
                 ##  Output: Continuum-divided, H line removed telluric 1D source spectra.                  ##
                 #############################################################################################
 
-                elif valindex == 4:
+                elif valindex == 3:
                     
                     divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, \
                         telluric_dividedContinuum, orders, overwrite)
                     
                     logger.info("##############################################################################")
                     logger.info("#                                                                            #")
-                    logger.info("#    STEP 4: Division of telluric by the telluric continuum  - COMPLETED     #")
+                    logger.info("#    STEP 3: Division of telluric by the telluric continuum  - COMPLETED     #")
                     logger.info("#                                                                            #")
                     logger.info("##############################################################################\n")
 
                 #############################################################################
-                ##  STEP 5: Telluric line removal.                                         ##
+                ##  STEP 4: Telluric line removal.                                         ##
                 ##  Output: Telluric line removed science 1D source spectra.               ##
                 #############################################################################
 
-                elif valindex == 5:
+                elif valindex == 4:
                     
                     scitelinfofile = 'science_telluricInfo.txt'
                     divideTelluricLines(scisrcextractedspectrum, telluric_dividedContinuum,
@@ -377,23 +336,23 @@ def start(configfile):
                     
                     logger.info("##################################################################")
                     logger.info("#                                                                #")
-                    logger.info("#       STEP 5: Telluric line removal - COMPLETED                #")
+                    logger.info("#       STEP 4: Telluric line removal - COMPLETED                #")
                     logger.info("#                                                                #")
                     logger.info("##################################################################\n")
                 
                 #################################################################################
-                ##  STEP 6: Division of telluric by the telluric continuum.                    ##
+                ##  STEP 5: Division of telluric by the telluric continuum.                    ##
                 ##  Output: Continuum-divided, telluric corrected science 1D source spectra.   ##
                 #################################################################################
                 
-                elif valindex == 6:
+                elif valindex == 5:
                     
                     reintroduceTelluricContinuum(science_dividedTelluricLines, science_correctedTelluric, orders, \
                         overwrite)
                     
                     logger.info("##################################################################################")
                     logger.info("#                                                                                #")
-                    logger.info("#       STEP 6: Division of telluric by the telluric continuum - COMPLETED       #")
+                    logger.info("#       STEP 5: Division of telluric by the telluric continuum - COMPLETED       #")
                     logger.info("#                                                                                #")
                     logger.info("##################################################################################\n")
 
@@ -406,22 +365,7 @@ def start(configfile):
                     logger.error("###########################################################################")
                     logger.error("###########################################################################")
                     raise SystemExit
-                '''
-                #############################################################################
-                ##  STEP 1: Clean raw observations.                                        ##
-                ##  Output: Cleaned science or telluric frames.                            ##
-                #############################################################################
-
-                elif valindex == 7:
-                    
-                    divideCubebyTel(rawFrame, log, over)
-                    
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Clean raw observations - COMPLETED               #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-                '''
+            
                 valindex += 1
 
             logger.info("##############################################################################")
@@ -439,199 +383,6 @@ def start(configfile):
 ##################################################################################################################
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
-
-def getTelluricInfo(telHeader, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, telluricTemperature, \
-    reference_startable, telinfofile, overwrite):
-    """
-    Find telluric star spectral type, temperature, magnitude, and exposure time. Based on XDGNIRS code. Modified from
-    nifsTelluric.py code.
-
-    Executes a SIMBAD query and parses the resulting html to find spectal type, temperature, and magnitude.
-
-    Reads:
-        Extracted 1D telluric source spectrum.
-    
-    Writes:
-        Telluric information file in the science directory path.
-    """
-    logger = log.getLogger('gnirsTelluric.getTelluricInfo')
-
-    # This code structure checks if output files already exist. If output files exist and overwrite is specified, all 
-    # output is overwritten.
-    if os.path.exists(telinfofile):
-        if overwrite:
-            logger.warning("Removing old %s", telinfofile)
-            os.remove(telinfofile)
-
-            # If user did not specify a telluricMagnitude, telluricTemperature, telluricRA, or telluricDEC, get 
-            # telluricRA and telluricDEC from the extracted telluric spectrum header. Use SIMBAD to look up 
-            # telluricSpectralType, telluricMagnitude, and telluricTemperature.
-            if (not telluricMagnitude or not telluricTemperature) and (not telluricRA or not telluricDEC):
-                if not telluricRA:
-                    telluricRA = telHeader['RA']
-                if not telluricDEC:
-                    telluricDEC = telHeader['DEC']
-                telExptime = str(telHeader['EXPTIME'])
-            else:
-                # Get the telluric exposure time anyways
-                telExptime = str(telHeader['EXPTIME'])
-
-            # Check to see if a spectral type or temperature has been given
-            if telluricTemperature:
-                spectraltypeFind = False
-                temperatureFind = False
-            else:
-                spectraltypeFind = True
-                temperatureFind = True
-
-            if telluricMagnitude:
-                magnitudeFind = False
-            else:
-                magnitudeFind = True
-
-            if spectraltypeFind or temperatureFind or magnitudeFind:
-                # Construct URL based on telluric coordinates and execute SIMBAD query to find the spectral type
-                Simbad.add_votable_fields('flux(K)', 'sp')  ## Viraja:  Why does it query only the K magnitude?
-                simbad_startable = Simbad.query_region(coord.SkyCoord(ra=telluricRA, dec=telluricDEC, \
-                    unit=(u.deg, u.deg), frame='fk5'), radius=0.1 * u.deg)
-                # Viraja:  How are the RA and DEC formatted in XDpiped.csh??
-
-                if spectraltypeFind:
-                    # Get spectral type -- only the first 3 characters (strip off end of types like AIVn as they 
-                    # are not in the 'reference_startable.txt')
-                    telluricSpectralType = simbad_startable['SP_TYPE'][0][0:3]
-                else:
-                    logger.error("Cannot locate the spectral type of the telluric in the table generated by the")
-                    logger.error("SIMBAD query. Please update the parameter 'telluricSpectralType' in the")
-                    logger.error("configuration file.")
-                    raise SystemExit
-                
-                if magnitudeFind:
-                    telluricMagnitude = str(simbad_startable['FLUX_K'][0])
-                else:
-                    logger.error("Cannot find a the K magnitude for the telluric in the table generated by the")
-                    logger.error("SIMBAD query. Please update the parameter 'telluricMagnitude' in the configuration")
-                    logger.error("file. Exiting script.")
-                    raise SystemExit
-
-                if temperatureFind:
-                    # Find temperature for the spectral type in 'reference_startable.txt'
-                    count = 0
-                    for line in reference_startable:
-                        if '#' in line:
-                            continue
-                        else:
-                            if telluricSpectralType in line.split()[0]:
-                                telluricTemperature = line.split()[1]
-                                count = 0
-                                break
-                            else:
-                                count += 1
-                    if count > 0:  ## Viraja:  I am wondering why this condition is given and why is this an error??
-                        logger.error("Cannot find a temperature for spectral type %s of the telluric", telluricSpectralType)
-                        logger.error("Please update the parameter 'telluricTemperature' in the configuration file.")
-                        raise SystemExit
-
-            telinfo = open(telinfofile,'w')
-            telinfo.write('k K '+telluricMagnitude+' '+telluricTemperature+'\n')
-            # Viraja: Why the same as the K for the rest of them?? --> comment in mag2mass.py in XDGNIRS -- "Not sure 
-            # if the rest of these lines are necessary now we're not using "sensfunc" etc. for flux calibration
-            telinfo.write('h H '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.close()
-            
-            telinfo = open(telinfofile,'r').readlines()
-            logger.info("Contents of %s:", telinfofile)
-            for line in telinfo:
-                logger.info("%s", line.split('\n'))
-        else:
-            logger.info("Output exists and -overwrite not set - skipping getting telluric information.\n")
-    else:
-        if (not telluricMagnitude or not telluricTemperature) and (not telluricRA or not telluricDEC):
-            if not telluricRA:
-                telluricRA = telHeader['RA']
-            if not telluricDEC:
-                telluricDEC = telHeader['DEC']
-            telExptime = str(telHeader['EXPTIME'])
-        else:
-            # Get the telluric exposure time regardless
-            telHeader = fits.open(telsrcextractedspectrum)[0].header
-            telExptime = str(telHeader['EXPTIME'])
-
-        # Check to see if a spectral type or temperature has been given
-        if telluricTemperature:
-            spectraltypeFind = False
-            temperatureFind = False
-        else:
-            spectraltypeFind = True
-            temperatureFind = True
-
-        if telluricMagnitude:
-            magnitudeFind = False
-        else:
-            magnitudeFind = True
-
-        if spectraltypeFind or temperatureFind or magnitudeFind:
-            # Construct URL based on telluric coordinates and execute SIMBAD query to find the spectral type
-            Simbad.add_votable_fields('flux(K)', 'sp')  ## Viraja:  Why does it query only the K magnitude?
-            simbad_startable = Simbad.query_region(coord.SkyCoord(ra=telluricRA, dec=telluricDEC, unit=(u.deg, u.deg),\
-                frame='fk5'), radius=0.1 * u.deg)  ## Viraja:  How are the RA and DEC formatted in XDpiped.csh??
-
-            if spectraltypeFind:
-                # Get spectral type -- only the first 3 characters (strip off end of types like AIVn as they are not in  
-                # the 'reference_startable.txt')
-                telluricSpectralType = simbad_startable['SP_TYPE'][0][0:3]
-            else:
-                logger.error("Cannot locate the spectral type of the telluric in the table generated by the SIMBAD")
-                logger.error("query. Please update the parameter 'telluricSpectralType' in the configuration file.")
-                raise SystemExit
-            
-            if magnitudeFind:
-                telluricMagnitude = str(simbad_startable['FLUX_K'][0])
-            else:
-                logger.error("Cannot find a the K magnitude for the telluric in the table generated by the SIMBAD")
-                logger.error("query. Please update the parameter 'telluricMagnitude' in the configuration file.")
-                logger.error("Exiting script.")
-                raise SystemExit
-
-            if temperatureFind:
-                # Find temperature for the spectral type in 'reference_startable.txt'
-                count = 0
-                for line in reference_startable:
-                    if '#' in line:
-                        continue
-                    else:
-                        if telluricSpectralType in line.split()[0]:
-                            telluricTemperature = line.split()[1]
-                            count = 0
-                            break
-                        else:
-                            count += 1
-                if count > 0:  ## Viraja:  I am wondering why this condition is given and why is this an error??
-                    logger.error("Cannot find a temperature for spectral type %s of the telluric", telluricSpectralType)
-                    logger.error("Please update the parameter 'telluricTemperature' in the configuration file.")
-                    raise SystemExit
-
-        telinfo = open(telinfofile,'w')
-        telinfo.write('k K '+telluricMagnitude+' '+telluricTemperature+'\n')
-        # Viraja: Why the same as the K for the rest of them?? --> comment in mag2mass.py in XDGNIRS -- "Not sure if 
-        # the rest of these lines are necessary now we're not using "sensfunc" etc. for flux calibration
-        telinfo.write('h H '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.close()
-        
-        telinfo = open(telinfofile,'r').readlines()
-        logger.info("Contents of %s:", telinfofile)
-        for line in telinfo:
-            logger.info("%s", line.split('\n'))
-
-#---------------------------------------------------------------------------------------------------------------------#
 
 def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, hLineMethod, \
     telluric_hLineRegions, telAirmass, vega_spectrum, tempInter, telhlineinfofile, overwrite):
