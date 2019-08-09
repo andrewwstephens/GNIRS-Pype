@@ -24,8 +24,8 @@
 #                Import some useful Python utilities/modules                   #
 ################################################################################
 
-import os, sys, logger,  pkg_resources, ConfigParser
-from pyraf import iraf, iraffunctions
+import os, sys, log, ConfigParser
+from pyraf import iraf
 from astroquery.simbad import Simbad
 from astropy.table import Table
 from astropy import units as u
@@ -54,9 +54,11 @@ def start(configfile):
     iraf.gemini()
     iraf.gemtools()
     iraf.gnirs()
+    iraf.onedspec()
+    iraf.imutil()
 
     # Reset to default parameters the used IRAF tasks.
-    iraf.unlearn(iraf.gemini,iraf.gemtools,iraf.gnirs,)
+    iraf.unlearn(iraf.gemini,iraf.gemtools,iraf.gnirs,iraf.onedspec,iraf.imutil)
 
     # From http://bishop.astro.pomona.edu/Penprase/webdocuments/iraf/beg/beg-image.html:
     # Before doing anything involving image display the environment variable stdimage must be set to the correct frame 
@@ -82,10 +84,7 @@ def start(configfile):
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
     # config required for flux calibration
-    hLineInter = config.getboolean('interactive','hLineInter')
     continuumInter = config.getboolean('interactive','continuumInter')
-    telluricInter = config.getboolean('interactive','telluricInter')
-    tempInter = config.getboolean('interactive','tempInter')
     extractionStepwise = config.getboolean('extractSpectra1D','extractionStepwise')
     calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
     # fluxCalibration specific config
@@ -139,6 +138,11 @@ def start(configfile):
                 logger.warning("Required reference star table of spectral types and temperatures not available.")
                 logger.warning("Please provide the star table in %s. Exiting script.\n", runtimedatapath)
                 raise SystemExit
+
+            
+
+            if extractionStepwise:
+                steps = 
 
             
         

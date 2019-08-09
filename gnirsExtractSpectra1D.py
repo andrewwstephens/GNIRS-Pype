@@ -123,9 +123,10 @@ def start(configfile):
     extractionApertureRadius = config.getfloat('extractSpectra1D','extractionApertureRadius')
     checkPeaksMatch = config.getboolean('extractSpectra1D','checkPeaksMatch')
     toleranceOffset = config.getfloat('extractSpectra1D','toleranceOffset')
-    extractionFullslit = config.getboolean('extractSpectra1D','extractionFullslit')
+    extractionFullSlit = config.getboolean('extractSpectra1D','extractionFullSlit')
     extractionStepwise = config.getboolean('extractSpectra1D','extractionStepwise')
-    extractionStepsize = config.getfloat('extractSpectra1D','extractionStepsize')
+    extractionStepSize = config.getfloat('extractSpectra1D','extractionStepSize')
+    extractionStepWindow = config.getfloat('extractSpectra1D','extractionStepWindow')
 
     ###########################################################################
     ##                                                                       ##
@@ -244,15 +245,15 @@ def start(configfile):
                 # XD configuration.
                 if 'Long' in obspath and 'SXD' in obspath:
                     orders = [3, 4, 5]
-                    # TODO(Viraja):  Update value for extractionApertureRadius.
-                elif 'Long' in obspath and 'LXD' in obspath:
-                    orders = [3, 4, 5, 6, 7, 8]
-                    # TODO(Viraja):  Update value for extractionApertureRadius.
-                elif 'Short' in obspath and 'SXD' in obspath:
-                    orders = [3, 4, 5, 6, 7, 8]
                     # extractionApertureRadius = 23 (+/-23 pixels or 6.9" covers almost the entire slit length, but 
                     # this is only appropriate for objects centred along length of slit (with absolute Q offset of 0).
-                    extractionApertureRadius = 23  
+                    extractionApertureWindow = 46  ##   [-46/2,46/2+6)   [-23.0 -17 -11 -5 1 7 13 19 23 29)  warn the user if last step in extract >0.1" away from theend of the slit or if extractioj proceeding out of the slit
+                elif 'Long' in obspath and 'LXD' in obspath:
+                    orders = [3, 4, 5, 6, 7, 8]
+                    extractionApertureWindow = 33    ##   [-33/2,33/2+6]  [-16.5 -10.5 -4.5 2.5 8.5 14.5 20.5]
+                elif 'Short' in obspath and 'SXD' in obspath:
+                    orders = [3, 4, 5, 6, 7, 8]
+                    extractionApertureWindow = 46
                 else:
                     logger.error("#############################################################################")
                     logger.error("#############################################################################")
@@ -562,9 +563,9 @@ def stepwiseExtractSpectra1D(combinedimage, nsextractInter, useApall, apertureTr
     # This second step is never done interactively, because it uses extraction details from the previous call to 
     # nsextract
     nsextractInter = False
-    for i in range(-extractionStepradius,extractionStepradius,extractionStepsize):
+    for i in range(-extractionStepradius,extractionStepradius,extractionStepSize):
         iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='s'+str(n), dispaxis=1, database='', line=700,\
-            nsum=apertureTracingColumns, ylevel='INDEF', upper=i+extractionStepsize, lower=i, background='none', \
+            nsum=apertureTracingColumns, ylevel='INDEF', upper=i+extractionStepSize, lower=i, background='none', \
             fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=nsextractInter, fl_apall=useApall, \
             fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', \
             fl_findneg='no', bgsample='*', trace='extractionStepwiseTraceReference', tr_nsum=10, tr_step=10, \
