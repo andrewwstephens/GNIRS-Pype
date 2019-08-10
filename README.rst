@@ -1,7 +1,5 @@
 GNIRS-Pype
 ============
-#.. image:: https://badge.fury.io/py/nifty4gemini.svg
-#   :target: https://badge.fury.io/py/nifty4gemini
 .. image:: https://readthedocs.org/projects/gnirs-pype/badge/?version=latest
    :alt: GNIRS-Pype's documentation, hosted on ReadtheDocs.
    :target: http://gnirs-pype.readthedocs.io/en/latest/
@@ -53,15 +51,16 @@ in your "~/iraf" directory.
 
 Installing
 ----------
-
+This section is to be updated.
 
 Installing in Editable Mode
 ---------------------------
-
+This section is to be updated.
 
 Quick Start
 ===========
 
+This section is to be updated.
 
 License
 =======
