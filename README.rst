@@ -17,10 +17,10 @@ A Python Data Reduction Pipeline for the Gemini Near-InfraRed Spectrograph (GNIR
 
 Full documentation: `ReadTheDocs <http://gnirs-pype.readthedocs.io/en/latest/>`_.
 
-This is a new data reduction Python pipeline that uses Astroconda and the Gemini
-IRAF Package to reduce GNIRS data. It offers a complete data reduction process from
-sorting the data to producing a final flux calibrated and wavelength calibrated
-combined spectrum with the full S/N for a science target.
+This is a new data reduction Python pipeline, currently under development, that uses 
+Astroconda and the Gemini IRAF Package to reduce GNIRS data. It will offer a complete 
+data reduction process from sorting the data to producing a final flux calibrated and 
+wavelength calibrated combined spectrum with the full S/N for a science target.
 
 This pipeline is open source and it is supported via the `Gemini Data Reduction User Forum <http://drforum.gemini.edu/>`_.
 
@@ -37,8 +37,8 @@ How to Submit Bugs and Requests
 
 Very important: **do not submit a Gemini help desk ticket!**
 
-If you want to report a problem, use the `Gemini Data Reduction Forum thread <http://drforum.gemini.edu/topic/nifs-python-data-reduction-pipeline/>`_
-or create an issue in this repo.
+If you want to report a problem, use the `Gemini Data Reduction Forum thread <http://drforum.gemini.edu/topic/gnirs-python-data-reduction-pipeline/>`_
+or create an issue in this repo. The specified link is currently inactive and under development. 
 
 Installation
 ============

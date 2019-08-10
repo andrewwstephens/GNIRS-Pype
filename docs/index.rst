@@ -16,8 +16,8 @@ Package Documentation
 .. toctree::
    :maxdepth: 2
 
-   gnirs-pype/introduction.rst
-   gnirs-pype/fileIO.rst
+   gnirs-pype/docs/introduction.rst
+   gnirs-pype/docs/fileIO.rst
 
 
 Indices and tables
