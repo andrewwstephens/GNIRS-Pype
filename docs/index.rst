@@ -7,7 +7,7 @@ Welcome to GNIRS-Pype's documentation!
 =================================
 
 GNIRS-Pype is an under development Gemini data reduction framework for Gemini instruments and
-here we provide the documentation for its associated GNIRS XD pipeline.
+here we provide the documentation for its associated GNIRS pipeline.
 
 =====================
 Package Documentation
@@ -16,8 +16,8 @@ Package Documentation
 .. toctree::
    :maxdepth: 2
 
-   GNIRS-Pype/introduction.rst
-   GNIRS-Pype/fileIO.rst
+   gnirs-pype/introduction.rst
+   gnirs-pype/fileIO.rst
 
 
 Indices and tables
