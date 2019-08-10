@@ -209,7 +209,7 @@ def start(configfile):
         logger.info('Best Calibration: %s (dt: %s)', caldirs[imin], str(dt[imin]))
         if abs(dt[imin] > datetime.timedelta(hours=1)):
             logger.warning('Time difference > 1 hour')
-        dest = d + '/Calibration'
+        dest = d + '/Calibrations'
         logger.debug('Creating link to %s', dest)
         os.symlink(caldirs[imin], dest)
         print('done')

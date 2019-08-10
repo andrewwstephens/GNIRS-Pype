@@ -71,7 +71,7 @@ def info(files_or_directory):
         data[f]['DATE-OBS'] = data[f]['DATE-OBS'].replace('-', '')
         # info[f]['OBSID'] = info[f]['OBSID'].replace('-', '_')
         data[f]['CONFIG'] = \
-            data[f]['CAMERA'][:data[f]['CAMERA'].find('_')]+'_' + \
+            re.sub('(ong|hort|lue|ed)', '', data[f]['CAMERA'][:data[f]['CAMERA'].find('_')]) + '_' + \
             data[f]['PRISM'][data[f]['PRISM'].find('+')+1:data[f]['PRISM'].find('_')] + '_' + \
             data[f]['GRATING'][:data[f]['GRATING'].find('/')] + '_' + \
             data[f]['SLIT'][:data[f]['SLIT'].find('_')] + '_' + \
@@ -95,6 +95,6 @@ def info(files_or_directory):
 
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    # info("rawData")  # Directory
+    info("rawData")  # Directory
     # info('N20110516S0151.fits')  # single file
-    info(['N20110516S0155.fits', 'N20110516S0156.fits', 'N20110516S0157.fits', 'N20110516S0159.fits'])  # List
+    #info(['N20110516S0155.fits', 'N20110516S0156.fits', 'N20110516S0157.fits', 'N20110516S0159.fits'])  # List

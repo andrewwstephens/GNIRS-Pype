@@ -29,7 +29,7 @@
 
 import log, os, sys, pkg_resources, glob, shutil, ConfigParser, cleanir
 from astropy.io import fits
-from pyraf import iraf, iraffunctions
+from pyraf import iraf
 
 ## IMPORTANT NOTE:  The command line options are not available for GNIRS as of July 2019.
 
@@ -135,22 +135,20 @@ def start(configfile):
     # Loop over the Calibrations directories and reduce the calibrations for the ones with caibration_direcotries True.
     for calpath in config.options('CalibrationDirectories'):
         if config.getboolean('CalibrationDirectories',calpath):
-            
-            os.chdir(calpath)
-            # Change the iraf directory to the current directory.
-            iraffunctions.chdir(calpath)
+
+            iraf.chdir(calpath)
 
             # Print the current directory of calibrations being processed.
             logger.info("Currently working on calibrations in %s\n", calpath)
             
             # Record the right number of order expected according to the GNIRS XD configuration.
-            if 'Long' in calpath and 'SXD' in calpath:
+            if 'LB_SXD' in calpath:
                 orders = [3, 4, 5]
-            elif 'Long' in calpath and 'LXD' in calpath:
+            elif 'LB_LXD' in calpath:
                 orders = [3, 4, 5, 6, 7, 8]
-            elif 'Short' in calpath and 'SXD' in calpath:
+            elif 'SB_SXD' in calpath:
                 orders = [3, 4, 5, 6, 7, 8]
-                nominal_wavelengths = ([0, 0], [18690,25310], [14020, 18980], [11220, 15180], [9350, 12650], \
+                nominal_wavelengths = ([0, 0], [18690,25310], [14020, 18980], [11220, 15180], [9350, 12650],
                     [8020, 10840], [7020, 9480])
                 advertised_accuracy_percent = 5
             else:
@@ -364,10 +362,10 @@ def start(configfile):
                     if manualMode:
                         a = raw_input("About to enter step 4: spatial curvature and spectral distortion.")
 
-                    if 'Long' in calpath:
+                    if 'LB_SXD' in calpath or 'LB_LXD' in calpath:
                         pinhole_coordlist = 'gnirs$data/pinholes-long-dense-north.lis'
                         pinholesnumber = 9
-                    elif 'Short' in calpath:
+                    elif 'SB_SXD' in calpath:
                         pinhole_coordlist = 'gnirs$data/pinholes-short-dense-north.lis'
                         pinholesnumber = 6
                     else:
@@ -465,7 +463,8 @@ def start(configfile):
 #                                        FUNCTIONS                                  #
 #####################################################################################
 
-def prepareCalibrations(nsprepareInter, bpmfile, overwrite):
+
+def prepareCalibrations(interactive, bpmfile, overwrite):
     """
     Prepare calibration frames for further processing.
 
@@ -478,56 +477,43 @@ def prepareCalibrations(nsprepareInter, bpmfile, overwrite):
     orders in separate image extensions. Darks will not be used for further reductions after this point.
     """
     logger = log.getLogger('gnirsBaselineCalibration.prepareCalibrations')
-    
-    # This code structure checks if iraf output files already exist. If output files exist and overwrite is specified, 
-    # iraf output is overwritten.
-    oldfiles_prepared = glob.glob('./nN*.fits')
-    oldfiles_reduced = glob.glob('./rnN*.fits')
-    oldfiles = oldfiles_prepared + oldfiles_reduced
-    if not oldfiles:
-        # Update all calibration frames with mdf offset value and generate variance and data quality extensions. 
-        iraf.nsprepare(inimages='@QHflats.list,@IRflats.list,@arcs.list,@pinholes.list', rawpath='', outimages='', \
-            outprefix='n', bpm=bpmfile, logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', fl_cravg='no', \
-            crradius=0.0, fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', fl_nonlinear='yes', \
-            fl_checkwcs='yes', fl_forcewcs='yes', arraytable='gnirs$data/array.fits', \
-            configtable='gnirs$data/config.fits', specsec='[*,*]', offsetsec='none', pixscale='0.15', shiftimage='', \
-            shiftx='INDEF', shifty='INDEF', obstype='FLAT', fl_inter=nsprepareInter, verbose='yes', mode='al')
-        # Cut all calibration frames according to the size specified by the MDFs.
-        iraf.nsreduce(inimages='n//@QHflats.list,n//@IRflats.list,n//@arcs.list,n//@pinholes.list', outimages='', \
-            outprefix='r', fl_cut='yes', section='', fl_corner='yes', fl_process_cut='yes', fl_nsappwave='no', \
-            nsappwavedb='gnirs$data/nsappwave.fits', crval='INDEF', cdelt='INDEF', fl_dark='no', darkimage='', \
-            fl_save_dark='no', fl_sky='no', skyimages='', skysection='', combtype='median', rejtype='avsigclip', \
-            masktype='goodvalue', maskvalue=0.0, scale='none', zero='median', weight='none', statsec='[*,*]', \
-            lthreshold='INDEF', hthreshold='INDEF', nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=3.0, hsigma=3.0, \
-            snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, skyrange='INDEF', nodsize=3.0, fl_flat='no', \
-            flatimage='', flatmin=0.0, fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, verbose='yes', \
-            debug='no', force='no', mode='al')
-    else:
+
+    oldfiles = glob.glob('nN*.fits') + glob.glob('rnN*.fits')
+    if len(oldfiles) > 0:
         if overwrite:
-            logger.warning('Removing old nN*.fits and rnN*.fits files.')
-            [os.remove(filename) for filename in oldfiles]
-            iraf.nsprepare(inimages='@QHflats.list,@IRflats.list,@arcs.list,@pinholes.list', rawpath='', outimages='',\
-                outprefix='n', bpm=bpmfile, logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', \
-                fl_cravg='no', crradius=0.0, fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', \
-                fl_nonlinear='yes', fl_checkwcs='yes', fl_forcewcs='yes', arraytable='gnirs$data/array.fits', \
-                configtable='gnirs$data/config.fits', specsec='[*,*]', offsetsec='none', pixscale='0.15', \
-                shiftimage='', shiftx='INDEF', shifty='INDEF', obstype='FLAT', fl_inter=nsprepareInter, verbose='yes',\
-                mode='al')
-            iraf.nsreduce(inimages='n//@QHflats.list,n//@IRflats.list,n//@arcs.list,n//@pinholes.list', outimages='', \
-                outprefix='r', fl_cut='yes', section='', fl_corner='yes', fl_process_cut='yes', fl_nsappwave='no', \
-                nsappwavedb='gnirs$data/nsappwave.fits', crval='INDEF', cdelt='INDEF', fl_dark='no', darkimage='', \
-                fl_save_dark='no', fl_sky='no', skyimages='', skysection='', combtype='median', rejtype='avsigclip', \
-                masktype='goodvalue', maskvalue=0.0, scale='none', zero='median', weight='none', statsec='[*,*]', \
-                lthreshold='INDEF', hthreshold='INDEF', nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=3.0, hsigma=3.0,\
-                snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, skyrange='INDEF', nodsize=3.0, fl_flat='no', \
-                flatimage='', flatmin=0.0, fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, \
-                verbose='yes', debug='no', force='no', mode='al')
+            logger.warning('Removing old files: %s', oldfiles)
+            for f in oldfiles:
+                os.remove(f)
         else:
-            logger.warning("Output exists and -overwrite not set - skipping nsprepare and nsreduce for all ")
-            logger.warning("calibration frames.")
+            logger.warning("Output exists and overwrite flag not set.")
+            logger.warning("Skipping nsprepare and nsreduce for all calibration frames.")
+            return
 
-#---------------------------------------------------------------------------------------------------------------------#
+    # Update all calibration frames with mdf offset value and generate variance and data quality extensions.
+    iraf.nsprepare(
+        inimages='@QHflats.list,@IRflats.list,@arcs.list,@pinholes.list', rawpath='', outimages='',
+        outprefix='n', bpm=bpmfile, logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', fl_cravg='no',
+        crradius=0.0, fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', fl_nonlinear='yes',
+        fl_checkwcs='yes', fl_forcewcs='yes', arraytable='gnirs$data/array.fits',
+        configtable='gnirs$data/config.fits', specsec='[*,*]', offsetsec='none', pixscale='0.15', shiftimage='',
+        shiftx='INDEF', shifty='INDEF', obstype='FLAT', fl_inter=interactive, verbose='yes', mode='al')
 
+    # Cut all calibration frames according to the size specified by the MDFs.
+    iraf.nsreduce(
+        inimages='n//@QHflats.list,n//@IRflats.list,n//@arcs.list,n//@pinholes.list', outimages='',
+        outprefix='r', fl_cut='yes', section='', fl_corner='yes', fl_process_cut='yes', fl_nsappwave='no',
+        nsappwavedb='gnirs$data/nsappwave.fits', crval='INDEF', cdelt='INDEF', fl_dark='no', darkimage='',
+        fl_save_dark='no', fl_sky='no', skyimages='', skysection='', combtype='median', rejtype='avsigclip',
+        masktype='goodvalue', maskvalue=0.0, scale='none', zero='median', weight='none', statsec='[*,*]',
+        lthreshold='INDEF', hthreshold='INDEF', nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=3.0, hsigma=3.0,
+        snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, skyrange='INDEF', nodsize=3.0, fl_flat='no',
+        flatimage='', flatmin=0.0, fl_vardq='yes', logfile=logger.root.handlers[0].baseFilename, verbose='yes',
+        debug='no', force='no', mode='al')
+
+    return
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 def makeFlat(masterflat, nsflatInter, overwrite):
     """
     Make flat field and bad pixel masks.
