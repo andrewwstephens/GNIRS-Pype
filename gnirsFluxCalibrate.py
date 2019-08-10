@@ -139,7 +139,36 @@ def start(configfile):
                 logger.warning("Please provide the star table in %s. Exiting script.\n", runtimedatapath)
                 raise SystemExit
 
+            # Assigning different variable names to "src_comb.fits" and "sky_comb.fits" is not necessary with the
+            # current file/directory arrangement for this pipeline (where this works as the telluric and science images
+            # are not in the same directory), but it can be useful if the user decides to change the filenames of the
+            # combined images.
+            scisrccombimage = 'src_comb.fits'
+            iraf.wmef(input=scipath + scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', \
+                output=scipath + 'h'scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', extnames='', \
+                phu=scipath + scisrccombimage, verbose='yes', mode='al')
+            scitelcorrected = scipath+'/duv'+scisrccombimage
+            sciHeader = fits.open(scitelcorrected).header  ## Use (file)[0].header for MEFs with PHU in extension 0.
+            sciAirmass = sciHeader['AIRMASS']
+            if os.path.exists(scitelcorrected):
+                logger.info("Required telluric corrected science source spectrum available.")
+            else:
+                logger.warning("Required telluric corrected science source spectrum not available. Please run")
+                logger.warning("gnirsTelluric.py to create the telluric corected spectrum or provide it manually in")
+                logger.warning("%s. Exiting script.\n", scipath)
+                raise SystemExit
             
+            telsrccombimage = 'src_comb.fits'
+            telsrcextractedspectrum = telpath+'/v'+telsrccombimage
+            telHeader = fits.open(telsrcextractedspectrum)[0].header
+            telAirmass = telHeader['AIRMASS']
+            if os.path.exists(telsrcextractedspectrum):
+                logger.info("Required extracted telluric 1D source spectrum available.")
+            else:
+                logger.warning("Required extracted telluric 1D source spectrum not available. Please run")
+                logger.warning("gnirsExtarctSpectra1D.py to create the extracted spectrum or provide it manually in")
+                logger.warning("%s. Exiting script.\n", telpath)
+                raise SystemExit
 
             if extractionStepwise:
                 steps = 
@@ -214,11 +243,11 @@ def start(configfile):
                 if valindex == 2:
                     makeFLambda(rawFrame, grating, log, over)
 
-                    logger.info("\n##############################################################################")
-                    logger.info("")
-                    logger.info("  STEP 2 - COMPLETED ")
-                    logger.info("")
-                    logger.info("##############################################################################\n")
+                    logger.info("##################################################################")
+                    logger.info("#                                                                #")
+                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                    logger.info("#                                                                #")
+                    logger.info("##################################################################\n")
 
                 #############################################################################
                 ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
@@ -229,11 +258,11 @@ def start(configfile):
                 if valindex == 3:
                     makeBlackBody(rawFrame, grating, log, over)
 
-                    logger.info("\n##############################################################################")
-                    logger.info("")
-                    logger.info("  STEP 3 - COMPLETED ")
-                    logger.info("")
-                    logger.info("##############################################################################\n")
+                    logger.info("##################################################################")
+                    logger.info("#                                                                #")
+                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                    logger.info("#                                                                #")
+                    logger.info("##################################################################\n")
 
                 #############################################################################
                 ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
@@ -244,11 +273,11 @@ def start(configfile):
                 if valindex == 4:
                     makeBlackBodyScale(rawFrame, log, over)
 
-                    logger.info("\n##############################################################################")
-                    logger.info("")
-                    logger.info("  STEP 4 - COMPLETED ")
-                    logger.info("")
-                    logger.info("##############################################################################\n")
+                    logger.info("##################################################################")
+                    logger.info("#                                                                #")
+                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                    logger.info("#                                                                #")
+                    logger.info("##################################################################\n")
 
                 #############################################################################
                 ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
@@ -259,11 +288,11 @@ def start(configfile):
                 if valindex == 5:
                     scaleBlackBody(rawFrame, log, over)
 
-                    logger.info("\n##############################################################################")
-                    logger.info("")
-                    logger.info("  STEP 5 - COMPLETED ")
-                    logger.info("")
-                    logger.info("##############################################################################\n")
+                    logger.info("##################################################################")
+                    logger.info("#                                                                #")
+                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                    logger.info("#                                                                #")
+                    logger.info("##################################################################\n")
 
                 #############################################################################
                 ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
@@ -274,11 +303,11 @@ def start(configfile):
                 if valindex == 6:
                     multiplyByBlackBody(rawFrame, log, over)
 
-                    logger.info("\n##############################################################################")
-                    logger.info("")
-                    logger.info("  STEP 6 - COMPLETED ")
-                    logger.info("")
-                    logger.info("##############################################################################\n")
+                    logger.info("##################################################################")
+                    logger.info("#                                                                #")
+                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                    logger.info("#                                                                #")
+                    logger.info("##################################################################\n")
                 
                 else:
                     logger.error("##############################################################################")
