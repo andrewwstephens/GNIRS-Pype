@@ -34,7 +34,7 @@ Starting a Data Reduction from a Specified Point
 
 
 You can run each step, one at a time, from the command line like so. *You need a gnirs.cfg file in your current working directory to run individual steps.
-Each step requires the general config section and its unique and/or additional config section to be populated*.
+Each step requires the general config section and its unique and/or additional config sections to be populated*.
 
 You can also run an individual step by turning them on or off in gnirsPipeline config and running the gnirsPipeline.
 
