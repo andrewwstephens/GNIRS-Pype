@@ -6,7 +6,9 @@ import ConfigParser
 import log
 import os
 import gnirsGetData
-import gnirsSort
+import sort_data
+import make_lists
+import link_cals
 import gnirsCheckData
 import gnirsBaselineCalibration
 import gnirsReduce
@@ -101,15 +103,13 @@ def start(args):
         if manualMode:
             a = raw_input('About to enter gnirsGetData to locate the raw data directory or download data from the Gemini public archive.')
         gnirsGetData.start(args.config)
-    
-    #########################################################################
-    #                        STEP 2: Sort raw data                          #
-    #########################################################################
 
+    # ------------------------------------------------------------------------------------------------------------------
+    # STEP 2: Sort the data into directories, make the file lists, and link the best calibrations:
     if config.getboolean('gnirsPipeline', 'sort'):
-        if manualMode:
-            a = raw_input('About to enter gnirsSort to sort observation types, and copy files and lists into appropriate directories for reduction.')
-        gnirsSort.start(args.config)
+        sort_data.start(args.config)
+        make_lists.start(args.config)
+        link_cals.start(args.config)
 
     #########################################################################
     #                         STEP 3: Check raw Data                        #
@@ -129,9 +129,9 @@ def start(args):
             a = raw_input('About to enter gnirsBaselineCalibration to reduce baseline calibrations.')
         gnirsBaselineCalibration.start(args.config)
 
-    ###########################################################################
-    ##         STEP 5: Reduce observations (telluric and/or science)         ##
-    ###########################################################################
+    #########################################################################
+    #         STEP 5: Reduce observations (telluric and/or science)         #
+    #########################################################################
 
     if config.getboolean('gnirsPipeline', 'scienceReduction'):
         if manualMode:
@@ -143,27 +143,27 @@ def start(args):
             a = raw_input('About to enter gnirsReduce to reduce telluric observations.')
         gnirsReduce.start('Telluric', args.config)
 
-    ###########################################################################
-    ##                      STEP 6: Combine 2D spectra                       ##
-    ###########################################################################
+    #########################################################################
+    #                      STEP 6: Combine 2D spectra                       #
+    #########################################################################
 
     if config.getboolean('gnirsPipeline', 'combineSpectra2D'):
         if manualMode:
             a = raw_input('About to enter gnirsCombineSpectra2D to combine different spectral orders into a single 2D spectrum.')
         gnirsCombineSpectra2D.start(args.config)
 
-    ###########################################################################
-    ##                      STEP 7: Extract 1D spectra                       ##
-    ###########################################################################
+    #########################################################################
+    #                      STEP 7: Extract 1D spectra                       #
+    #########################################################################
 
     if config.getboolean('gnirsPipeline', 'extractSpectra1D'):
         if manualMode:
             a = raw_input('About to enter gnirsExtractSpectra1D to extract different spectral orders into a individual 1D spectra.')
         gnirsExtractSpectra1D.start(args.config)
 
-    ###########################################################################
-    ##                   STEP 8: Perform telluric correction                 ##
-    ###########################################################################
+    #########################################################################
+    #                   STEP 8: Perform telluric correction                 #
+    #########################################################################
 
     if config.getboolean('gnirsPipeline', 'telluricCorrection'):
         if manualMode:
@@ -226,7 +226,7 @@ def start(args):
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='This is the GNIRS Data Reduction Pipeline...')
+        description='This is the GNIRS Python Data Reduction Pipeline...')
 
     parser.add_argument('config', nargs='?', default='gnirs.cfg',
                         help='Configuration file')
