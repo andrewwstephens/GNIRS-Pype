@@ -144,7 +144,7 @@ def start(kind, configfile):
         logger.info("Working on reductions in %s\n", obspath)
 
         calpath = obspath + '/Calibrations'
-        logger.info("Path to the calibrations is %s\n", calpath)
+        logger.info("Path to calibrations: %s\n", calpath)
 
         # TODO(Viraja)?:  Define a function to extract the lists by specifying their filenames
         allobsfilename = 'all.list'
@@ -366,8 +366,7 @@ def start(kind, configfile):
                         radiationCorrectionMethod = 'fixpix'
                         createMinimumImage(nodAlistfilename, nodAlist, min_nodA, overwrite)
                         createMinimumImage(nodBlistfilename, nodBlist, min_nodB, overwrite)
-                        radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, \
-                            overwrite)
+                        radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, overwrite)
                     else:
                         logger.info("Observation date is " + str(date) + ". GNIRS data from 2012B not affected ")
                         logger.info("by radiation events. Skipping radiation event correction.\n")
@@ -399,7 +398,7 @@ def start(kind, configfile):
                     logger.info("by the pipeline.\n")
                     skySubtraction = 'no'
                     reduce_outputPrefix = 'k'
-                    reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiationThreshold, \
+                    reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiationThreshold,
                         overwrite)
 
                 logger.info("##############################################################################")
@@ -417,7 +416,7 @@ def start(kind, configfile):
                     a = raw_input("About to enter step 5: spatial distortion correction and spectral transformation.")
 
                 reduce_outputPrefix = 'r'
-                SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfileslength,\
+                SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfileslength,
                     wavecallampfileslength, combinedarc, overwrite)
                 if calculateSpectrumSNR:
                     logger.info("Applying spatial distortion correction and spectral transformation to the ")

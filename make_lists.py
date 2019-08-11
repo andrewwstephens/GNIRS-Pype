@@ -95,10 +95,11 @@ def start(configfile):
                     open(path + '/Intermediate/nodB.list', 'w') as nodB:
 
                 for f in sorted(header.keys()):
-                    if float(olog[f]['Q']) == unique_offsets[0]:
-                        nodA.write(f + '\n')
-                    else:
-                        nodB.write(f + '\n')
+                    if header[f]['EXPTIME'] == exptime:
+                        if float(olog[f]['Q']) == unique_offsets[0]:
+                            nodA.write(f + '\n')
+                        else:
+                            nodB.write(f + '\n')
         else:
             logger.error('There are %d offset positions.  No nod lists created.', len(unique_offsets))
 

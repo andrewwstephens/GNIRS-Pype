@@ -46,14 +46,14 @@ def start(args):
     # Get paths to built-in Nifty data. Special code in setup.py makes sure recipes/ and runtimeData/ will be installed 
     # when someone installs Nifty, and accessible in this way.
 
-    logger.info(" --------------------------------------- ")
-    logger.info("|                                       |")
-    logger.info("|              GNIRS-Pype               |")
-    logger.info("| GNIRS Python Data Reduction Pipeline  |")
-    logger.info("|          Gemini Observatory           |")
-    logger.info("|          Version %s           |", __version__)
-    logger.info("|                                       |")
-    logger.info(" --------------------------------------- ")
+    logger.info(" -------------------------------------- ")
+    logger.info("|                                      |")
+    logger.info("|              GNIRS-Pype              |")
+    logger.info("| GNIRS Python Data Reduction Pipeline |")
+    logger.info("|          Gemini Observatory          |")
+    logger.info("|          Version %s          |", __version__)
+    logger.info("|                                      |")
+    logger.info(" -------------------------------------- ")
 
     # Make sure to change this if you change the default logfile.
     logger.info('The log file is gnirs.log.')
@@ -81,7 +81,7 @@ def start(args):
     #                                                                                  #
     #   Twelve Steps:                                                                  #
     #       1) Get raw data - gnirsData.py                                             #
-    #       2) Sort raw data - gnirsSort.py                                            #
+    #       2) Sort raw data - sort_data, make_lists, link_cals                        #
     #       3) Check raw data - gnirsCheckData.py                                      #
     #       4) Reduce baseline calibrations - gnirsBaselineCalibration.py              #
     #       5) Reduce observations (science and/or telluric) - gnirsReduce.py          #
