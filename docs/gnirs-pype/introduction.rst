@@ -144,9 +144,7 @@ You can also run an individual step by turning them on or off in gnirsPipeline c
   telluricTemperature = 
 
   [combineOrdersXD]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [calculateSpectrumSNR]
   # This section is currently under development.
@@ -154,9 +152,7 @@ You can also run an individual step by turning them on or off in gnirsPipeline c
   Stop = 1
 
   [writeDataSheet]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [TelluricRegions]  ; regions to use when tweaking the Telluric line removal
   3 = *
@@ -294,9 +290,7 @@ And run the gnirsPipeline with:
   telluricTemperature = 
 
   [combineOrdersXD]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [calculateSpectrumSNR]
   # This section is currently under development.
@@ -304,9 +298,7 @@ And run the gnirsPipeline with:
   Stop = 1
 
   [writeDataSheet]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [TelluricRegions]  ; regions to use when tweaking the Telluric line removal
   3 = *
@@ -445,9 +437,7 @@ And run the gnirsPipeline with:
   telluricTemperature = 
 
   [combineOrdersXD]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [calculateSpectrumSNR]
   # This section is currently under development.
@@ -455,9 +445,7 @@ And run the gnirsPipeline with:
   Stop = 1
 
   [writeDataSheet]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [TelluricRegions]  ; regions to use when tweaking the Telluric line removal
   3 = *
@@ -596,9 +584,7 @@ And run the gnirsPipeline with:
   telluricTemperature = 
 
   [combineOrdersXD]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [calculateSpectrumSNR]
   # This section is currently under development.
@@ -606,9 +592,7 @@ And run the gnirsPipeline with:
   Stop = 1
 
   [writeDataSheet]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [TelluricRegions]  ; regions to use when tweaking the Telluric line removal
   3 = *
@@ -747,9 +731,7 @@ And run the gnirsPipeline with:
   telluricTemperature = 
 
   [combineOrdersXD]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [calculateSpectrumSNR]
   # This section is currently under development.
@@ -757,9 +739,7 @@ And run the gnirsPipeline with:
   Stop = 1
 
   [writeDataSheet]
-  # This section is currently under development.
-  Start = 1
-  Stop = 1
+  # no input parameters required
 
   [TelluricRegions]  ; regions to use when tweaking the Telluric line removal
   3 = *
@@ -842,6 +822,11 @@ Custom Telluric Corrections
 
 This is currently under development.
 
+Combining XD Orders
+-------------------
+
+This is currently under development.
+
 Known Issues
 ============
 
@@ -851,8 +836,14 @@ gnirsPipeline.py
 gnirsGetData.py
 -----------------
 
-gnirsSort.py
------------
+sort_data.py
+------------
+
+make_lists.py
+------------
+
+link_cals.py
+------------
 
 gnirsCheckData.py
 -----------------
@@ -965,11 +956,13 @@ should be reviewed at some point.
 
 Future work:
 
+- Support other GNIRS gratings (10l/mm and 111l/mm)
 - Implement more telluric and flux calibration methods.
 - Implement instrument signature removal routine.
 - Implement differential atmospheric refraction correction routine.
 - Implement full automatic Gemini (on server) reduction routine.
-- Python 3 compatability(if possible)
+- Python 3 compatability (if possible)
+- Incorporate more command line options
 - Compiling as a self-contained executable
 - Full AstroConda integration
 
@@ -986,7 +979,7 @@ All in-development changes will be tracked here.
 
 - Adding unit tests for each step and integration test for pipeline.
 
-1.0.0 - 2019-08-10
+1.0.0 - 2019-08-19
 ------------------
 This is currently under development.
 

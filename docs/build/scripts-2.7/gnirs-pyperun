@@ -1,0 +1,12 @@
+#!python
+
+import sys
+import gnirs-pype
+
+if __name__ == '__main__':
+
+    if '--version' in sys.argv:
+        sys.stdout.write("%s\n" % stpipe.__version__)
+        sys.exit(0)
+
+    gnirs-pype.gnirsPipeline.start(sys.argv[1:])
