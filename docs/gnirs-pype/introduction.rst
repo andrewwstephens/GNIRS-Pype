@@ -794,7 +794,7 @@ GNIRS-Pype includes a default configuration file. As of v1.0.1, it looks like th
 Data Reduction Examples
 =======================
 
-Observations of NGC 1736; GN-2011A-Q-126
+Observations of NGC 4736; GN-2011A-Q-126
 ----------------------------------------
 
 This is currently under development.
