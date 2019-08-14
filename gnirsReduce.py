@@ -143,7 +143,7 @@ def start(kind, configfile):
         iraf.chdir(obspath + '/Intermediate')
         logger.info("Working on reductions in %s\n", obspath)
 
-        calpath = obspath + '/Calibrations'
+        calpath = '../Calibrations'
         logger.info("Path to calibrations: %s\n", calpath)
 
         # TODO(Viraja)?:  Define a function to extract the lists by specifying their filenames

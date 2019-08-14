@@ -1,0 +1,31 @@
+# Tue 13:58:48 13-Aug-2019
+begin	aperture src_comb[SCI,1] 1 90.15239 502.
+	image	src_comb[SCI,1]
+	aperture	1
+	beam	1
+	center	90.15239 502.
+	low	-4. -501.
+	high	4. 520.
+	background
+		xmin -36.
+		xmax 36.
+		function chebyshev
+		order 1
+		sample -36:-26,26:36
+		naverage -3
+		niterate 0
+		low_reject 3.
+		high_reject 3.
+		grow 0.
+	axis	1
+	curve	9
+		2.
+		5.
+		12.
+		1012.
+		0.1044132
+		0.04509968
+		0.3282479
+		-0.04140773
+		0.2363804
+

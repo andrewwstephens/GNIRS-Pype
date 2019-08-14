@@ -22,7 +22,7 @@ def start(configfile):
     logger.info('#                                               #')
     logger.info('#       Start GNIRS Telluric Correction         #')
     logger.info('#                                               #')
-    logger.info('#################################################')
+    logger.info('#################################################\n')
 
     # Set up/prepare IRAF.
     iraf.gemini()
@@ -57,23 +57,34 @@ def start(configfile):
     start = config.getint('telluricCorrection', 'Start')
     stop = config.getint('telluricCorrection', 'Stop')
     hLineMethod = config.get('telluricCorrection', 'hLineMethod')
+    hLineRegions = config.items('HLineRegions')
+    ContinuumRegions = config.items('ContinuumRegions')
+    TelluricRegions = config.items('TelluricRegions')
 
+    # Get symbolic path to the telluric directory within the science directory and the runtime data directory
     telpath = '../Telluric/Intermediate'  # relative path/link expected to be at the top level of every sci directory
-    logger.info("Telluric directory: %s\n", telpath)
-
+    runtimedatapath = '../../runtimeData'
+    
     for scipath in config.options("ScienceDirectories"):
 
         if not config.getboolean("ScienceDirectories", scipath):  # only process directories that are marked True
             logger.debug('Skipping %s', scipath)
             continue
 
+        ###########################################################################
+        ##                                                                       ##
+        ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
+        ##                                                                       ##
+        ###########################################################################
+
         scipath += '/Intermediate'
         logger.info("Moving to science directory: %s", scipath)
         iraf.chdir(scipath)
 
-        runtimedatapath = '../../runtimeData'
+        logger.info("Telluric directory: %s\n", telpath)
         logger.info("Runtime data path: %s\n", runtimedatapath)
-
+        
+        # Check if required runtime data files and extracted science source spectra available in their respective paths
         logger.info("Checking if required runtime data files and extracted spectra available in %s", runtimedatapath)
         logger.info("and %s, respectively.\n", scipath)
 
@@ -137,7 +148,7 @@ def start(configfile):
 
         logger.info("Required extracted spectra check complete.")
 
-        # Record the number of orders expected according to the GNIRS XD configuration.  Could we figure this out?
+        # Record the number of orders expected according to the GNIRS XD configuration.
         if 'LB_SXD' in scipath:
             orders = [3, 4, 5]
         elif 'LB_LXD' in scipath:
@@ -157,7 +168,7 @@ def start(configfile):
         telluric_fitContinuum = nofits(telpath + '/fit' + os.path.basename(telluric_hLineCorrectedSpectrum))
         telluric_dividedContinuum = nofits(telpath + '/d' + os.path.basename(telluric_hLineCorrectedSpectrum))
         science_dividedTelluricLines = nofits('u' + os.path.basename(sci_src_extracted_spectrum))
-        science_correctedTelluric = nofits('/d' + os.path.basename(science_dividedTelluricLines))
+        science_correctedTelluric = nofits('d' + os.path.basename(science_dividedTelluricLines))
 
         #########################################################################
         #                                                                       #
@@ -187,7 +198,7 @@ def start(configfile):
             if valindex == 1:
 
                 hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders,
-                             hLineMethod, config.items('HLineRegions'), tel_airmass, vega_spectrum, tempInter,
+                             hLineMethod, hLineRegions, tel_airmass, vega_spectrum, tempInter,
                              telpath+'/telluric_hLineInfo.txt', overwrite)
 
                 logger.info("##################################################################")
@@ -204,7 +215,7 @@ def start(configfile):
             elif valindex == 2:
 
                 fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter,
-                                     orders, config.items('ContinuumRegions'), tempInter, overwrite)
+                                     orders, ContinuumRegions, tempInter, overwrite)
 
                 logger.info("##################################################################")
                 logger.info("#                                                                #")
@@ -235,10 +246,8 @@ def start(configfile):
 
             elif valindex == 4:
 
-                telluric(infile=sci_src_extracted_spectrum, calib=telluric_dividedContinuum,
-                         outfile=science_dividedTelluricLines, interactive=telluricInter,
-                         regions=config.items('TelluricRegions'), orders=orders,
-                         airmass=sci_airmass, results_file='science_telluricInfo.txt', overwrite=overwrite)
+                telluricCorrection(sci_src_extracted_spectrum, telluric_dividedContinuum, science_dividedTelluricLines, \
+                    telluricInter, orders, sci_airmass, TelluricRegions, 'science_telluricInfo.txt', overwrite)
 
                 logger.info("##################################################################")
                 logger.info("#                                                                #")
@@ -253,8 +262,8 @@ def start(configfile):
 
             elif valindex == 5:
 
-                reintroduceTelluricContinuum(science_dividedTelluricLines, science_correctedTelluric, orders,
-                                             overwrite)
+                reintroduceTelluricContinuum(science_dividedTelluricLines, telluric_fitContinuum, \
+                    science_correctedTelluric, orders, overwrite)
 
                 logger.info("##################################################################################")
                 logger.info("#                                                                                #")
@@ -290,8 +299,8 @@ def nofits(filename):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, hLineMethod,
-    regions, telAirmass, vega_spectrum, tempInter, telhlineinfofile, overwrite):
+def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, hLineMethod, \
+    hLineRegions, tel_airmass, vega_spectrum, tempInter, tel_hline_infofile, overwrite):
     """
     Remove hydrogen (H) absorption lines from the extracted 1D telluric source spectrum. Output filename prefix is 'h'.
 
@@ -304,21 +313,20 @@ def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLine
     logger = log.getLogger('gnirsTelluric.hLineRemoval')
 
     sample = {}
-    for order, s in regions:
+    for order, s in hLineRegions:
         sample[int(order)] = s
-    logger.debug('Sample: %s', sample)
 
     for i in range(len(orders)):
 
         extension = i+1
-        telluric_hLineRemovalInput = telsrcextractedspectrum+'[SCI,'+str(extension)+']'
+        telluric_hLineRemovalInput = tel_src_extracted_spectrum+'[SCI,'+str(extension)+']'
         calibrationInput = vega_spectrum+'['+str(extension)+']'
         telluric_hLineRemovalOutput_SEF = telluric_hLineCorrectedSpectrum+'_order'+str(extension)+'_SEF.fits'
         telluric_hLineRemovalOutput_MEF = telluric_hLineCorrectedSpectrum+'_order'+str(extension)+'_MEF.fits'
 
         oldfiles = glob.glob(telluric_hLineCorrectedSpectrum+'_order'+str(extension)+'*.fits')
         if not oldfiles:
-            iraf.hedit(images=telluric_hLineRemovalInput, fields='AIRMASS', value=telAirmass, add='yes',
+            iraf.hedit(images=telluric_hLineRemovalInput, fields='AIRMASS', value=tel_airmass, add='yes',
                 addonly='no', delete='no', verify='no', show='no', update='yes', mode='al')
             
             if hLineMethod == '':
@@ -332,7 +340,7 @@ def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLine
                 logger.info("Removing H lines from the telluric 1D source spectrum, extension %d.", extension)
                 if hLineMethod == 'vega':
                     vega(telluric_hLineRemovalInput, calibrationInput, telluric_hLineRemovalOutput_SEF, hLineInter,
-                        telAirmass, sample[orders[i]], telhlineinfofile, overwrite)
+                        tel_airmass, sample[orders[i]], tel_hline_infofile, overwrite)
 
             else:
                 logger.error("Unrecognized H line removal method encountered in the configuration file. Exiting")
@@ -343,7 +351,7 @@ def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLine
             # primary header back to the spectra files. Might change depending on whether the other H line removal
             # methods retain the primary headers (they probably do not).
             iraf.wmef(input=telluric_hLineRemovalOutput_SEF, output=telluric_hLineRemovalOutput_MEF, extnames='',
-                phu=telsrcextractedspectrum, verbose='yes', mode='al')
+                phu=tel_src_extracted_spectrum, verbose='yes', mode='al')
             
             # TODO(Viraja):  Temporarily, pause to display and take a look at the telluric 1D source spectra before and 
             # after H line correction. I am not sure if this can be more useful than just looking at the spectra. If 
@@ -362,7 +370,7 @@ def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLine
                 logger.warning("Removing old %s"+"_order"+str(extension)+"*.fits files.", telluric_hLineCorrectedSpectrum)
                 [os.remove(filename) for filename in oldfiles]
 
-                iraf.hedit(images=telluric_hLineRemovalInput, fields='AIRMASS', value=telAirmass, add='yes',
+                iraf.hedit(images=telluric_hLineRemovalInput, fields='AIRMASS', value=tel_airmass, add='yes',
                     addonly='no', delete='no', verify='no', show='no', update='yes', mode='al') 
 
                 if hLineMethod == '':
@@ -378,7 +386,7 @@ def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLine
                 
                     if hLineMethod == 'vega':
                         vega(telluric_hLineRemovalInput, calibrationInput, telluric_hLineRemovalOutput_SEF,
-                            hLineInter, telAirmass, sample[orders[i]], telhlineinfofile, overwrite)
+                            hLineInter, tel_airmass, sample[orders[i]], tel_hline_infofile, overwrite)
                     
                     # TODO(Viraja):  Update the functions for the rest of the H line removal options (commented below).
                     # NOTE: Untested because interactive scripted iraf tasks are broken... Once ready, add them to the 
@@ -412,7 +420,7 @@ def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLine
                 # the primary header back to the spectra files. Might change depending on whether the other H line
                 # remova methods retain the primary headers (they probably do not).
                 iraf.wmef(input=telluric_hLineRemovalOutput_SEF, output=telluric_hLineRemovalOutput_MEF, extnames='',
-                    phu=telsrcextractedspectrum, verbose='yes', mode='al')
+                    phu=tel_src_extracted_spectrum, verbose='yes', mode='al')
 
                 # TODO(Viraja):  Temporarily, pause to display and take a look at the telluric 1D source spectra
                 # before and after H line correction. I am not sure if this can be more useful than just looking at the
@@ -432,15 +440,13 @@ def hLineRemoval(telsrcextractedspectrum, telluric_hLineCorrectedSpectrum, hLine
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, tel_airmass, sample,
-    tel_hline_infofile, overwrite):
+def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, tel_airmass, sample, tel_hline_infofile, \
+    overwrite):
     """
     Use IRAF TELLURIC task to remove H absorption lines from the telluric 1D source spectrum using the 'vega' method, 
     then divide normalization introduced by TELLURIC with IMARITH.
     """
     logger = log.getLogger('gnirsTelluric.vega')
-
-    logger.debug('sample: %s', sample)
 
     # For each order, this will be done interactively if parameter 'hLineInter' in the configuration file is 'yes'
     telluric_hLineInfo = iraf.telluric(input=inputtelspectrum, output=outputtelspectrum, cal=inputcalspectrum,
@@ -486,20 +492,18 @@ def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, tel_
 
 # ----------------------------------------------------------------------------------------------------------------------
 def fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter, orders,
-    regions, tempInter, overwrite):
+    continuumRegions, tempInter, overwrite):
     """
     Fit the continua of the H line corrected telluric 1D source spectra using IRAF CONTINUUM task to normalize them.
     """
     logger = log.getLogger('gnirsTelluric.fitTelluricContinuum')
 
     sample = {}
-    for order, s in regions:
+    for order, s in continuumRegions:
         sample[int(order)] = s
-    logger.debug('Sample: %s', sample)
 
     # Continuum fitting order depends on the spectral order.
     for i in range(len(orders)):
-
         extension = i+1
         telluric_fitContinuumInput = telluric_hLineCorrectedSpectrum+'_order'+str(extension)+'_MEF.fits[1]'
         telluric_fitContinuumOutput = telluric_fitContinuum+'_order'+str(extension)+'.fits'
@@ -579,9 +583,8 @@ def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinu
         oldfiles = glob.glob(telluric_dividedContinuum+'_order'+str(extension)+'*.fits')
         if len(oldfiles) > 0:
             if overwrite:
-                logger.warning("Removing old %s"+"_order"+str(extension)+"*.fits,", telluric_dividedContinuum)
-                for f in oldfiles:
-                    os.remove(f)
+                logger.warning("Removing old %s"+"_order"+str(extension)+"*.fits files.", telluric_dividedContinuum)
+                [os.remove(f) for f in oldfiles]
             else:
                 logger.warning("Output exists and -overwrite not set - skipping division of the H line corrected")
                 logger.warning("telluric 1D source spectrum, extension %d, by the telluric continuum fit.", extension)
@@ -614,42 +617,44 @@ def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinu
         table.write(telluric_divideContinuumOutput_SEF, format='fits')
         '''
 
-        # TODO(Viraja):  Check if a new MEF with the same filename as the previous one-extension image can be
-        # created sucessfully.
         iraf.wmef(input=telluric_divideContinuumOutput_SEF, output=telluric_divideContinuumOutput_MEF,
             extnames='', phu=telluric_hLineCorrectedSpectrum+'_order'+str(extension)+'_MEF', verbose='yes',
             mode='al')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def telluric(infile, calib, outfile, interactive, orders, airmass, regions, results_file, overwrite):
+def telluricCorrection(sci_src_extracted_spectrum, telluric_dividedContinuum, science_dividedTelluricLines, \
+    telluricInter, orders, sci_airmass, TelluricRegions, sci_tel_infofile, overwrite):
     """
     Run IRAF telluric task on each order
-    :param infile: input multi-extension fits file name
-    :param calib:
-    :param outfile:
-    :param interactive:
+    :param sci_src_extracted_spectrum: input multi-extension fits file name
+    :param telluric_dividedContinuum:
+    :param science_dividedTelluricLines:
+    :param telluricInter:
     :param orders: list of orders
-    :param airmass: float airmass
-    :param regions: list of regions to fit in each order [(order1,region1), (order2,region2), ...]
-    :param results_file: filename for output results that are normally printed to the terminal
+    :param sci_airmass: float airmass
+    :param TelluricRegions: list of regions to fit in each order [(order1,region1), (order2,region2), ...]
+    :param sci_telinfofile: filename for output results that are normally printed to the terminal
     :param overwrite:
     """
-    logger = log.getLogger('gnirsTelluric.telluric')
+    logger = log.getLogger('gnirsTelluric.telluricCorrection')
 
     sample = {}
-    for order, s in regions:
+    for order, s in TelluricRegions:
         sample[int(order)] = s
-    logger.debug('Sample: %s', sample)
 
     for i in range(len(orders)):
-
         extension = i+1
-        output = outfile + '_order' + str(extension)+'_SEF.fits'
-        if os.path.exists(output):
+        science_telluricCorrectionInput = sci_src_extracted_spectrum+'[SCI,'+str(extension)+']'
+        calibrationInput = telluric_dividedContinuum+'_order'+str(extension)+'_MEF.fits[1]'
+        telluric_telluricCorrectionOutput_SEF = science_dividedTelluricLines + '_order' + str(extension)+'_SEF.fits'
+        telluric_telluricCorrectionOutput_MEF = science_dividedTelluricLines + '_order' + str(extension)+'_MEF.fits'
+        
+        oldfiles = glob.glob(science_dividedTelluricLines+'_order'+str(extension)+'*.fits')
+        if len(oldfiles) > 0:
             if overwrite:
-                logger.debug('Removing %s', output)
-                os.remove(output)
+                logger.warning('Removing %s"+"_order"+str(extension)+"*.fits files.', science_dividedTelluricLines)
+                [os.remove(f) for f in oldfiles]
             else:
                 logger.warning("Output exists and overwrite flag not set.")
                 logger.warning("Skipping division of the science 1D source")
@@ -657,34 +662,22 @@ def telluric(infile, calib, outfile, interactive, orders, airmass, regions, resu
                 logger.warning("telluric spectrum, extension %d.", extension)
                 continue
 
-        logger.debug('\n')
-        logger.info("Running IRAF telluric...")
-        logger.debug('Order: %s', orders[i])
-        logger.debug("Input: %s", infile + '[SCI,' + str(extension) + ']')
-        logger.debug("Calib: %s", calib + '_order' + str(extension) + '_MEF.fits[1]')
-        logger.debug("Output: %s", output)
-        logger.debug("Sample: %s", sample[orders[i]])
-        logger.debug("Airmass: %s", airmass)
+        science_telluricInfo = iraf.telluric(input=sci_src_extracted_spectrum + '[SCI,' + str(extension) + ']',
+            output=telluric_telluricCorrectionOutput_SEF, cal=calibrationInput, airmass=sci_airmass, answer='yes',
+            ignoreaps='yes', xcorr='yes', tweakrms='yes', interactive=telluricInter, sample=sample[orders[i]], 
+            threshold=0.1, lag=10, shift=0.0, dshift=1.0, scale=1.0, dscale=0.2, offset=1, smooth=1, cursor='', 
+            Stdout=1)
 
-        results = iraf.telluric(
-            input=infile + '[SCI,' + str(extension) + ']',
-            output=output,
-            cal=calib + '_order' + str(extension) + '_MEF.fits[1]',
-            airmass=airmass, answer='yes', ignoreaps='yes', xcorr='yes', tweakrms='yes',
-            interactive=interactive, sample=sample[orders[i]], threshold=0.1, lag=10,
-            shift=0.0, dshift=1.0, scale=1.0, dscale=0.2, offset=1, smooth=1, cursor='', Stdout=1)
-        logger.debug('Results: %s', results)
+        with open(sci_tel_infofile,'w') as f:
+            f.write(str(science_telluricInfo)+'\n')
 
-        with open(results_file,'w') as f:
-            f.write(str(results)+'\n')
-
-        if "limits" in results[-1].split()[-1]:
+        if "limits" in science_telluricInfo[-1].split()[-1]:
             index = -2
         else:
             index = -1
-        normalization = results[index].split()[-1]
-        scale = float(results[index].split()[-4].replace(',', ''))
-        shift = float(results[index].split()[-7].replace(',', ''))
+        normalization = science_telluricInfo[index].split()[-1]
+        scale = float(science_telluricInfo[index].split()[-4].replace(',', ''))
+        shift = float(science_telluricInfo[index].split()[-7].replace(',', ''))
         logger.info('Shift: %.2f pixels', shift)
         if abs(float(shift) > 1.0):
             logger.warning("Shift shift > 1 pixel!")
@@ -698,16 +691,13 @@ def telluric(infile, calib, outfile, interactive, orders, airmass, regions, resu
         #    result=science_divideTelluricLinesOutput_SEF, title='', divzero=0.0, hparams='', pixtype='',
         #    calctype='', verbose='yes', noact='no', mode='al')
 
-        # TODO(Viraja):  Check if a new MEF with the same filename as the previous one-extension image can be
-        # created sucessfully.
-        # iraf.wmef(input=science_divideTelluricLinesOutput_SEF, output=science_divideTelluricLinesOutput_MEF,
-        #    extnames='', phu=input, verbose='yes', mode='al')
+        iraf.wmef(input=telluric_telluricCorrectionOutput_SEF, output=telluric_telluricCorrectionOutput_MEF,
+            extnames='', phu=sci_src_extracted_spectrum, verbose='yes', mode='al')
 
     return
 
-
 # ----------------------------------------------------------------------------------------------------------------------
-def reintroduceTelluricContinuum(science_dividedTelluricLines, science_correctedTelluric, orders, overwrite):
+def reintroduceTelluricContinuum(science_dividedTelluricLines, telluric_fitContinuum, science_correctedTelluric, orders, overwrite):
     """
     Re-introduce telluric continuum shape into telluric lines removed science 1D source spectra.
     """
@@ -716,15 +706,16 @@ def reintroduceTelluricContinuum(science_dividedTelluricLines, science_corrected
     # Start with regularly extracted science spectra (not using full slit or stepwise extraction methods)
     for i in range(len(orders)):
         extension = i+1
-        science_correctedTelluricInput = scisrcextractedspectrum[scisrcextractedspectrum.rfind('.')+1:]+'[SCI,'+\
-            str(extension)+']'
-        telluric_fitContinuumOutput = telluric_fitContinuumOutput+'_order'+str(extension)+'.fits'
-        science_correctedTelluricOutput = science_correctedTelluric+'_order'+str(extension)+'.fits'
+        science_reintroduceTelluricContinuumInput = science_dividedTelluricLines+'_order'+str(extension)+'_MEF.fits[1]'
+        telluricContinuumFit = telluric_fitContinuum+'_order'+str(extension)+'.fits'
+        science_reintroduceTelluricContinuumOutput_SEF = science_correctedTelluric+'_order'+str(extension)+'_SEF.fits'
+        science_reintroduceTelluricContinuumOutput_MEF = science_correctedTelluric+'_order'+str(extension)+'_MEF.fits'
         
-        if os.path.exists(science_correctedTelluricOutput):
+        oldfiles = glob.glob(science_correctedTelluric+'_order'+str(extension)+'*.fits')
+        if len(oldfiles) > 0:
             if overwrite:
-                logger.warning("Removing old %s", science_correctedTelluricOutput)
-                os.remove(science_correctedTelluricOutput)
+                logger.warning('Removing %s"+"_order"+str(extension)+"*.fits files.', science_correctedTelluric)
+                [os.remove(f) for f in oldfiles]
             else:
                 logger.warning("Output exists and -overwrite not set - skipping re-introduction of telluric continuum")
                 logger.warning("into the telluric lines removed science 1D source spectrum, extension %d.", extension)
@@ -732,8 +723,8 @@ def reintroduceTelluricContinuum(science_dividedTelluricLines, science_corrected
 
         logger.info("Re-introducing telluric continuum into th telluric lines removed science 1D source")
         logger.info("spectrum, extension %d.", extension)
-        iraf.imarith(operand1=science_correctedTelluricInput, operand2=telluric_fitContinuumOutput, op="/",
-            result=science_correctedTelluricOutput, title='', divzero=0.0, hparams='', pixtype='',
+        iraf.imarith(operand1=science_reintroduceTelluricContinuumInput, operand2=telluricContinuumFit, op="/",
+            result=science_reintroduceTelluricContinuumOutput_SEF, title='', divzero=0.0, hparams='', pixtype='',
             calctype='', verbose='yes', noact='no', mode='al')
         '''
         # Comment from nifsTelluric.py -- There are subtle bugs in iraf mean imarith does not work. So we use  
@@ -749,11 +740,9 @@ def reintroduceTelluricContinuum(science_dividedTelluricLines, science_corrected
             operand3 = 1
             # Viraja:  I am not sure what operand3 would be in the above line??
         '''
-        # TODO(Viraja):  Check if a new MEF with the same filename as the previous one-extension image can be
-        # created sucessfully.
-        iraf.wmef(input=science_correctedTelluricOutput, output=science_correctedTelluricOutput, extnames='',
-            phu=science_correctedTelluricInput, verbose='yes', mode='al')
 
+        iraf.wmef(input=science_reintroduceTelluricContinuumOutput_SEF, output=science_reintroduceTelluricContinuumOutput_MEF, extnames='',
+            phu=science_dividedTelluricLines+'_order'+str(extension)+'_MEF', verbose='yes', mode='al')
 
 '''
 #---------------------------------------------------------------------------------------------------------------------#

@@ -1,0 +1,28 @@
+# Tue 13:58:47 13-Aug-2019
+begin	aperture src_comb[DQ,6] 1 96.9313 902.
+	image	src_comb[DQ,6]
+	aperture	1
+	beam	1
+	center	96.9313 902.
+	low	-4. -901.
+	high	4. 120.
+	background
+		xmin -27.
+		xmax 31.
+		function chebyshev
+		order 1
+		sample -27:-25,25:31
+		naverage -3
+		niterate 0
+		low_reject 3.
+		high_reject 3.
+		grow 0.
+	axis	1
+	curve	6
+		2.
+		2.
+		372.
+		1012.
+		-0.004401809
+		-0.1268286
+

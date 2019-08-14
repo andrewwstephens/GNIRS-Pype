@@ -1,0 +1,1 @@
+['vsrc_comb.fits[SCI,6]: TELLURIC:', '  Output: uvsrc_comb_order6_SEF.fits - NGC 4736', '  Input: vsrc_comb.fits[SCI,6] - NGC 4736', '  Calibration: ../Telluric/Intermediate/dhvsrc_comb_order6_MEF.fits[1] - HIP65159', '  Tweak: shift = 0.33, scale = 1.000, normalization = 0.7954']

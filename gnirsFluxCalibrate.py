@@ -86,6 +86,7 @@ def start(configfile):
     # config required for flux calibration
     continuumInter = config.getboolean('interactive','continuumInter')
     extractionStepwise = config.getboolean('extractSpectra1D','extractionStepwise')
+    extractionStepSize = config.getboolean('extractSpectra1D','extractionStepSize')
     calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
     # fluxCalibration specific config
     start = config.getint('telluricCorrection','Start')
@@ -97,236 +98,229 @@ def start(configfile):
     telluricTemperature = config.get('telluricCorrection','telluricTemperature')
     telluricBand = config.get('telluricCorrection','telluricBand')
 
+    # Get symbolic path to the telluric directory within the science directory and the runtime data directory
+    telpath = '../Telluric/Intermediate'  # relative path/link expected to be at the top level of every sci directory
+    runtimedatapath = '../../runtimeData'
 
     for scipath in config.options("ScienceDirectories"):
-        if config.getboolean("ScienceDirectories",scipath):
-
-            ###########################################################################
-            ##                                                                       ##
-            ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
-            ##                                                                       ##
-            ###########################################################################
-
-            os.chdir(scipath)
-            # Change the iraf directory to the current directory.
-            iraffunctions.chdir(scipath)
-
-            # Print the current directory of observations being reduced.
-            logger.info("Currently working on flux calibration in %s\n", scipath)
-            tempScipath = scipath.split(os.sep)
-            # Get symbolic path to the telluric directory within the science directory
-            # TODO(Viraja):  Check with Andy if there is a better way of getting the absolute path to the telluric
-            # directory
-            telpath = (glob.glob("/".join(tempScipath[:-1])+'/Tel_*')).pop()
-            # Print the telluric directory symbolic path
-            logger.info("Telluric directory: %s\n", telpath)
-            # Get the runtime data directory path
-            runtimedatapath = "/".join(tempScipath[:-5])+'/runtimeData'
-            # Print the runtime data directory path
-            logger.info("Runtime data path: %s\n", runtimedatapath)
-
-            # Check if required runtime data files and telluric corrected science source spectra available in their 
-            # respective paths
-            logger.info("Checking if required runtime data files and telluric corrected science source spectra")
-            logger.info("available in %s and %s, respectively.\n", runtimedatapath, scipath)
-            
-            reference_startable_filename = 'stars_spectraltypes_temperatures.txt'
-            if os.path.exists(runtimedatapath+'/'+reference_startable_filename):
-                logger.info("Required reference star table of spectral types and temperatures available.")
-                reference_startable = open(runtimedatapath+'/'+reference_startable_filename, "r").readlines()
-            else:
-                logger.warning("Required reference star table of spectral types and temperatures not available.")
-                logger.warning("Please provide the star table in %s. Exiting script.\n", runtimedatapath)
-                raise SystemExit
-
-            # Assigning different variable names to "src_comb.fits" and "sky_comb.fits" is not necessary with the
-            # current file/directory arrangement for this pipeline (where this works as the telluric and science images
-            # are not in the same directory), but it can be useful if the user decides to change the filenames of the
-            # combined images.
-            scisrccombimage = 'src_comb.fits'
-            iraf.wmef(input=scipath + scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', \
-                output=scipath + 'h'scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', extnames='', \
-                phu=scipath + scisrccombimage, verbose='yes', mode='al')
-            scitelcorrected = scipath+'/duv'+scisrccombimage
-            sciHeader = fits.open(scitelcorrected).header  ## Use (file)[0].header for MEFs with PHU in extension 0.
-            sciAirmass = sciHeader['AIRMASS']
-            if os.path.exists(scitelcorrected):
-                logger.info("Required telluric corrected science source spectrum available.")
-            else:
-                logger.warning("Required telluric corrected science source spectrum not available. Please run")
-                logger.warning("gnirsTelluric.py to create the telluric corected spectrum or provide it manually in")
-                logger.warning("%s. Exiting script.\n", scipath)
-                raise SystemExit
-            
-            telsrccombimage = 'src_comb.fits'
-            telsrcextractedspectrum = telpath+'/v'+telsrccombimage
-            telHeader = fits.open(telsrcextractedspectrum)[0].header
-            telAirmass = telHeader['AIRMASS']
-            if os.path.exists(telsrcextractedspectrum):
-                logger.info("Required extracted telluric 1D source spectrum available.")
-            else:
-                logger.warning("Required extracted telluric 1D source spectrum not available. Please run")
-                logger.warning("gnirsExtarctSpectra1D.py to create the extracted spectrum or provide it manually in")
-                logger.warning("%s. Exiting script.\n", telpath)
-                raise SystemExit
-
-            if extractionStepwise:
-                steps = 
-
-            
         
-            logger.info("Required telluric corrected spectra check complete.")
+        if not config.getboolean("ScienceDirectories", scipath):  # only process directories that are marked True
+            logger.info('Skipping flux calibaration in %s', scipath)
+            continue
 
-            # Record the right number of order expected according to the GNIRS XD configuration.
-            if 'Long' in scipath and 'SXD' in scipath:
-                orders = [3, 4, 5]
-            elif 'Long' in scipath and 'LXD' in scipath:
-                orders = [3, 4, 5, 6, 7, 8]
-            elif 'Short' in scipath and 'SXD' in scipath:
-                orders = [3, 4, 5, 6, 7, 8]
+        ###########################################################################
+        ##                                                                       ##
+        ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
+        ##                                                                       ##
+        ###########################################################################
+
+        scipath += '/Intermediate'
+        logger.info("Moving to science directory: %s", scipath)
+        iraf.chdir(scipath)
+
+        logger.info("Telluric directory: %s\n", telpath)
+        logger.info("Runtime data path: %s\n", runtimedatapath)
+        
+        os.chdir(scipath)
+
+        # Check if required runtime data files and telluric corrected science source spectra available in their
+        # respective paths
+        logger.info("Checking if required runtime data files and telluric corrected science source spectra")
+        logger.info("available in %s and %s, respectively.\n", runtimedatapath, scipath)
+        
+        reference_startable_filename = 'stars_spectraltypes_temperatures.txt'
+        if os.path.exists(runtimedatapath+'/'+reference_startable_filename):
+            logger.info("Required reference star table of spectral types and temperatures available.")
+            reference_startable = open(runtimedatapath+'/'+reference_startable_filename, "r").readlines()
+        else:
+            logger.warning("Required reference star table of spectral types and temperatures not available.")
+            logger.warning("Please provide the star table in %s. Exiting script.\n", runtimedatapath)
+            raise SystemExit
+
+        # Assigning different variable names to "src_comb.fits" and "sky_comb.fits" is not necessary with the
+        # current file/directory arrangement for this pipeline (where this works as the telluric and science images
+        # are not in the same directory), but it can be useful if the user decides to change the filenames of the
+        # combined images.
+        scisrccombimage = 'src_comb.fits'
+        iraf.wmef(input=scipath + scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', \
+            output=scipath + 'h'scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', extnames='', \
+            phu=scipath + scisrccombimage, verbose='yes', mode='al')
+        scitelcorrected = scipath+'/duv'+scisrccombimage
+        sciHeader = fits.open(scitelcorrected).header  ## Use (file)[0].header for MEFs with PHU in extension 0.
+        sci_airmass = sciHeader['AIRMASS']
+        if os.path.exists(scitelcorrected):
+            logger.info("Required telluric corrected science source spectrum available.")
+        else:
+            logger.warning("Required telluric corrected science source spectrum not available. Please run")
+            logger.warning("gnirsTelluric.py to create the telluric corected spectrum or provide it manually in")
+            logger.warning("%s. Exiting script.\n", scipath)
+            raise SystemExit
+        
+        telsrccombimage = 'src_comb.fits'
+        telsrcextractedspectrum = telpath+'/v'+telsrccombimage
+        telHeader = fits.open(telsrcextractedspectrum)[0].header
+        tel_airmass = telHeader['AIRMASS']
+        if os.path.exists(telsrcextractedspectrum):
+            logger.info("Required extracted telluric 1D source spectrum available.")
+        else:
+            logger.warning("Required extracted telluric 1D source spectrum not available. Please run")
+            logger.warning("gnirsExtarctSpectra1D.py to create the extracted spectrum or provide it manually in")
+            logger.warning("%s. Exiting script.\n", telpath)
+            raise SystemExit
+
+        # TODO:  if extractionStepwise:
+
+        logger.info("Required telluric corrected spectra check complete.")
+
+        # Record the right number of order expected according to the GNIRS XD configuration.
+        if 'LB_SXD' in scipath:
+            orders = [3, 4, 5]
+        elif 'LB_LXD' in scipath:
+            orders = [3, 4, 5, 6, 7, 8]
+        elif 'SB_SXD' in scipath:
+            orders = [3, 4, 5, 6, 7, 8]
+        else:
+            logger.error("###################################################################################")
+            logger.error("###################################################################################")
+            logger.error("#                                                                                 #")
+            logger.error("#     ERROR in flux calibrate: unknown GNIRS XD configuration. Exiting script.    #")
+            logger.error("#                                                                                 #")
+            logger.error("###################################################################################")
+            logger.error("###################################################################################\n")
+            raise SystemExit
+        
+        ###########################################################################
+        ##                                                                       ##
+        ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
+        ##             BEGIN TELLURIC CORRECTION FOR AN OBSERVATION              ##
+        ##                                                                       ##
+        ###########################################################################
+
+        valindex = start
+        while valindex > stop or valindex < 1 or stop > 6:
+            logger.warning("#####################################################################")
+            logger.warning("#####################################################################")
+            logger.warning("#                                                                   #")
+            logger.warning("#   WARNING in telluric: invalid start/stop values of telluric      #")
+            logger.warning("#                        correction steps.                          #")
+            logger.warning("#                                                                   #")
+            logger.warning("#####################################################################")
+            logger.warning("#####################################################################\n")
+
+            valindex = int(raw_input("Please enter a valid start value (1 to 6, default 1): "))
+            stop = int(raw_input("Please enter a valid stop value (1 to 6, default 6): "))
+
+        while valindex <= stop:
+
+            #############################################################################
+            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
+            ##          from the configuration file.                                   ##
+            ##  Output: An ascii file containing telluric information.                 ##
+            #############################################################################
+
+            if valindex == 1:
+                getTelluricInfo(telHeader, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, \
+                    telluricTemperature, reference_startable, telpath+'/telluric_info.txt', overwrite)
+
+                logger.info("##################################################################")
+                logger.info("#                                                                #")
+                logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                logger.info("#                                                                #")
+                logger.info("##################################################################\n")
+            
+            #############################################################################
+            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
+            ##          from the configuration file.                                   ##
+            ##  Output: An ascii file containing telluric information.                 ##
+            #############################################################################
+
+            if valindex == 2:
+                makeFLambda(rawFrame, grating, log, over)
+
+                logger.info("##################################################################")
+                logger.info("#                                                                #")
+                logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                logger.info("#                                                                #")
+                logger.info("##################################################################\n")
+
+            #############################################################################
+            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
+            ##          from the configuration file.                                   ##
+            ##  Output: An ascii file containing telluric information.                 ##
+            #############################################################################
+
+            if valindex == 3:
+                makeBlackBody(rawFrame, grating, log, over)
+
+                logger.info("##################################################################")
+                logger.info("#                                                                #")
+                logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                logger.info("#                                                                #")
+                logger.info("##################################################################\n")
+
+            #############################################################################
+            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
+            ##          from the configuration file.                                   ##
+            ##  Output: An ascii file containing telluric information.                 ##
+            #############################################################################
+
+            if valindex == 4:
+                makeBlackBodyScale(rawFrame, log, over)
+
+                logger.info("##################################################################")
+                logger.info("#                                                                #")
+                logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                logger.info("#                                                                #")
+                logger.info("##################################################################\n")
+
+            #############################################################################
+            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
+            ##          from the configuration file.                                   ##
+            ##  Output: An ascii file containing telluric information.                 ##
+            #############################################################################
+
+            if valindex == 5:
+                scaleBlackBody(rawFrame, log, over)
+
+                logger.info("##################################################################")
+                logger.info("#                                                                #")
+                logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                logger.info("#                                                                #")
+                logger.info("##################################################################\n")
+
+            #############################################################################
+            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
+            ##          from the configuration file.                                   ##
+            ##  Output: An ascii file containing telluric information.                 ##
+            #############################################################################
+
+            if valindex == 6:
+                multiplyByBlackBody(rawFrame, log, over)
+
+                logger.info("##################################################################")
+                logger.info("#                                                                #")
+                logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
+                logger.info("#                                                                #")
+                logger.info("##################################################################\n")
+            
             else:
-                logger.error("###################################################################################")
-                logger.error("###################################################################################")
-                logger.error("#                                                                                 #")
-                logger.error("#     ERROR in flux calibrate: unknown GNIRS XD configuration. Exiting script.    #")
-                logger.error("#                                                                                 #")
-                logger.error("###################################################################################")
-                logger.error("###################################################################################\n")
+                logger.error("##############################################################################")
+                logger.error("##############################################################################")
+                logger.error("#                                                                            #")
+                logger.error("#    ERROR in flux calibrate: %d is not valid. Exiting script.", valindex      )
+                logger.error("#                                                                            #")
+                logger.error("##############################################################################")
+                logger.error("##############################################################################")
                 raise SystemExit
             
-            ###########################################################################
-            ##                                                                       ##
-            ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
-            ##             BEGIN TELLURIC CORRECTION FOR AN OBSERVATION              ##
-            ##                                                                       ##
-            ###########################################################################
+            valindex += 1
 
-            valindex = start
-            while valindex > stop or valindex < 1 or stop > 6:
-                logger.warning("#####################################################################")
-                logger.warning("#####################################################################")
-                logger.warning("#                                                                   #")
-                logger.warning("#   WARNING in telluric: invalid start/stop values of telluric      #")
-                logger.warning("#                        correction steps.                          #")
-                logger.warning("#                                                                   #")
-                logger.warning("#####################################################################")
-                logger.warning("#####################################################################\n")
-
-                valindex = int(raw_input("Please enter a valid start value (1 to 6, default 1): "))
-                stop = int(raw_input("Please enter a valid stop value (1 to 6, default 6): "))
-
-            while valindex <= stop:
-
-                #############################################################################
-                ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-                ##          from the configuration file.                                   ##
-                ##  Output: An ascii file containing telluric information.                 ##
-                #############################################################################
-
-                if valindex == 1:
-                    telinfofile = telpath+'/telluric_info.txt'
-                    getTelluricInfo(telHeader, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, \
-                        telluricTemperature, reference_startable, telinfofile, overwrite)
-
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-                
-                #############################################################################
-                ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-                ##          from the configuration file.                                   ##
-                ##  Output: An ascii file containing telluric information.                 ##
-                #############################################################################
-
-                if valindex == 2:
-                    makeFLambda(rawFrame, grating, log, over)
-
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-
-                #############################################################################
-                ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-                ##          from the configuration file.                                   ##
-                ##  Output: An ascii file containing telluric information.                 ##
-                #############################################################################
-
-                if valindex == 3:
-                    makeBlackBody(rawFrame, grating, log, over)
-
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-
-                #############################################################################
-                ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-                ##          from the configuration file.                                   ##
-                ##  Output: An ascii file containing telluric information.                 ##
-                #############################################################################
-
-                if valindex == 4:
-                    makeBlackBodyScale(rawFrame, log, over)
-
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-
-                #############################################################################
-                ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-                ##          from the configuration file.                                   ##
-                ##  Output: An ascii file containing telluric information.                 ##
-                #############################################################################
-
-                if valindex == 5:
-                    scaleBlackBody(rawFrame, log, over)
-
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-
-                #############################################################################
-                ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-                ##          from the configuration file.                                   ##
-                ##  Output: An ascii file containing telluric information.                 ##
-                #############################################################################
-
-                if valindex == 6:
-                    multiplyByBlackBody(rawFrame, log, over)
-
-                    logger.info("##################################################################")
-                    logger.info("#                                                                #")
-                    logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                    logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
-                
-                else:
-                    logger.error("##############################################################################")
-                    logger.error("##############################################################################")
-                    logger.error("#                                                                            #")
-                    logger.error("#    ERROR in flux calibrate: %d is not valid. Exiting script.", valindex      )
-                    logger.error("#                                                                            #")
-                    logger.error("##############################################################################")
-                    logger.error("##############################################################################")
-                    raise SystemExit
-                
-                valindex += 1
-
-            logger.info("##############################################################################")
-            logger.info("#                                                                            #")
-            logger.info("#  COMPLETE - Flux calibration completed for                                 #")
-            logger.info("#  %s", scipath                                                                )
-            logger.info("#                                                                            #")
-            logger.info("##############################################################################\n")
+        logger.info("##############################################################################")
+        logger.info("#                                                                            #")
+        logger.info("#  COMPLETE - Flux calibration completed for                                 #")
+        logger.info("#  %s", scipath                                                                )
+        logger.info("#                                                                            #")
+        logger.info("##############################################################################\n")
 
     # Return to directory script was begun from.
     os.chdir(path)
