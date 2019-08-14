@@ -41,21 +41,21 @@ JUL 29  - AUG 02:
 
 AUG 05 - AUG 09:
 - [x] `gnirsTelluric.py`
-- [x] `gnirsFluxCalibrate.py`
+- [ ] `gnirsFluxCalibrate.py`
 - [x] Create 'Read the Docs' documentation page
 - [x] Discuss presentation points
 
 AUG 07:    Revise plan (if required)    [YES]
 
 AUG 12 - AUG 16:
+- [ ] `gnirsFluxCalibrate.py`
 - [ ] `gnirsCombineOrdersXD.py`
 - [ ] `gnirsCalcSNR.py`
 - [ ] `writeDataSheet.py`
-- [ ] `gnirsSort.py`
 - [ ] Complete remaining documentation
 
 AUG 13:
-- [ ] Presentation
+- [x] Presentation
 
 AUG 19 - AUG 20:
 - [ ] `Complete the list of TODOs`
