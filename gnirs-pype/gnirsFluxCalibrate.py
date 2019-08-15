@@ -32,6 +32,7 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
 
+#---------------------------------------------------------------------------------------------------------------------#
 
 def start(configfile):
     """
@@ -92,12 +93,13 @@ def start(configfile):
     dividedSciencePrefix_extractFS = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractFS')
     dividedSciencePrefix_extractSW = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractSW')
     # fluxCalibration specific config
-    start = config.getint('telluricCorrection','Start')
-    stop = config.getint('telluricCorrection','Stop')
+    Start = config.getint('fluxCalibration','Start')
+    Stop = config.getint('fluxCalibration','Stop')
+    fluxCalibrationMethod = config.get('fluxCalibration','fluxCalibrationMethod')
 
-    # Get symbolic path to the telluric directory within the science directory and the runtime data directory
-    telpath = '../Telluric/Intermediate'  # relative path/link expected to be at the top level of every sci directory
-    runtimedatapath = '../../runtimeData'
+    # Get symbolic paths to the std and tel directories in the sci directory
+    stdpath = '../Standard/Intermediate'  # relative path/link expected to be at the top level of every sci directory
+    telpath = '../Telluric/Intermediate'
 
     for scipath in config.options("ScienceDirectories"):
         
@@ -115,23 +117,66 @@ def start(configfile):
         logger.info("Moving to science directory: %s", scipath)
         iraf.chdir(scipath)
 
-        logger.info("Telluric directory: %s\n", telpath)
-        logger.info("Runtime data path: %s\n", runtimedatapath)
-
-        # Check if required runtime data files and telluric corrected science source spectra available in their
-        # respective paths
-        logger.info("Checking if required runtime data files and telluric corrected science source spectra")
-        logger.info("available in %s and %s, respectively.\n", runtimedatapath, scipath)
-        
-        reference_startable_filename = 'stars_spectraltypes_temperatures.txt'
-        if os.path.exists(runtimedatapath+'/'+reference_startable_filename):
-            logger.info("Required reference star table of spectral types and temperatures available.")
-            reference_startable = open(runtimedatapath+'/'+reference_startable_filename, "r").readlines()
+        # Record the right number of order expected according to the GNIRS XD configuration.
+        if 'LB_SXD' in scipath:
+            orders = [3, 4, 5]
+        elif 'LB_LXD' in scipath:
+            orders = [3, 4, 5, 6, 7, 8]
+        elif 'SB_SXD' in scipath:
+            orders = [3, 4, 5, 6, 7, 8]
         else:
-            logger.warning("Required reference star table of spectral types and temperatures not available.")
-            logger.warning("Please provide the star table in %s.", runtimedatapath)
-            logger.warning("Exiting script.\n")
+            logger.error("###################################################################################")
+            logger.error("###################################################################################")
+            logger.error("#                                                                                 #")
+            logger.error("#   ERROR in get telluric info: unknown GNIRS XD configuration. Exiting script.   #")
+            logger.error("#                                                                                 #")
+            logger.error("###################################################################################")
+            logger.error("###################################################################################\n")
             raise SystemExit
+
+        if os.path.exists(stdpath):
+            logger.info("Standard directory: %s", stdpath)
+            if fluxCalibrationMethod == 'fluxcalibrator':
+                logger.info("Using 'fluxcalibrator' method for flux calibration in %s", scipath)
+            elif fluxCalibrationMethod == 'telluricapproximate':
+                logger.warning("Standard directory for flux calibrator available, but flux calibration method set to")
+                logger.warning("'telluricapproximate'. This may affect your science.")
+                fluxCalibrationMethod = raw_input("Confirm <fluxcalibrator> or <telluricapproximate> for flux calibration:")
+            else:
+                logger.error("#######################################################################################")
+                logger.error("#######################################################################################")
+                logger.error("#                                                                                     #")
+                logger.error("#   ERROR in get flux calibration: Unknown flux calibration input. Exiting script.    #")
+                logger.error("#                                                                                     #")
+                logger.error("#######################################################################################")
+                logger.error("#######################################################################################\n")
+                raise SystemExit
+        elif os.path.exists(telpath):
+            logger.info("Standard directory does not exist.")
+            if fluxCalibrationMethod == 'fluxcalibrator':
+                logger.error("Standard directory for flux calibrator not available in %s and flux", scipath)
+                logger.error("calibration method set to 'fluxcalibrator'. Expects 'telluricapproximate'.")
+                fluxCalibrationMethod = raw_input("Confirm <fluxcalibrator> or <telluricapproximate> for flux calibration:")
+            elif fluxCalibrationMethod == 'telluricapproximate':
+            logger.info("Moving on to use the telluric to derive the approximate flux calibration.\n")
+            stdpath = telpath
+            logger.info("Standard directory: %s\n", stdpath)
+            else:
+                logger.error("#######################################################################################")
+                logger.error("#######################################################################################")
+                logger.error("#                                                                                     #")
+                logger.error("#   ERROR in get flux calibration: Unknown flux calibration input. Exiting script.    #")
+                logger.error("#                                                                                     #")
+                logger.error("#######################################################################################")
+                logger.error("#######################################################################################\n")
+                raise SystemExit
+        else:
+            logger.warning("Parameter 'fluxCalibration' is set to 'yes', but no standard and telluric data available.")
+            logger.warning("Turnign off 'fluxCalibration' in %s", scipath)
+
+        # Check if required sci and std source spectra available in their respective paths
+        logger.info("Checking if required science and standard source spectra available in %s",scipath)
+        logger.info("and %s, respectively.\n", stdpath)
 
         sci_telluricCorrected = sorted(glob.glob(scipath + '/' + dividedSciencePrefix_extractREG + \
             nofits(combinedsrc) + '_order*_MEF.fits'))
@@ -202,23 +247,7 @@ def start(configfile):
         while valindex <= stop:
 
             #############################################################################
-            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-            ##          from the configuration file.                                   ##
-            ##  Output: An ascii file containing telluric information.                 ##
-            #############################################################################
-
-            if valindex == 1:
-                getTelluricInfo(tel_header, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, \
-                    telluricTemperature, reference_startable, telpath+'/telluric_info.txt', overwrite)
-
-                logger.info("##################################################################")
-                logger.info("#                                                                #")
-                logger.info("#       STEP 1: Get telluric information - COMPLETED             #")
-                logger.info("#                                                                #")
-                logger.info("##################################################################\n")
-            
-            #############################################################################
-            ##  STEP 2: Convert magnitude to flux density for the telluric.            ##
+            ##  STEP 1: Convert magnitude to flux density for the telluric.            ##
             ##  Output: Derived spectrum (FLambda) for the telluric.                   ##
             #############################################################################
 

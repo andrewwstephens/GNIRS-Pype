@@ -222,6 +222,8 @@ def start(configfile):
             ###########################################################################
 
             if valindex == 1:
+                if manualMode:
+                    a = raw_input("About to enter step 1: H line removal.")
 
                 hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders,
                              hLineMethod, hLineRegions, tel_airmass, vega_spectrum, tempInter,
@@ -239,6 +241,8 @@ def start(configfile):
             ###########################################################################
 
             elif valindex == 2:
+                if manualMode:
+                    a = raw_input("About to enter step 2: Fit telluric continuum.")
 
                 fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter,
                                      orders, ContinuumRegions, tempInter, overwrite)
@@ -255,6 +259,8 @@ def start(configfile):
             ###########################################################################################
 
             elif valindex == 3:
+                if manualMode:
+                    a = raw_input("About to enter step 3: Division of telluric by the telluric continuum.")
 
                 divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum,
                     telluric_dividedContinuum, orders, overwrite)
@@ -271,6 +277,8 @@ def start(configfile):
             ###########################################################################
 
             elif valindex == 4:
+                if manualMode:
+                    a = raw_input("About to enter step 4: Telluric line removal.")
 
                 telluricCorrection(sci_src_extracted_spectrum, telluric_dividedContinuum, science_dividedTelluricLines, \
                     telluricInter, orders, sci_airmass, TelluricRegions, 'science_telluricInfo.txt', overwrite)
@@ -282,11 +290,13 @@ def start(configfile):
                 logger.info("##################################################################")
 
             ###############################################################################
-            #  STEP 5: Division of telluric by the telluric continuum.                    #
+            #  STEP 5: Division of science by the telluric continuum.                     #
             #  Output: Continuum-divided, telluric corrected science 1D source spectra.   #
             ###############################################################################
 
             elif valindex == 5:
+                if manualMode:
+                    a = raw_input("About to enter step 5: Division of science by the telluric continuum.")
 
                 reintroduceTelluricContinuum(science_dividedTelluricLines, telluric_fitContinuum, \
                     science_correctedTelluric, orders, overwrite)
@@ -314,7 +324,7 @@ def start(configfile):
         logger.info("#                                                                            #")
         logger.info("##############################################################################")
 
-    iraf.chdir(path)  # Return to the original directory
+    iraf.chdir(path)  ## Return to the original directory
 
     return
 
