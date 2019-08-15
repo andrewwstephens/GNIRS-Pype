@@ -1,0 +1,1 @@
+['TELLURIC:', '  Output: ../Telluric/Intermediate/hvsrc_comb_order6_SEF.fits - HIP65159', '  Input: ../Telluric/Intermediate/vsrc_comb.fits[SCI,6] - HIP65159', '  Calibration: ../../runtimeData/vega_ext.fits[6] - Vega', '  Tweak: shift = 2.35, scale = 1.000, normalization = 0.9625', '  WARNING: 358 pixels outside of calibration limits']

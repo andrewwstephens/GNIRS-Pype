@@ -1,5 +1,31 @@
 #!/usr/bin/env python
 
+# MIT License
+
+# Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+################################################################################
+#                Import some useful Python utilities/modules                   #
+################################################################################
+
 from astropy.io import fits
 import ConfigParser
 import glob
@@ -8,8 +34,8 @@ import matplotlib.pyplot as plt
 import os
 from pyraf import iraf
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 def start(configfile):
     """
     Do a Telluric correction using the IRAF TELLURIC task.
@@ -61,7 +87,7 @@ def start(configfile):
     ContinuumRegions = config.items('ContinuumRegions')
     TelluricRegions = config.items('TelluricRegions')
 
-    # Get symbolic path to the telluric directory within the science directory and the runtime data directory
+    # Get symbolic paths to the telluric directory within the science directory and the runtime data directory
     telpath = '../Telluric/Intermediate'  # relative path/link expected to be at the top level of every sci directory
     runtimedatapath = '../../runtimeData'
     
@@ -292,13 +318,13 @@ def start(configfile):
 
     return
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 def nofits(filename):
     return filename.replace('.fits', '')
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, hLineMethod, \
     hLineRegions, tel_airmass, vega_spectrum, tempInter, tel_hline_infofile, overwrite):
     """
@@ -438,8 +464,8 @@ def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hL
                 logger.warning("Output exists and -overwrite not set - skipping H line removal for the telluric 1D")
                 logger.warning("source spectrum, extension %d.", extension)
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, tel_airmass, sample, tel_hline_infofile, \
     overwrite):
     """
@@ -489,8 +515,8 @@ def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, tel_
         # Viraja:  Why is operand1 set to 1? I would imagine it is set to itself as the divisor is 0.
     '''
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 def fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter, orders,
     continuumRegions, tempInter, overwrite):
     """
@@ -564,8 +590,8 @@ def fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum,
             plt.plot(telluric_ContinuumFit)
             plt.show()
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, telluric_dividedContinuum, orders,
     overwrite):
     """
@@ -620,9 +646,9 @@ def divideTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinu
         iraf.wmef(input=telluric_divideContinuumOutput_SEF, output=telluric_divideContinuumOutput_MEF,
             extnames='', phu=telluric_hLineCorrectedSpectrum+'_order'+str(extension)+'_MEF', verbose='yes',
             mode='al')
+        
+#---------------------------------------------------------------------------------------------------------------------#
 
-
-# ----------------------------------------------------------------------------------------------------------------------
 def telluricCorrection(sci_src_extracted_spectrum, telluric_dividedContinuum, science_dividedTelluricLines, \
     telluricInter, orders, sci_airmass, TelluricRegions, sci_tel_infofile, overwrite):
     """
@@ -696,8 +722,10 @@ def telluricCorrection(sci_src_extracted_spectrum, telluric_dividedContinuum, sc
 
     return
 
-# ----------------------------------------------------------------------------------------------------------------------
-def reintroduceTelluricContinuum(science_dividedTelluricLines, telluric_fitContinuum, science_correctedTelluric, orders, overwrite):
+#---------------------------------------------------------------------------------------------------------------------#
+
+def reintroduceTelluricContinuum(science_dividedTelluricLines, telluric_fitContinuum, science_correctedTelluric, \
+    orders, overwrite):
     """
     Re-introduce telluric continuum shape into telluric lines removed science 1D source spectra.
     """
@@ -744,9 +772,8 @@ def reintroduceTelluricContinuum(science_dividedTelluricLines, telluric_fitConti
         iraf.wmef(input=science_reintroduceTelluricContinuumOutput_SEF, output=science_reintroduceTelluricContinuumOutput_MEF, extnames='',
             phu=science_dividedTelluricLines+'_order'+str(extension)+'_MEF', verbose='yes', mode='al')
 
-'''
 #---------------------------------------------------------------------------------------------------------------------#
-
+'''
 def getShiftScale(rawFrame, telluricInter, log, over):
     """
     Use iraf.telluric() to get the best shift and scale of a telluric correction spectrum.
@@ -878,16 +905,8 @@ def lineFitManual(spectrum, grating):
             iraf.splot(images=spectrum, new_image='final_tel_no_hLines_no_norm', save_file='../PRODUCTS/lorentz_hLines.txt', overwrite='yes')
 '''
 
-# ----------------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------#
+
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-
-    config = ConfigParser.RawConfigParser()
-    config.optionxform = str  # make config file options case-sensitive
-    config.read('gnirs.cfg')
-
     start('gnirs.cfg')
-
-    #telluric(infile='/tmp/vsrc_comb', calib='/tmp/dhvsrc_comb', outfile='testoutput.fits', interactive='no',
-    #         regions=config.items('TelluricRegions'), orders=[3, 4, 5, 6, 7, 8], airmass=1.25,
-    #         results_file='results.txt', overwrite=True)

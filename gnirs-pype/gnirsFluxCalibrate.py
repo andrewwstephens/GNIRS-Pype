@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # MIT License
 
 # Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
@@ -26,13 +28,9 @@
 
 import os, sys, log, ConfigParser
 from pyraf import iraf
-from astroquery.simbad import Simbad
-from astropy.table import Table
-from astropy import units as u
 from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
-import astropy.coordinates as coord
 
 
 def start(configfile):
@@ -84,19 +82,18 @@ def start(configfile):
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
     # config required for flux calibration
-    continuumInter = config.getboolean('interactive','continuumInter')
+    combinedsrc = config.get('Prefixes_and_Filenames', 'combinedsrc')
+    combinedsky = config.get('Prefixes_and_Filenames', 'combinedsky')
     extractionStepwise = config.getboolean('extractSpectra1D','extractionStepwise')
     extractionStepSize = config.getboolean('extractSpectra1D','extractionStepSize')
     calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
+    dividedTelluricPrefix = config.get('Prefixes_and_Filenames', 'dividedTelluricPrefix')
+    dividedSciencePrefix_extractREG = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractREG')
+    dividedSciencePrefix_extractFS = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractFS')
+    dividedSciencePrefix_extractSW = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractSW')
     # fluxCalibration specific config
     start = config.getint('telluricCorrection','Start')
     stop = config.getint('telluricCorrection','Stop')
-    telluricRA = config.get('telluricCorrection','telluricRA')
-    telluricDEC = config.get('telluricCorrection','telluricDEC')
-    telluricSpectralType = config.get('telluricCorrection','telluricSpectralType')
-    telluricMagnitude = config.get('telluricCorrection','telluricMagnitude')
-    telluricTemperature = config.get('telluricCorrection','telluricTemperature')
-    telluricBand = config.get('telluricCorrection','telluricBand')
 
     # Get symbolic path to the telluric directory within the science directory and the runtime data directory
     telpath = '../Telluric/Intermediate'  # relative path/link expected to be at the top level of every sci directory
@@ -120,8 +117,6 @@ def start(configfile):
 
         logger.info("Telluric directory: %s\n", telpath)
         logger.info("Runtime data path: %s\n", runtimedatapath)
-        
-        os.chdir(scipath)
 
         # Check if required runtime data files and telluric corrected science source spectra available in their
         # respective paths
@@ -134,38 +129,32 @@ def start(configfile):
             reference_startable = open(runtimedatapath+'/'+reference_startable_filename, "r").readlines()
         else:
             logger.warning("Required reference star table of spectral types and temperatures not available.")
-            logger.warning("Please provide the star table in %s. Exiting script.\n", runtimedatapath)
+            logger.warning("Please provide the star table in %s.", runtimedatapath)
+            logger.warning("Exiting script.\n")
             raise SystemExit
 
-        # Assigning different variable names to "src_comb.fits" and "sky_comb.fits" is not necessary with the
-        # current file/directory arrangement for this pipeline (where this works as the telluric and science images
-        # are not in the same directory), but it can be useful if the user decides to change the filenames of the
-        # combined images.
-        scisrccombimage = 'src_comb.fits'
-        iraf.wmef(input=scipath + scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', \
-            output=scipath + 'h'scisrccombimage[:scisrccombimage.rfind('.')] + '_MEF.fits', extnames='', \
-            phu=scipath + scisrccombimage, verbose='yes', mode='al')
-        scitelcorrected = scipath+'/duv'+scisrccombimage
-        sciHeader = fits.open(scitelcorrected).header  ## Use (file)[0].header for MEFs with PHU in extension 0.
-        sci_airmass = sciHeader['AIRMASS']
-        if os.path.exists(scitelcorrected):
-            logger.info("Required telluric corrected science source spectrum available.")
+        sci_telluricCorrected = sorted(glob.glob(scipath + '/' + dividedSciencePrefix_extractREG + \
+            nofits(combinedsrc) + '_order*_MEF.fits'))
+        if len(sci_telluricCorrected) > 0:
+            logger.info("Required telluric corrected science source spectra available.")
+            sci_header = fits.open(sci_telluricCorrected[0])[1].header  
         else:
-            logger.warning("Required telluric corrected science source spectrum not available. Please run")
-            logger.warning("gnirsTelluric.py to create the telluric corected spectrum or provide it manually in")
-            logger.warning("%s. Exiting script.\n", scipath)
+            logger.warning("Required telluric corrected science source spectra not available.")
+            logger.warning("Please run gnirsTelluric.py to create the telluric corected spectra or provide them")
+            logger.warning("manually in %s.", scipath)
+            logger.warning("Exiting script.\n")
             raise SystemExit
-        
-        telsrccombimage = 'src_comb.fits'
-        telsrcextractedspectrum = telpath+'/v'+telsrccombimage
-        telHeader = fits.open(telsrcextractedspectrum)[0].header
-        tel_airmass = telHeader['AIRMASS']
-        if os.path.exists(telsrcextractedspectrum):
-            logger.info("Required extracted telluric 1D source spectrum available.")
+
+        telluric_dividedContinuum = sorted(glob.glob(telpath + '/' + dividedTelluricPrefix + nofits(combinedsrc) + \
+            '_order*_MEF.fits'))
+        if len(sci_telluricCorrected) > 0:
+            logger.info("Required continuum divided telluric source spectra available.")
+            tel_header = fits.open(telluric_dividedContinuum[0])[1].header
         else:
-            logger.warning("Required extracted telluric 1D source spectrum not available. Please run")
-            logger.warning("gnirsExtarctSpectra1D.py to create the extracted spectrum or provide it manually in")
-            logger.warning("%s. Exiting script.\n", telpath)
+            logger.warning("Required continuum divided telluric spectra not available.")
+            logger.warning("Please run gnirsTelluric.py to create the continuum divided spectra or provide them")
+            logger.warning("manually in %s.", scipath)
+            logger.warning("Exiting script.\n")
             raise SystemExit
 
         # TODO:  if extractionStepwise:
@@ -198,14 +187,14 @@ def start(configfile):
 
         valindex = start
         while valindex > stop or valindex < 1 or stop > 6:
-            logger.warning("#####################################################################")
-            logger.warning("#####################################################################")
-            logger.warning("#                                                                   #")
-            logger.warning("#   WARNING in telluric: invalid start/stop values of telluric      #")
-            logger.warning("#                        correction steps.                          #")
-            logger.warning("#                                                                   #")
-            logger.warning("#####################################################################")
-            logger.warning("#####################################################################\n")
+            logger.warning("###########################################################################")
+            logger.warning("###########################################################################")
+            logger.warning("#                                                                         #")
+            logger.warning("#   WARNING in flux calibrate: invalid start/stop values of telluric      #")
+            logger.warning("#                        correction steps.                                #")
+            logger.warning("#                                                                         #")
+            logger.warning("###########################################################################")
+            logger.warning("###########################################################################\n")
 
             valindex = int(raw_input("Please enter a valid start value (1 to 6, default 1): "))
             stop = int(raw_input("Please enter a valid stop value (1 to 6, default 6): "))
@@ -219,7 +208,7 @@ def start(configfile):
             #############################################################################
 
             if valindex == 1:
-                getTelluricInfo(telHeader, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, \
+                getTelluricInfo(tel_header, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, \
                     telluricTemperature, reference_startable, telpath+'/telluric_info.txt', overwrite)
 
                 logger.info("##################################################################")
@@ -229,9 +218,8 @@ def start(configfile):
                 logger.info("##################################################################\n")
             
             #############################################################################
-            ##  STEP 1: Get telluric information by querrying SIMBAD if not obtained   ## 
-            ##          from the configuration file.                                   ##
-            ##  Output: An ascii file containing telluric information.                 ##
+            ##  STEP 2: Convert magnitude to flux density for the telluric.            ##
+            ##  Output: Derived spectrum (FLambda) for the telluric.                   ##
             #############################################################################
 
             if valindex == 2:
@@ -331,164 +319,119 @@ def start(configfile):
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
 
-def getTelluricInfo(telHeader, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, telluricTemperature, \
-    reference_startable, telinfofile, overwrite):
+def nofits(filename):
+    return filename.replace('.fits', '')
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+def getTelluricInfo(tel_header, telluricRA, telluricDEC, telluricSpectralType, telluricMagnitude, telluricTemperature, \
+    reference_startable, tel_infofile, overwrite):
     """
-    Find telluric star spectral type, temperature, magnitude, and exposure time. Based on XDGNIRS code. Modified from
+    Find telluric star spectral type, temperature, and K, H, and J magnitudes. Based on XDGNIRS code. Modified from
     nifsTelluric.py code.
 
-    Executes a SIMBAD query and parses the resulting html to find spectal type, temperature, and magnitude.
+    Executes a SIMBAD query and parses the resulting html to find spectal type, temperature, and K, H, and J magnitudes.
 
     Reads:
-        Extracted 1D telluric source spectrum.
+        Science extension [1] header of the order 0 continuum divided telluric source spectrum.
     
     Writes:
-        Telluric information file in the science directory path.
+        Telluric information file in the telluric directory path.
     """
     logger = log.getLogger('gnirsTelluric.getTelluricInfo')
 
     # This code structure checks if output files already exist. If output files exist and overwrite is specified, all 
     # output is overwritten.
-    if os.path.exists(telinfofile):
+    if os.path.exists(tel_infofile):
         if overwrite:
-            logger.warning("Removing old %s", telinfofile)
-            os.remove(telinfofile)
-
-            # If user did not specify a telluricMagnitude, telluricTemperature, telluricRA, or telluricDEC, get 
-            # telluricRA and telluricDEC from the extracted telluric spectrum header. Use SIMBAD to look up 
-            # telluricSpectralType, telluricMagnitude, and telluricTemperature.
-            if (not telluricMagnitude or not telluricTemperature) and (not telluricRA or not telluricDEC):
-                if not telluricRA:
-                    telluricRA = telHeader['RA']
-                if not telluricDEC:
-                    telluricDEC = telHeader['DEC']
-                telExptime = str(telHeader['EXPTIME'])
-            else:
-                # Get the telluric exposure time anyways
-                telExptime = str(telHeader['EXPTIME'])
-
-            # Check to see if a spectral type or temperature has been given
-            if telluricTemperature:
-                spectraltypeFind = False
-                temperatureFind = False
-            else:
-                spectraltypeFind = True
-                temperatureFind = True
-
-            if telluricMagnitude:
-                magnitudeFind = False
-            else:
-                magnitudeFind = True
-
-            if spectraltypeFind or temperatureFind or magnitudeFind:
-                # Construct URL based on telluric coordinates and execute SIMBAD query to find the spectral type
-                Simbad.add_votable_fields('flux(K)', 'sp')  ## Viraja:  Why does it query only the K magnitude?
-                simbad_startable = Simbad.query_region(coord.SkyCoord(ra=telluricRA, dec=telluricDEC, \
-                    unit=(u.deg, u.deg), frame='fk5'), radius=0.1 * u.deg)
-                # Viraja:  How are the RA and DEC formatted in XDpiped.csh??
-
-                if spectraltypeFind:
-                    # Get spectral type -- only the first 3 characters (strip off end of types like AIVn as they 
-                    # are not in the 'reference_startable.txt')
-                    telluricSpectralType = simbad_startable['SP_TYPE'][0][0:3]
-                else:
-                    logger.error("Cannot locate the spectral type of the telluric in the table generated by the")
-                    logger.error("SIMBAD query. Please update the parameter 'telluricSpectralType' in the")
-                    logger.error("configuration file.")
-                    raise SystemExit
-                
-                if magnitudeFind:
-                    telluricMagnitude = str(simbad_startable['FLUX_K'][0])
-                else:
-                    logger.error("Cannot find a the K magnitude for the telluric in the table generated by the")
-                    logger.error("SIMBAD query. Please update the parameter 'telluricMagnitude' in the configuration")
-                    logger.error("file. Exiting script.")
-                    raise SystemExit
-
-                if temperatureFind:
-                    # Find temperature for the spectral type in 'reference_startable.txt'
-                    count = 0
-                    for line in reference_startable:
-                        if '#' in line:
-                            continue
-                        else:
-                            if telluricSpectralType in line.split()[0]:
-                                telluricTemperature = line.split()[1]
-                                count = 0
-                                break
-                            else:
-                                count += 1
-                    if count > 0:  ## Viraja:  I am wondering why this condition is given and why is this an error??
-                        logger.error("Cannot find a temperature for spectral type %s of the telluric", telluricSpectralType)
-                        logger.error("Please update the parameter 'telluricTemperature' in the configuration file.")
-                        raise SystemExit
-
-            telinfo = open(telinfofile,'w')
-            telinfo.write('k K '+telluricMagnitude+' '+telluricTemperature+'\n')
-            # Viraja: Why the same as the K for the rest of them?? --> comment in mag2mass.py in XDGNIRS -- "Not sure 
-            # if the rest of these lines are necessary now we're not using "sensfunc" etc. for flux calibration
-            telinfo.write('h H '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-            telinfo.close()
-            
-            telinfo = open(telinfofile,'r').readlines()
-            logger.info("Contents of %s:", telinfofile)
-            for line in telinfo:
-                logger.info("%s", line.split('\n'))
+            logger.warning("Removing old %s", tel_infofile)
+            os.remove(tel_infofile)
         else:
             logger.info("Output exists and -overwrite not set - skipping getting telluric information.\n")
-    else:
-        if (not telluricMagnitude or not telluricTemperature) and (not telluricRA or not telluricDEC):
+            return
+
+        # If user did not specify a telluricMagnitude, telluricTemperature, telluricRA, or telluricDEC, get telluricRA
+        # and telluricDEC from the extracted telluric spectrum header. Use SIMBAD to look up telluricSpectralType, 
+        # telluricMagnitude, and telluricTemperature.
+        if (not telluricMagnitudeK or not telluricMagnitudeH or not telluricMagnitudeJ or not telluricTemperature) \
+            and (not telluricRA or not telluricDEC):
             if not telluricRA:
-                telluricRA = telHeader['RA']
+                telluricRA = tel_header['RA']
             if not telluricDEC:
-                telluricDEC = telHeader['DEC']
-            telExptime = str(telHeader['EXPTIME'])
+                telluricDEC = tel_header['DEC']
+            telExptime = str(tel_header['EXPTIME'])
         else:
-            # Get the telluric exposure time regardless
-            telHeader = fits.open(telsrcextractedspectrum)[0].header
-            telExptime = str(telHeader['EXPTIME'])
+            # Get the telluric exposure time anyways
+            telExptime = str(tel_header['EXPTIME'])
 
         # Check to see if a spectral type or temperature has been given
         if telluricTemperature:
-            spectraltypeFind = False
-            temperatureFind = False
+            findSpectralType = False
+            findTemperature = False
         else:
-            spectraltypeFind = True
-            temperatureFind = True
+            findSpectralType = True
+            findTemperature = True
 
-        if telluricMagnitude:
-            magnitudeFind = False
+        if telluricMagnitudeK:
+            findMagnitudeK = False
         else:
-            magnitudeFind = True
+            findMagnitudeK = True
 
-        if spectraltypeFind or temperatureFind or magnitudeFind:
+        if telluricMagnitudeH:
+            findMagnitudeH = False
+        else:
+            findMagnitudeH = True
+        
+        if telluricMagnitudeJ:
+            findMagnitudeJ = False
+        else:
+            findMagnitudeJ = True
+
+        if findSpectralType or findTemperature or findMagnitudeK or findMagnitudeH or findMagnitudeJ:
             # Construct URL based on telluric coordinates and execute SIMBAD query to find the spectral type
-            Simbad.add_votable_fields('flux(K)', 'sp')  ## Viraja:  Why does it query only the K magnitude?
-            simbad_startable = Simbad.query_region(coord.SkyCoord(ra=telluricRA, dec=telluricDEC, unit=(u.deg, u.deg),\
-                frame='fk5'), radius=0.1 * u.deg)  ## Viraja:  How are the RA and DEC formatted in XDpiped.csh??
+            Simbad.add_votable_fields('flux(K)', 'flux(J)', 'flux(H)', 'sp')
+            simbad_startable = Simbad.query_region(coord.SkyCoord(ra=telluricRA, dec=telluricDEC, \
+                unit=(u.deg, u.deg), frame='fk5'), radius=0.1 * u.deg)
+            # Viraja:  How are the RA and DEC formatted in XDpiped.csh??
 
-            if spectraltypeFind:
-                # Get spectral type -- only the first 3 characters (strip off end of types like AIVn as they are not in  
-                # the 'reference_startable.txt')
+            if findSpectralType:
+                # Get spectral type -- only the first 3 characters (strip off end of types like AIVn as they are not
+                # in the 'reference_startable.txt')
                 telluricSpectralType = simbad_startable['SP_TYPE'][0][0:3]
             else:
-                logger.error("Cannot locate the spectral type of the telluric in the table generated by the SIMBAD")
-                logger.error("query. Please update the parameter 'telluricSpectralType' in the configuration file.")
+                logger.error("Cannot locate the spectral type of the telluric in the table generated by the")
+                logger.error("SIMBAD query. Please update the parameter 'telluricSpectralType' in the")
+                logger.error("configuration file.")
                 raise SystemExit
             
-            if magnitudeFind:
-                telluricMagnitude = str(simbad_startable['FLUX_K'][0])
+            if findMagnitudeK:
+                telluricMagnitudeK = str(simbad_startable['FLUX_K'][0])
             else:
-                logger.error("Cannot find a the K magnitude for the telluric in the table generated by the SIMBAD")
-                logger.error("query. Please update the parameter 'telluricMagnitude' in the configuration file.")
-                logger.error("Exiting script.")
+                logger.error("Cannot find a the K magnitude for the telluric in the table generated by the")
+                logger.error("SIMBAD query.")
+                logger.error("Please manually update the parameter 'telluricMagnitudeK' in the configuration file.")
+                logger.error("Exiting script.\n")
                 raise SystemExit
 
-            if temperatureFind:
+            if findMagnitudeH:
+                telluricMagnitudeH = str(simbad_startable['FLUX_H'][0])
+            else:
+                logger.error("Cannot find a the H magnitude for the telluric in the table generated by the")
+                logger.error("SIMBAD query.")
+                logger.error("Please manually update the parameter 'telluricMagnitudeH' in the configuration file.")
+                logger.error("Exiting script.\n")
+                raise SystemExit
+
+            if findMagnitudeJ:
+                telluricMagnitudeJ = str(simbad_startable['FLUX_J'][0])
+            else:
+                logger.error("Cannot find a the J magnitude for the telluric in the table generated by the")
+                logger.error("SIMBAD query.")
+                logger.error("Please manually update the parameter 'telluricMagnitudeJ' in the configuration file.")
+                logger.error("Exiting script.\n")
+                raise SystemExit
+
+            if findTemperature:
                 # Find temperature for the spectral type in 'reference_startable.txt'
                 count = 0
                 for line in reference_startable:
@@ -502,36 +445,43 @@ def getTelluricInfo(telHeader, telluricRA, telluricDEC, telluricSpectralType, te
                         else:
                             count += 1
                 if count > 0:  ## Viraja:  I am wondering why this condition is given and why is this an error??
-                    logger.error("Cannot find a temperature for spectral type %s of the telluric", telluricSpectralType)
+                    logger.error("Cannot find a temperature for spectral type %s of the telluric.", telluricSpectralType)
                     logger.error("Please update the parameter 'telluricTemperature' in the configuration file.")
                     raise SystemExit
 
-        telinfo = open(telinfofile,'w')
-        telinfo.write('k K '+telluricMagnitude+' '+telluricTemperature+'\n')
-        # Viraja: Why the same as the K for the rest of them?? --> comment in mag2mass.py in XDGNIRS -- "Not sure if 
-        # the rest of these lines are necessary now we're not using "sensfunc" etc. for flux calibration
-        telinfo.write('h H '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('j J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.write('i J '+telluricMagnitude+' '+telluricTemperature+'\n')
-        telinfo.close()
+        tel_info = open(tel_infofile,'w')
+        tel_info.write('k K ' + telluricMagnitudeK + ' ' + telluricTemperature + '\n')
+        tel_info.write('h H ' + telluricMagnitudeH + ' ' + telluricTemperature + '\n')
+        tel_info.write('j J ' + telluricMagnitudeJ + ' ' + telluricTemperature + '\n')
+        tel_info.write('j J ' + telluricMagnitudeJ + ' ' + telluricTemperature + '\n')
+        tel_info.write('j J ' + telluricMagnitudeJ + ' ' + telluricTemperature + '\n')
+        tel_info.write('j J ' + telluricMagnitudeJ + ' ' + telluricTemperature + '\n')
+        tel_info.close()
         
-        telinfo = open(telinfofile,'r').readlines()
-        logger.info("Contents of %s:", telinfofile)
-        for line in telinfo:
+        tel_info = open(tel_infofile,'r').readlines()
+        logger.info("Contents of %s:", tel_infofile)
+        for line in tel_info:
             logger.info("%s", line.split('\n'))
 
 #---------------------------------------------------------------------------------------------------------------------#
-
+'''
 def makeFLambda(rawFrame, grating, log, over):
     """
-    - Multiply magnitude expression by appropriate constant for grating.
-    - Multiple by ratio of experiment times.
-    - If no magnitude, set fLambda to 1. No absolute flux calibration performed.
+    Tasks:
+    - Multiply magnitude expression by appropriate constant for the bandpass of the spectral order.
+    - Multiply by the ratio of exposure times of the telluric to the science.
+    - If no magnitude, set fLambda to 1. In this case, no absolute flux calibration will be performed.
+    
     Returns:
-        -fLambda: floating point constant.
+    - fLambda: floating point constant.
     """
+    logger = log.getLogger('gnirsTelluric.makeFLambda')
+    
+    #account for standard star/science target exposure times
+    #EXPTIME keyword is the "Exposure time (s) for sum of all coadds"
+
+
+
     # 2MASS doesn't have Z band magnitudes. Use J for rough absolute flux scaling.
     if grating == 'Z':
         grating = 'J'
@@ -731,3 +681,4 @@ def multiplyByBlackBody(rawFrame, log, over):
                 cube[1].data[:,i,j] *= (scaledBlackBody[0].data)
         # Write the corrected cube to a new file.
         cube.writeto('factfbrsn'+rawFrame+'.fits', output_verify='ignore')
+'''

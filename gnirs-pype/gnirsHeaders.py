@@ -35,11 +35,11 @@ def info(files_or_directory):
         raise SystemExit
 
     logger.info('Reading header information...')
-    logger.debug('files: %s', files)
+#    logger.debug('files: %s', files)
 
     data = {}
     for filename in files:
-        logger.debug('%s', filename)
+#        logger.debug('%s', filename)
         f = filename[filename.rfind('/')+1:]  # filename base to be used as output dictionary key
         data[f] = {}
 
@@ -89,7 +89,7 @@ def info(files_or_directory):
             if data[f]['OBSID'] == o:
                 data[f]['AVETIME'] = avetime
 
-    logger.debug('%s', data)
+#    logger.debug('%s', data)
     return data
 
 
@@ -97,4 +97,4 @@ if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     info("rawData")  # Directory
     # info('N20110516S0151.fits')  # single file
-    #info(['N20110516S0155.fits', 'N20110516S0156.fits', 'N20110516S0157.fits', 'N20110516S0159.fits'])  # List
+    # info(['N20110516S0155.fits', 'N20110516S0156.fits', 'N20110516S0157.fits', 'N20110516S0159.fits'])  # List
