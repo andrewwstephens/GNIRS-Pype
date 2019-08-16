@@ -82,13 +82,8 @@ def start(configfile):
     dividedSciencePrefix_extractSW = config.get('runtimeFilenames', 'dividedSciencePrefix_extractSW')
     referenceStarTableFilename = config.get('fluxCalibration','referenceStarTableFilename')
 
-    # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
-    stdpath = '../Standard/Intermediate'  # relative path/link expected to be at the top level of every sci directory
-    telpath = '../Telluric/Intermediate'
-    runtimedatapath = '../../runtimeData'
-
     for scipath in config.options("ScienceDirectories"):
-        
+
         if not config.getboolean("ScienceDirectories", scipath):  # only process directories that are marked True
             logger.info('Skipping getting telluric info in %s', scipath)
             continue
@@ -100,8 +95,15 @@ def start(configfile):
         ###########################################################################
 
         scipath += '/Intermediate'
+
         logger.info("Moving to science directory: %s", scipath)
         os.chdir(scipath)
+
+        # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
+        stdpath = '../Standard/Intermediate'  # relative path/link expected to be at the top level of every sci directory
+        telpath = '../Telluric/Intermediate'
+        logger.debug("telpath: %s", telpath)
+        runtimedatapath = '../../runtimeData'
 
         # Record the right number of order expected according to the GNIRS XD configuration.
         if 'LB_SXD' in scipath:
@@ -130,13 +132,13 @@ def start(configfile):
             stdpath = telpath
             logger.info("Standard directory: %s\n", stdpath)
         else:
-            logger.error("#######################################################################################")
-            logger.error("#######################################################################################")
-            logger.error("#                                                                                     #")
-            logger.error("#   ERROR in get telluric info: Found no standard or telluric data. Exiting script.   #")
-            logger.error("#                                                                                     #")
-            logger.error("#######################################################################################")
-            logger.error("#######################################################################################\n")
+            logger.error("#############################################################################################")
+            logger.error("#############################################################################################")
+            logger.error("#                                                                                           #")
+            logger.error("#   ERROR in get telluric info: standard and telluric data not available. Exiting script.   #")
+            logger.error("#                                                                                           #")
+            logger.error("#############################################################################################")
+            logger.error("#############################################################################################\n")
             raise SystemExit
 
         logger.info("Runtime data path: %s\n", runtimedatapath)
@@ -189,7 +191,7 @@ def start(configfile):
         if config.has_section(stdName):
             logger.info("Section for the telluric %s available in the configuration file.", stdName)
             for option in parameters:
-                if option in parameters and option in config.options():
+                if option in parameters and option in config.options(stdName):
                     if overwrite:
                         logger.warning("Removing current parameter %s for %s in the configuration file.", option, stdName)
                         logger.info("Adding empty parameter %s for %s in the configuration file.", option, stdName)
@@ -198,26 +200,28 @@ def start(configfile):
                     else:
                         logger.warning("Parameter %s for %s available in the configuration file and -overwrite not")
                         logger.info("set - no action taken.")
-                elif option in parameters and option not in config.options():
+                elif option in parameters and option not in config.options(stdName):
                     logger.info("Parameter %s for %s not available in the configuration file.", option, stdName)
                     logger.info("Adding Parameter %s for %s in the configuration file.", option, stdName)
-                    [config.set(stdName,option,'') for option in parameters]
+                    [config.set(stdName,option) for option in parameters]
         else:
             logger.info("Section for the telluric %s not found in the configuration file.", stdName)
             logger.info("Adding the telluric section with empty options in the configuration file.")
             config.add_section(stdName)
-            [config.set(stdName,option,'') for option in parameters]
-      
-        with open(configfile, 'w') as f:
+            for option in parameters:
+                config.set(stdName,option,'')
+
+        with open('../../'+configfile, 'w') as f:
+            logger.info('Updating the configuration file with empty telluric parameters.')
             config.write(f)
 
-        stdRA = config.get(stdName,'stdRA')
-        stdDEC = config.get(stdName,'stdDEC')
-        stdSpectralType = config.get(stdName,'stdSpectralType')
-        stdTemperature = config.get(stdName,'stdTemperature')
-        stdMagnitudeK = config.get(stdName,'stdMagnitudeK')
-        stdMagnitudeH = config.get(stdName,'stdMagnitudeH')
-        stdMagnitudeJ = config.get(stdName,'stdMagnitudeJ')
+        stdRA = config.getboolean(stdName,'stdRA')
+        stdDEC = config.getboolean(stdName,'stdDEC')
+        stdSpectralType = config.getboolean(stdName,'stdSpectralType')
+        stdTemperature = config.getboolean(stdName,'stdTemperature')
+        stdMagnitudeK = config.getboolean(stdName,'stdMagnitudeK')
+        stdMagnitudeH = config.getboolean(stdName,'stdMagnitudeH')
+        stdMagnitudeJ = config.getboolean(stdName,'stdMagnitudeJ')
 
         # If user did not specify stdMagnitudeK, stdMagnitudeH, stdMagnitudeJ, or stdTemperature, and stdRA or stdDEC, 
         # get stdRA and stdDEC from the science extension [1] of the continuum divided telluric spectrum header. Use 
@@ -305,7 +309,7 @@ def start(configfile):
                 raise SystemExit
 
             if findTemperature:
-                # Find temperature for the spectral type in 'reference_startable.txt'
+                # Find temperature for the spectral type in referenceStarTable in runtime data path
                 count = 0
                 for line in referenceStarTable:
                     if '#' in line:
@@ -322,19 +326,17 @@ def start(configfile):
                     logger.error("Please update the parameter 'stdTemperature' in the configuration file.")
                     raise SystemExit
 
-        tel_info = open('telinfofile.txt','w')
-        tel_info.write('k K ' + stdMagnitudeK + ' ' + stdTemperature + '\n')
-        tel_info.write('h H ' + stdMagnitudeH + ' ' + stdTemperature + '\n')
-        tel_info.write('j J ' + stdMagnitudeJ + ' ' + stdTemperature + '\n')
-        tel_info.write('j J ' + stdMagnitudeJ + ' ' + stdTemperature + '\n')
-        tel_info.write('j J ' + stdMagnitudeJ + ' ' + stdTemperature + '\n')
-        tel_info.write('j J ' + stdMagnitudeJ + ' ' + stdTemperature + '\n')
-        tel_info.close()
+        config.set(stdName,'stdRA')
+        config.set(stdName,'stdDEC')
+        config.set(stdName,'stdSpectralType')
+        config.set(stdName,'stdTemperature')
+        config.set(stdName,'stdMagnitudeK')
+        config.set(stdName,'stdMagnitudeH')
+        config.set(stdName,'stdMagnitudeJ')
         
-        tel_info = open('telinfofile.txt','r').readlines()
-        logger.info("Contents of telinfofile.txt:")
-        for line in tel_info:
-            logger.info("%s", line.split('\n'))
+        with open('../../'+configfile, 'w') as f:
+            logger.info('Updating the configuration file with telluric parameters obtained from SIMBAD.')
+            config.write(f)
 
         logger.info("##############################################################################")
         logger.info("#                                                                            #")
@@ -343,7 +345,7 @@ def start(configfile):
         logger.info("#                                                                            #")
         logger.info("##############################################################################\n")
 
-    os.chdir(path)  ## Return to the original directory
+    os.chdir(path)
 
     return
 
