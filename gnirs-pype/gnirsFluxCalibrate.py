@@ -83,15 +83,18 @@ def start(configfile):
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
     # config required for flux calibration
-    combinedsrc = config.get('Prefixes_and_Filenames', 'combinedsrc')
-    combinedsky = config.get('Prefixes_and_Filenames', 'combinedsky')
+    combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
+    combinedsky = config.get('runtimeFilenames', 'combinedsky')
+    bb_unscaled = config.get('runtimeFilenames', 'bb_unscaled')
+    bb_scaled = config.get('runtimeFilenames','bb_scaled')
+    extractionFullSlit = config.getboolean('extractSpectra1D','extractionFullSlit')
     extractionStepwise = config.getboolean('extractSpectra1D','extractionStepwise')
     extractionStepSize = config.getboolean('extractSpectra1D','extractionStepSize')
     calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
-    dividedTelluricPrefix = config.get('Prefixes_and_Filenames', 'dividedTelluricPrefix')
-    dividedSciencePrefix_extractREG = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractREG')
-    dividedSciencePrefix_extractFS = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractFS')
-    dividedSciencePrefix_extractSW = config.get('Prefixes_and_Filenames', 'dividedSciencePrefix_extractSW')
+    dividedTelluricPrefix = config.get('runtimeFilenames', 'dividedTelluricPrefix')
+    dividedSciencePrefix_extractREG = config.get('runtimeFilenames', 'dividedSciencePrefix_extractREG')
+    dividedSciencePrefix_extractFS = config.get('runtimeFilenames', 'dividedSciencePrefix_extractFS')
+    dividedSciencePrefix_extractSW = config.get('runtimeFilenames', 'dividedSciencePrefix_extractSW')
     # fluxCalibration specific config
     fluxCalibrationMethod = config.get('fluxCalibration','fluxCalibrationMethod')
 
@@ -113,26 +116,10 @@ def start(configfile):
         iraf.chdir(scipath)
 
         # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
-        stdpath = scipath + '/Standard/Intermediate'  # relative path/link expected to be at the top level of every sci directory
+        # Relative path/link expected to be at the top level of every sci directory
+        stdpath = scipath + '/Standard/Intermediate' 
         telpath = scipath + '/Telluric/Intermediate'
         runtimedatapath = scipath + '/../runtimeData'
-
-        # Record the right number of order expected according to the GNIRS XD configuration.
-        if 'LB_SXD' in scipath:
-            orders = [3, 4, 5]
-        elif 'LB_LXD' in scipath:
-            orders = [3, 4, 5, 6, 7, 8]
-        elif 'SB_SXD' in scipath:
-            orders = [3, 4, 5, 6, 7, 8]
-        else:
-            logger.error("###################################################################################")
-            logger.error("###################################################################################")
-            logger.error("#                                                                                 #")
-            logger.error("#   ERROR in get telluric info: unknown GNIRS XD configuration. Exiting script.   #")
-            logger.error("#                                                                                 #")
-            logger.error("###################################################################################")
-            logger.error("###################################################################################\n")
-            raise SystemExit
 
         if os.path.exists(stdpath):
             logger.info("Standard directory: %s", stdpath)
@@ -158,9 +145,9 @@ def start(configfile):
                 logger.error("calibration method set to 'fluxcalibrator'. Expects 'telluricapproximate'.")
                 fluxCalibrationMethod = raw_input("Confirm <fluxcalibrator> or <telluricapproximate> for flux calibration:")
             elif fluxCalibrationMethod == 'telluricapproximate':
-            logger.info("Moving on to use the telluric to derive the approximate flux calibration.\n")
-            stdpath = telpath
-            logger.info("Standard directory: %s\n", stdpath)
+                logger.info("Moving on to use the telluric to derive the approximate flux calibration.\n")
+                stdpath = telpath
+                logger.info("Standard directory: %s\n", stdpath)
             else:
                 logger.error("#######################################################################################")
                 logger.error("#######################################################################################")
@@ -174,7 +161,6 @@ def start(configfile):
             logger.warning("Parameter 'fluxCalibration' is set to 'yes', but no standard and telluric data available.")
             logger.warning("Skipping flux calibration in %s", scipath)
             continue
-
 
         # Check if required sci and std source spectra available in their respective paths
         logger.info("Checking if required science and standard source spectra available in %s",scipath)
@@ -198,7 +184,7 @@ def start(configfile):
             # the same way as the science and are in a directory with a symbolic link to the top level processed data 
             # directory (similar to the telluric symbolic link in the science directory)
             '''
-            sci_telluricCorrected = sorted(glob.glob(stdpath + '/' + dividedStandardPrefix + nofits(combinedsrc) + \
+            std_telluricCorrected = sorted(glob.glob(stdpath + '/' + dividedStandardPrefix + nofits(combinedsrc) + \
                 '_order*_MEF.fits'))
             if len(std_telluricCorrected) > 0:
                 logger.info("Required telluric corrected standard source spectra available.")
@@ -229,6 +215,43 @@ def start(configfile):
 
         logger.info("Required telluric corrected science and standard source spectra check complete.")
         
+        stdName = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['OBJECT']
+
+        # Record the right number of order expected according to the GNIRS XD configuration.
+        if 'LB_SXD' in scipath:
+            orders = [3, 4, 5]
+            stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
+                config.get(stdName,'stdMagnitude_order5')]
+            zeroMagnitudeFluxes = [config.get(stdName,'zeroMagnitudeFlux_order3'), \
+                config.get(stdName,'zeroMagnitudeFlux_order4'), config.get(stdName,'zeroMagnitudeFlux_order5')]
+        elif 'LB_LXD' in scipath:
+            orders = [3, 4, 5, 6, 7, 8]
+            stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
+                config.get(stdName,'stdMagnitude_order5'), config.get(stdName,'stdMagnitude_order6'), \
+                config.get(stdName,'stdMagnitude_order7'), config.get(stdName,'stdMagnitude_order8')]
+            zeroMagnitudeFluxes = [config.get(stdName,'zeroMagnitudeFlux_order3'), \
+                config.get(stdName,'zeroMagnitudeFlux_order4'), config.get(stdName,'zeroMagnitudeFlux_order5'), \
+                config.get(stdName,'zeroMagnitudeFlux_order6'), config.get(stdName,'zeroMagnitudeFlux_order7'), \
+                config.get(stdName,'zeroMagnitudeFlux_order8')]
+        elif 'SB_SXD' in scipath:
+            orders = [3, 4, 5, 6, 7, 8]
+            stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
+                config.get(stdName,'stdMagnitude_order5'), config.get(stdName,'stdMagnitude_order6'), \
+                config.get(stdName,'stdMagnitude_order7'), config.get(stdName,'stdMagnitude_order8')]
+            zeroMagnitudeFluxes = [config.get(stdName,'zeroMagnitudeFlux_order3'), \
+                config.get(stdName,'zeroMagnitudeFlux_order4'), config.get(stdName,'zeroMagnitudeFlux_order5'), \
+                config.get(stdName,'zeroMagnitudeFlux_order6'), config.get(stdName,'zeroMagnitudeFlux_order7'), \
+                config.get(stdName,'zeroMagnitudeFlux_order8')]
+        else:
+            logger.error("###################################################################################")
+            logger.error("###################################################################################")
+            logger.error("#                                                                                 #")
+            logger.error("#   ERROR in get telluric info: unknown GNIRS XD configuration. Exiting script.   #")
+            logger.error("#                                                                                 #")
+            logger.error("###################################################################################")
+            logger.error("###################################################################################\n")
+            raise SystemExit
+
         ###########################################################################
         ##                                                                       ##
         ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
@@ -257,16 +280,8 @@ def start(configfile):
 
             if manualMode:
                 a = raw_input("About to enter ")
-            
-            stdName = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['OBJECT']
-            
-            stdMagnitudeK = config.get(stdName,'stdMagnitudeK')
-            stdMagnitudeH = config.get(stdName,'stdMagnitudeH')
-            stdMagnitudeJ = config.get(stdName,'stdMagnitudeJ')
-            stdMagniudes = [stdMagnitudeK, stdMagnitudeH, stdMagnitudeJ, stdMagnitudeJ, stdMagnitudeJ, stdMagnitudeJ]
-            
-            # Zero magnitude fluxes for bands corresponding to different orders [K, H, J, J, J, J] in erg/s/cm^2/A
-            fluxZeroPoints = [4.283E-10, 1.13E-9, 3.129E-10, 3.129E-10, 3.129E-10, 3.129E-10]
+
+            stdTemperature = config.getfloat(stdName,'stdTemperature')
 
             # EXPTIME keyword is the "Exposure time (s) for sum of all coadds"
             sciExptime = sci_header_info[os.path.basename(sci_telluricCorrected[0])]['EXPTIME']
@@ -275,33 +290,158 @@ def start(configfile):
             for i in range(len(orders)):
                 
                 extension = i+1
-                stdTemperature = config.getfloat(stdName,'stdTemperature')
-           
+                logger.info("Flux-calibrating order %d of %s.", extension, os.path.basename(sci_telluricCorrected[i]))
+
                 logger.info("Converting magnitude to flux density for the telluric.")
-                makeFLambda(stdMagnitudes[i], sciExptime, stdExptime, fluxZeroPoints[i], overwrite)
-                logger.info("Completed converting magnitude to flux density for the telluric.")
+                # if the magnitude value in the configuration file is not empty
+                if stdMagnitudes[i]:  
+                    # Convert magnitude to erg/cm2/s/A, for a rough flux scaling
+                    # Account for standard/science exposure times
+                    logger.info("Performing absolute flux calibration accounting for the ratio of standard to science")
+                    logger.info("exposure times.")
+                    flambda = 10**(- float(stdMagnitudes[i])/2.5) * flux_zero_point * (std_exptime / sci_exptime)
+                    absolute_fluxcalib = True
+                # if the magnitude value in the configuration file is empty, no absolute flux calibration is performed
+                else:  
+                    logger.info("Performing relative flux calibration accounting for the ratio of standard to science")
+                    logger.info("exposure times.")
+                    flambda = 1 * (std_exptime / sci_exptime)
+                    absolute_fluxcalib = False
+                logger.info("Completed converting magnitude to flux density for the telluric.\n")
 
                 logger.info("Making a blackbody.")
-                makeBlackBody(overwrite)
-                logger.info("Completed making a blackbody.")
-
-                logger.info("Calculating the blackbody scale to the telluric magnitude.")
-                makeBlackBodyScale(overwrite)
-                logger.info("Completed calculating the blackbody scale to the telluric magnitude.")
+                # First find the start and end wavelengths of the spectral order
+                waveStart = iraf.hselect(images=tel_dividedContinuum[i]+'[SCI,'+str(extension)+']', fields='CRVAL1', \
+                    expr='yes',  missing='INDEF', mode='al', Stdout=1)
+                waveStart = float(waveStart[0].replace("'",""))
+                waveDelt = iraf.hselect(images=tel_dividedContinuum[i]+'[SCI,'+str(extension)+']', fields='CD1_1', \
+                    expr='yes', missing='INDEF', mode='al', Stdout=1)
+                waveDelt = waveStart + (1022 * float(waveDelt[0].replace("'","")))
+                # Then make a blackbody
+                iraf.mk1dspec(input=bb_unscaled+str(extension), output=bb_unscaled+str(extension), ap=1, rv=0.0, \
+                    z='no', title='', ncols=1022, naps=1, header='', wstart = waveStart, wend=waveEnd, continuum=1000,\
+                    slope=0.0, temperature=stdTemperature, fnu='no', lines='', nlines=0, profile='gaussian', \
+                    peak=-0.5, gfwhm=20.0, lfwhm=20.0, seed=1, comments='yes', mode='ql')
+                logger.info("Completed making a blackbody.\n")
 
                 logger.info("Scaling the blackbody to the telluric magnitude.")
-                scaleBlackBody(overwrite)
-                logger.info("Scaling the blackbody to the telluric magnitude.")
+                if 3 <= extension <= 5:
+                    # Roughly scale blackbody for orders 3-5 to the respective magnitudes of the telluric
+                    logger.info("Calculating the blackbody scale for order %d.", extension)
+                    
+                    meanCounts = iraf.imstat(images=bb_unscaled+str(extension), fields="mean", lower='INDEF', \
+                        upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', cache='no', \
+                        mode='al', Stdout=1)
 
-                logger.info("Applying the blackbody to telluric magnitude scaling fator to science.")
-                multiplyByBlackBody(overwrite)
-                logger.info("Completed applying the blackbody to telluric magnitude scaling fator to science.")
-        
+                    blackbodyScaleFactor = flambda / float(meanCounts[1].replace("'",""))
+                    logger.info("The blackbody scale factor for order %d is %f", extension, blackbodyScaleFactor)
+                else:
+                    # Scale blackbody for orders 6-8 to the previous order's scaled blackbody
+
+                    # Ideally, waveEnd should be > waveStart.  If it is not, then there is something with the data that 
+                    # is not necessarily a big problem, scientifically, but beeds some handling.  So, check for this
+                    # and exit if there is no overlap between any two orders
+                    
+                    # First, find region of overlap with the previous order 
+                    logger.info("Calculating the region of overlap of order %d with the previous order.", extension)
+                    
+                    # waveStart_current is the first wavelength of the current order (i.e, the short-wavelength end of 
+                    # the region of overlap)
+                    waveStart = iraf.hselect(images=bb_unscaled+str(i), fields='CRVAL1', expr='yes', missing='INDEF', \
+                        mode='al', Stdout=1)
+                    waveStart = float(waveStart[0].replace("'",""))
+                    
+                    # waveEnd_previous is the last wavelength of the previous order (i.e, the long-wavelength end of 
+                    # the region of overlap)
+                    waveTemp = iraf.hselect(bb_unscaled+str(extension), field='CRVAL1', expr='yes',  missing='INDEF', \
+                        mode='al', Stdout=1)
+                    waveDelt = iraf.hselect(bb_unscaled+str(extension), field='CDELT1', expr='yes',  missing='INDEF', \
+                        mode='al', Stdout=1)
+                    waveEnd = float(waveTemp[0].replace("'","")) + (1022 * float(waveDelt[0].replace("'","")))
+
+                    if waveEnd < waveStart:
+                        logging.error("Orders %d and %d do not overlap in wavelength.", extension, i)
+                        loggeing.error("This is unusual and suggests that the grating was not at the expected position.")
+                        logging.error("This may not be a problem for the scientific use of the data, but the script")
+                        logging.error("cannot handle this and is not able to flux calibrate the spectral orders.") 
+                        logging.error("Please plot the calibrated arc spectrum (plotted with different orders) to see")
+                        logging.error("if the data cover the wavelength range you need.")
+                        logging.error("Exiting script.\n")
+                        raise SystemExit
+                    else:
+                        # Find the mean in the overlapping wavelength region (using the scaled blackbody of the 
+                        # previous order
+                        iraf.scopy(input=bb_unscaled+str(extension), output='temp'+bb_unscaled, w1=waveStart, w2=waveEnd, 
+                            apertures='', bands='', beams='', apmodulus=0, format='multispec', renumber='no', offset=0, 
+                            clobber='no', merge='no', rebin='yes', verbose='no',mode='ql')
+                        iraf.scopy(input=bb_scaled+str(i), output='temp'+bb_scaled, w1=waveStart, w2=waveEnd,
+                            apertures='', bands='', beams='', apmodulus=0, format='multispec', renumber='no', offset=0,
+                            clobber='no', merge='no', rebin='yes', verbose='no', mode='ql')
+                        meanCounts_temp_bb_unscaled = iraf.imstat(images='temp'+bb_unscaled+str(extension), fields="mean",
+                            lower='INDEF', upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', 
+                            cache='no', mode='al',Stdout=1)
+                        meanCounts_temp_bb_unscaled = float(meanCounts_temp_bb_unscaled[1].replace("'",""))
+                        meanCounts_temp_bb_scaled = iraf.imstat(images='temp'+bb_scaled, fields='mean', lower='INDEF', 
+                            upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', cache='no', 
+                            mode='al', Stdout=1)
+                        meanCounts_temp_bb_scaled = float(meanCounts_temp_bb_scaled[1].replace("'",""))
+                        
+                        # Scale current blackbody to that for the previous order using ratio of means
+                        blackbodyScaleFactor = meanCounts_temp_bb_scaled / meanCounts_temp_bb_unscaled
+                        logger.info("The blackbody scale factor for order %d is %f", extension, blackbodyScaleFactor)
+
+                iraf.imarith(operand1=bb_unscaled + str(extension), op="*", operand2=blackbodyScaleFactor,
+                    result=bb_scaled + str(extension), title='',divzero=0.0, hparams='', pixtype='', calctype='',
+                    verbose='yes', noact='no', mode='al')
+                logger.info("Completed scaling the blackbody to the telluric magnitude.")
+
+                logger.info("Applying the blackbody to telluric magnitude scaling fator to telluric corrected science")
+                logger.info("spectra.")
+                fluxCalibrationInput = os.path.basename(sci_telluricCorrected[i])+'[SCI,'+str(extension)+']'
+                fluxCalibrationOutput_SEF = fluxCalibPrefix_extractREG + os.path.basename(sci_telluricCorrected[i])
+                fluxCalibrationOutput_MEF = fluxCalibPrefix_extractREG + os.path.basename(sci_telluricCorrected[i])
+                iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(extension),
+                    result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', calctype='', 
+                    verbose='yes', noact='no', mode='al')
+                # Record flux density units in headers
+                fluxcalib_units_in_headers(fluxCalibrationOutput_SEF, absolute_fluxcalib)
+
+                iraf.wmef(input=fluxCalibrationOutput_SEF, output=fluxCalibrationOutput_MEF, extnames='',
+                    phu=os.path.basename(sci_telluricCorrected[i]), verbose='yes', mode='al')
+
+                if extractFullSlit:
+                    '''
+                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(extension)+']'
+                    fluxCalibrationOutput_SEF = fluxCalibPrefix_extractFS + os.path.basename()
+                    fluxCalibrationOutput_MEF = fluxCalibPrefix_extractFS + os.path.basename()
+                    iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(extension), 
+                        result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', 
+                        calctype='', verbose='yes', noact='no', mode='al')
+                    fluxcalib_units_in_headers("flamfull"+str(j), absolute_fluxcalib)
+                    '''
+                    pass
+                if extractStepwise:
+                    '''
+                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(extension)+']'
+                    fluxCalibrationOutput_SEF = fluxCalibPrefix_extractFS + os.path.basename()
+                    fluxCalibrationOutput_MEF = fluxCalibPrefix_extractFS + os.path.basename()
+                    for k in range(1, steps):
+                        iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(extension), 
+                            result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='',
+                            calctype='', verbose='yes', noact='no', mode='al')
+                        fluxcalib_units_in_headers(fluxCalibrationInput, absolute_fluxcalib)
+                    '''
+                    pass
+                logger.info("Completed applying the blackbody to telluric magnitude scaling fator to telluric")
+                logger.info("corrected science spectra.")
+
+                logger.info("Completed flux calibrating order %d of %s.", extension, os.path.basename(sci_telluricCorrected[i]))
+
         else:
             logger.error("#######################################################################################")
             logger.error("#######################################################################################")
             logger.error("#                                                                                     #")
-            logger.error("#   ERROR in get flux calibration: unknown flux calibration method. Exiting script.   #")
+            logger.error("#     ERROR in flux calibration: unknown flux calibration method. Exiting script.     #")
             logger.error("#                                                                                     #")
             logger.error("#######################################################################################")
             logger.error("#######################################################################################\n")
@@ -328,175 +468,23 @@ def nofits(filename):
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeFLambda(magnitude, sci_exptime, std_exptime, flux_zero_point, overwrite):
+def fluxcalib_units_in_headers(image, abs_fluxcal):
     """
-    Tasks:
-    - Multiply magnitude expression by appropriate constant for the bandpass of the spectral order.
-    - Multiply by the ratio of exposure times of the telluric to the science.
-    - If no magnitude, set fLambda to 1. In this case, no absolute flux calibration will be performed.
-    
-    Returns:
-    - fLambda: floating point constant.
+    Add appropriate flux calibration units (whether absolute or relative flux calibration) to the image headers after
+    flux calibration is done. 
     """
-    logger = log.getLogger('gnirsTelluric.makeFLambda')
-    
-    if magnitude:  # if the magnitude value in the configuration file is not empty
-        # Convert magnitude to erg/cm2/s/A, for a rough flux scaling
-        # Account for standard/science exposure times
-        logger.info("Performing absolute flux calibration accounting for the ratio of standard to science exposure")
-        logger.info("times.")
-        flambda = 10**(- float(magnitude)/2.5) * flux_zero_point * (std_exptime / sci_exptime)
-        perform_absolute_fluxcalib = True
-    except:  # if the magnitude value in the configuration file is empty, no absolute flux calibration is performed
-        logger.info("Performing relative flux calibration accounting for the ratio of standard to science exposure")
-        logger.info("times.")
-        flambda = 1 * (std_exptime / sci_exptime)
-        perform_absolute_fluxcalib = False
+    logger = log.getLogger('gnirsFluxCalibration.fluxcalib_units_in_headers')
+
+    #This is so we know whether we did absolute or relative flux cal
+    if abs_fluxcal:
+		iraf.hedit(images=image, fields='FUNITS', value='erg/cm^2/s/A', add='yes', addonly='no', delete='no',
+            verify='no', show='no', update='yes')
+    else:
+        iraf.hedit(images=image, fields='FUNITS', value='Flambda, relative', add='yes', addonly='no', delete='no',
+            verify='no', show='no', update='yes')
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def makeBlackBody(rawFrame, grating, log, overwrite):
-    """
-    - From the science header read the keywords for the wavelength calibration solution to convert from pixel to 
-      wavelength scale.
-    - Make scale factor: mean of black body overwrite fLambda.
-    - Multiply blackbody spectrum by scale factor.
-    Creates:
-        - Unscaled blackbody, bbody.fits
-        - A scaled 1D blackbody spectrum, scaledBlackBody.fits[0]
-    """
-    # Find the start and end wavelengths of the blackbody from our cube header.
-    target_header = astropy.io.fits.open('../products_uncorrected/ctfbrsn'+rawFrame+'.fits')
-    wstart = target_header[1].header['CRVAL3']
-    wdelt = target_header[1].header['CD3_3']
-    wend = wstart + (2040 * wdelt)
-    crpix3 = target_header[1].header['CRPIX3']
-    # Find the standard star temperature from 0_std_starRAWNAME.txt
-    try:
-        with open("0_std_star"+rawFrame+".txt", "r") as f:
-            lines = f.read()
-        # ['k', 'K', '7.615', '9700', 'h', 'H', '7.636', '9700', 'j', 'J', '7.686', '9700', 'j', 'J', '7.686', '9700']
-        lines = lines.split()
-        # Mag is entry after the grating, but may also be N/A. Check for that.
-        for i in range(len(lines)):
-            if grating in lines[i]:
-                standardStarSpecTemperature = lines[i+2]
-                logger.info("Read a standard star teff of " + str(standardStarSpecTemperature))
-    except IOError:
-        logger.info("No std_starRAWNAME.txt file found; setting to spec temperature to 9700K for a rough flux scaling")
-        standardStarSpecTemperature = 9700
-    if crpix3 != 1.:
-        logger.info("WARNING in Reduce: CRPIX of wavelength axis not equal to one. Exiting flux calibration.")
-        raise SystemExit
-    # Make a blackbody for each of the 2040 NIFS spectral pixels.
-    if os.path.exists("3_BBody"+rawFrame+".fits"):
-        if overwrite:
-            os.remove("3_BBody"+rawFrame+".fits")
-            iraf.chdir(os.getcwd())
-            iraf.mk1dspec(input="3_BBody"+rawFrame,output="",title='',ncols=2040,naps=1,header='',wstart=wstart,wend=wend,temperature=standardStarSpecTemperature)
-            logger.info("\nMade a blackbody in 3_BBody{}.fits".format(rawFrame))
-        else:
-            logger.info("\nOutput exists and -overwrite not set - skipping production of unscaled black body")
-    else:
-        iraf.chdir(os.getcwd())
-        iraf.mk1dspec(input="3_BBody"+rawFrame,output="",title='',ncols=2040,naps=1,header='',wstart=wstart,wend=wend,temperature=standardStarSpecTemperature)
-        logger.info("\nMade a blackbody in 3_BBody{}.fits".format(rawFrame))
-
-def makeBlackBodyScale(rawFrame, log, overwrite):
-    """
-    For now, scale the black body by the ratio of the black body mean flux to fLambda.
-    """
-    # Get the mean of the unscaled blackbody.
-    # FOR SOME REASON, iraf.imstat is having problems opening the image. So I am using Numpy for now.
-    #mean = iraf.imstat(images="3_BBody"+rawFrame+".fits", fields="mean", lower='INDEF', upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', cache='no', mode='al',Stdout=1)
-    unscaled = astropy.io.fits.open("3_BBody"+rawFrame+".fits")
-    data = unscaled[0].data
-    mean = float(np.mean(data))
-    #mean = float(mean[1].replace("'",""))
-
-    # Get fLambda.
-    with open("2_fLambda"+rawFrame+".txt", "r") as f:
-        fLambda = f.read()
-    fLambda = float(fLambda.split()[1])
-
-    # Create the scale factor.
-    bbodyScaleFactor = fLambda / mean
-
-    # Write it to a file.
-    if os.path.exists("4_bbodyScaleFactor"+rawFrame+".txt"):
-        if overwrite:
-            os.remove("4_bbodyScaleFactor"+rawFrame+".txt")
-            logger.info("\nFound a scale factor of {}; writing to 4_bbodyScaleFactor{}.txt".format(bbodyScaleFactor, rawFrame))
-            with open("4_bbodyScaleFactor"+rawFrame+".txt", "w") as f:
-                f.write("bbodyScaleFactor: {} \n".format(bbodyScaleFactor))
-        else:
-            logger.info("\nOutput exists and -overwrite not set - skipping writing of 4_bbodyScaleFactor{}.txt".format(rawFrame))
-    else:
-        logger.info("\nFound a scale factor of {}; writing to 4_bbodyScaleFactor{}.txt".format(bbodyScaleFactor, rawFrame))
-        with open("4_bbodyScaleFactor"+rawFrame+".txt", "w") as f:
-            f.write("bbodyScaleFactor: {} \n".format(bbodyScaleFactor))
-
-def scaleBlackBody(rawFrame, log, overwrite):
-    """
-    Scale a black body.
-    """
-    # Get scale factor from file.
-    with open("4_bbodyScaleFactor"+rawFrame+".txt", "r") as f:
-        line = f.read()
-    bbodyScaleFactor = float(line.split()[1])
-    if os.path.exists("5_scaledBBody"+rawFrame+".fits"):
-        if overwrite:
-            os.remove("5_scaledBBody"+rawFrame+".fits")
-            # A bug involving iraf.gemini() causes imarith to fail here. Use astropy unless you fixed it.
-            #iraf.imarith(operand1="3_BBody"+rawFrame, op="*", operand2=bbodyScaleFactor, result="5_scaledBBody"+rawFrame,title='',divzero=0.0,hparams='',pixtype='',calctype='',verbose='no',noact='no',mode='al')
-            operand1 = astropy.io.fits.open("3_BBody"+rawFrame+".fits")[0].data
-            operand2 = bbodyScaleFactor
-            multiplied = operand1 * operand2
-            hdu = astropy.io.fits.PrimaryHDU(multiplied)
-            hdu.writeto("5_scaledBBody"+rawFrame+".fits")
-
-            logger.info("\nCreated a scaled blackbody, 5_scaledBBody{}.fits".format(rawFrame))
-        else:
-            logger.info("\nOutput exists and -overwrite not set - skipping production of scaled black body")
-    else:
-        # A bug involving iraf.gemini() causes imarith to fail here. Use astropy unless you fixed it.
-        #iraf.imarith(operand1="3_BBody"+rawFrame, op="*", operand2=bbodyScaleFactor, result="5_scaledBBody"+rawFrame,title='',divzero=0.0,hparams='',pixtype='',calctype='',verbose='no',noact='no',mode='al')
-        operand1 = astropy.io.fits.open("3_BBody"+rawFrame+".fits")[0].data
-        operand2 = bbodyScaleFactor
-        multiplied = operand1 * operand2
-        hdu = astropy.io.fits.PrimaryHDU(multiplied)
-        hdu.writeto("5_scaledBBody"+rawFrame+".fits")
-    # We now have a scaled blackbody, scaledBlackBody.fits
-
-def multiplyByBlackBody(rawFrame, log, overwrite):
-    """
-    - Multiply each slice of continuum multiplied telluric corrected cube
-      by the scaled black body.
-
-    Creates:
-        - Flux calibrated cube, "factfbrsn"+scienceObjectName+".fits"
-    """
-    # Open the telluric corrected, continuum multiplied, un-fluxcalibrated data cube.
-    cube = astropy.io.fits.open('1_continuum'+rawFrame+'.fits')
-    # Open the scaled blackbody. We will multiply the cube by this.
-    scaledBlackBody = astropy.io.fits.open("5_scaledBBody"+rawFrame+".fits")
-
-    if os.path.exists("factfbrsn"+rawFrame+'.fits'):
-        if overwrite:
-            os.remove('factfbrsn'+rawFrame+'.fits')
-            # Divide each spectrum in the cubedata array by the telluric correction spectrum.
-            for i in range(cube[1].header['NAXIS2']):         # NAXIS2 is the y axis of the final cube.
-                for j in range(cube[1].header['NAXIS1']):     # NAXIS1 is the x axis of the final cube.
-                    cube[1].data[:,i,j] *= (scaledBlackBody[0].data)
-            # Write the corrected cube to a new file.
-            cube.writeto('factfbrsn'+rawFrame+'.fits', output_verify='ignore')
-        else:
-            logger.info("\nOutput exists and -overwrite not set - skipping division of telluric corrected cube by scaled black body")
-    else:
-        # Divide each spectrum in the cubedata array by the telluric correction spectrum.
-        for i in range(cube[1].header['NAXIS2']):         # NAXIS2 is the y axis of the final cube.
-            for j in range(cube[1].header['NAXIS1']):     # NAXIS1 is the x axis of the final cube.
-                cube[1].data[:,i,j] *= (scaledBlackBody[0].data)
-        # Write the corrected cube to a new file.
-        cube.writeto('factfbrsn'+rawFrame+'.fits', output_verify='ignore')
-'''
+if __name__ == '__main__':
+    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs.cfg')

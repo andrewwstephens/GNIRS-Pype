@@ -454,7 +454,7 @@ def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hL
 
                 # TODO(Viraja):  Check while testing this script if this is the right position to use iraf.wmef to add
                 # the primary header back to the spectra files. Might change depending on whether the other H line
-                # remova methods retain the primary headers (they probably do not).
+                # removal methods retain the primary headers (they probably do not).
                 iraf.wmef(input=telluric_hLineRemovalOutput_SEF, output=telluric_hLineRemovalOutput_MEF, extnames='',
                     phu=tel_src_extracted_spectrum, verbose='yes', mode='al')
 
