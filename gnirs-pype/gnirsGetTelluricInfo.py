@@ -103,7 +103,6 @@ def start(configfile):
         # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
         stdpath = '../Standard/Intermediate'  # relative path/link expected to be at the top level of every sci directory
         telpath = '../Telluric/Intermediate'
-        logger.debug("telpath: %s", telpath)
         runtimedatapath = '../../runtimeData'
 
         # Record the right number of order expected according to the GNIRS XD configuration.

@@ -26,7 +26,7 @@
 #                Import some useful Python utilities/modules                   #
 ################################################################################
 
-import os, sys, log, ConfigParser, gnirsHeaders
+import os, sys, glob, log, ConfigParser, gnirsHeaders
 from pyraf import iraf
 from astropy.io import fits
 import numpy as np
@@ -57,7 +57,8 @@ def start(configfile):
     iraf.imutil()
 
     # Reset to default parameters the used IRAF tasks.
-    iraf.unlearn(iraf.gemini,iraf.gemtools,iraf.gnirs,iraf.onedspec,iraf.imutil)
+    iraf.unlearn(iraf.gemini,iraf.gemtools,iraf.gnirs
+    ,iraf.imutil)
 
     # From http://bishop.astro.pomona.edu/Penprase/webdocuments/iraf/beg/beg-image.html:
     # Before doing anything involving image display the environment variable stdimage must be set to the correct frame 
@@ -87,10 +88,9 @@ def start(configfile):
     combinedsky = config.get('runtimeFilenames', 'combinedsky')
     bb_unscaled = config.get('runtimeFilenames', 'bb_unscaled')
     bb_scaled = config.get('runtimeFilenames','bb_scaled')
-    extractionFullSlit = config.getboolean('extractSpectra1D','extractionFullSlit')
-    extractionStepwise = config.getboolean('extractSpectra1D','extractionStepwise')
-    extractionStepSize = config.getboolean('extractSpectra1D','extractionStepSize')
-    calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
+    extractFullSlit = config.getboolean('extractSpectra1D','extractFullSlit')
+    extractStepwise = config.getboolean('extractSpectra1D','extractStepwise')
+    extractStepSize = config.getfloat('extractSpectra1D','extractStepSize')
     dividedTelluricPrefix = config.get('runtimeFilenames', 'dividedTelluricPrefix')
     dividedSciencePrefix_extractREG = config.get('runtimeFilenames', 'dividedSciencePrefix_extractREG')
     dividedSciencePrefix_extractFS = config.get('runtimeFilenames', 'dividedSciencePrefix_extractFS')
@@ -113,13 +113,14 @@ def start(configfile):
 
         scipath += '/Intermediate'
         logger.info("Moving to science directory: %s", scipath)
+        os.chdir(scipath)
         iraf.chdir(scipath)
 
         # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
         # Relative path/link expected to be at the top level of every sci directory
-        stdpath = scipath + '/Standard/Intermediate' 
-        telpath = scipath + '/Telluric/Intermediate'
-        runtimedatapath = scipath + '/../runtimeData'
+        stdpath = '../Standard/Intermediate' 
+        telpath = '../Telluric/Intermediate'
+        runtimedatapath = '../../runtimeData'
 
         if os.path.exists(stdpath):
             logger.info("Standard directory: %s", stdpath)
@@ -199,11 +200,11 @@ def start(configfile):
             pass
         
         if fluxCalibrationMethod == 'telluricapproximate':
-            telluric_dividedContinuum = sorted(glob.glob(telpath + '/' + dividedTelluricPrefix + nofits(combinedsrc) + \
+            tel_dividedContinuum = sorted(glob.glob(telpath + '/' + dividedTelluricPrefix + nofits(combinedsrc) + \
                 '_order*_MEF.fits'))
-            if len(sci_telluricCorrected) > 0:
+            if len(tel_dividedContinuum) > 0:
                 logger.info("Required continuum divided telluric source spectra available.")
-                tel_header_info = fits.open(telluric_dividedContinuum).header
+                tel_header_info = gnirsHeaders.info(tel_dividedContinuum[0])
             else:
                 logger.warning("Required continuum divided telluric spectra not available.")
                 logger.warning("Please run gnirsTelluric.py to create the continuum divided spectra or provide them")
@@ -222,26 +223,26 @@ def start(configfile):
             orders = [3, 4, 5]
             stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
                 config.get(stdName,'stdMagnitude_order5')]
-            zeroMagnitudeFluxes = [config.get(stdName,'zeroMagnitudeFlux_order3'), \
-                config.get(stdName,'zeroMagnitudeFlux_order4'), config.get(stdName,'zeroMagnitudeFlux_order5')]
+            zeroMagnitudeFluxes = [config.getfloat(stdName,'zeroMagnitudeFlux_order3'), \
+                config.getfloat(stdName,'zeroMagnitudeFlux_order4'), config.getfloat(stdName,'zeroMagnitudeFlux_order5')]
         elif 'LB_LXD' in scipath:
             orders = [3, 4, 5, 6, 7, 8]
-            stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
-                config.get(stdName,'stdMagnitude_order5'), config.get(stdName,'stdMagnitude_order6'), \
-                config.get(stdName,'stdMagnitude_order7'), config.get(stdName,'stdMagnitude_order8')]
-            zeroMagnitudeFluxes = [config.get(stdName,'zeroMagnitudeFlux_order3'), \
-                config.get(stdName,'zeroMagnitudeFlux_order4'), config.get(stdName,'zeroMagnitudeFlux_order5'), \
-                config.get(stdName,'zeroMagnitudeFlux_order6'), config.get(stdName,'zeroMagnitudeFlux_order7'), \
-                config.get(stdName,'zeroMagnitudeFlux_order8')]
+            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), config.getfloat(stdName,'stdMagnitude_order4'), \
+                config.getfloat(stdName,'stdMagnitude_order5'), config.getfloat(stdName,'stdMagnitude_order6'), \
+                config.getfloat(stdName,'stdMagnitude_order7'), config.getfloat(stdName,'stdMagnitude_order8')]
+            zeroMagnitudeFluxes = [config.getfloat(stdName,'zeroMagnitudeFlux_order3'), \
+                config.getfloat(stdName,'zeroMagnitudeFlux_order4'), config.getfloat(stdName,'zeroMagnitudeFlux_order5'), \
+                config.getfloat(stdName,'zeroMagnitudeFlux_order6'), config.getfloat(stdName,'zeroMagnitudeFlux_order7'), \
+                config.getfloat(stdName,'zeroMagnitudeFlux_order8')]
         elif 'SB_SXD' in scipath:
             orders = [3, 4, 5, 6, 7, 8]
-            stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
-                config.get(stdName,'stdMagnitude_order5'), config.get(stdName,'stdMagnitude_order6'), \
-                config.get(stdName,'stdMagnitude_order7'), config.get(stdName,'stdMagnitude_order8')]
-            zeroMagnitudeFluxes = [config.get(stdName,'zeroMagnitudeFlux_order3'), \
-                config.get(stdName,'zeroMagnitudeFlux_order4'), config.get(stdName,'zeroMagnitudeFlux_order5'), \
-                config.get(stdName,'zeroMagnitudeFlux_order6'), config.get(stdName,'zeroMagnitudeFlux_order7'), \
-                config.get(stdName,'zeroMagnitudeFlux_order8')]
+            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), config.getfloat(stdName,'stdMagnitude_order4'), \
+                config.getfloat(stdName,'stdMagnitude_order5'), config.getfloat(stdName,'stdMagnitude_order6'), \
+                config.getfloat(stdName,'stdMagnitude_order7'), config.getfloat(stdName,'stdMagnitude_order8')]
+            zeroMagnitudeFluxes = [config.getfloat(stdName,'zeroMagnitudeFlux_order3'), \
+                config.getfloat(stdName,'zeroMagnitudeFlux_order4'), config.getfloat(stdName,'zeroMagnitudeFlux_order5'), \
+                config.getfloat(stdName,'zeroMagnitudeFlux_order6'), config.getfloat(stdName,'zeroMagnitudeFlux_order7'), \
+                config.getfloat(stdName,'zeroMagnitudeFlux_order8')]
         else:
             logger.error("###################################################################################")
             logger.error("###################################################################################")
@@ -285,11 +286,11 @@ def start(configfile):
 
             # EXPTIME keyword is the "Exposure time (s) for sum of all coadds"
             sciExptime = sci_header_info[os.path.basename(sci_telluricCorrected[0])]['EXPTIME']
+            logger.debug("sciExptime: %f", sciExptime)
             stdExptime = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['EXPTIME']
             
             for i in range(len(orders)):
                 
-                extension = i+1
                 logger.info("Flux-calibrating order %d of %s.", extension, os.path.basename(sci_telluricCorrected[i]))
 
                 logger.info("Converting magnitude to flux density for the telluric.")
@@ -299,27 +300,41 @@ def start(configfile):
                     # Account for standard/science exposure times
                     logger.info("Performing absolute flux calibration accounting for the ratio of standard to science")
                     logger.info("exposure times.")
-                    flambda = 10**(- float(stdMagnitudes[i])/2.5) * flux_zero_point * (std_exptime / sci_exptime)
+                    flambda = 10**(- float(stdMagnitudes[i])/2.5) * zeroMagnitudeFluxes[i] * (stdExptime / sciExptime)
                     absolute_fluxcalib = True
                 # if the magnitude value in the configuration file is empty, no absolute flux calibration is performed
                 else:  
                     logger.info("Performing relative flux calibration accounting for the ratio of standard to science")
                     logger.info("exposure times.")
-                    flambda = 1 * (std_exptime / sci_exptime)
+                    flambda = 1 * (stdExptime / sciExptime)
                     absolute_fluxcalib = False
                 logger.info("Completed converting magnitude to flux density for the telluric.\n")
 
                 logger.info("Making a blackbody.")
                 # First find the start and end wavelengths of the spectral order
-                waveStart = iraf.hselect(images=tel_dividedContinuum[i]+'[SCI,'+str(extension)+']', fields='CRVAL1', \
+                waveReferencePixel = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='CRPIX1', \
                     expr='yes',  missing='INDEF', mode='al', Stdout=1)
-                waveStart = float(waveStart[0].replace("'",""))
-                waveDelt = iraf.hselect(images=tel_dividedContinuum[i]+'[SCI,'+str(extension)+']', fields='CD1_1', \
+                logger.debug("waveReferencePixel: %d", waveReferencePixel)
+                waveReferencePixel = float(waveReferencePixel[0].replace("'",""))
+                logger.debug("waveReferencePixel: %d", waveReferencePixel)
+
+                waveReferenceValue = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='CRVAL1', \
+                    expr='yes',  missing='INDEF', mode='al', Stdout=1)
+                waveReferenceValue = float(waveReferenceVlue[0].replace("'",""))
+                
+                waveDelt = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='CD1_1', \
                     expr='yes', missing='INDEF', mode='al', Stdout=1)
-                waveDelt = waveStart + (1022 * float(waveDelt[0].replace("'","")))
+                waveDelt = float(waveDelt[0].replace("'",""))
+                
+                ndimensions = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='NAXIS1', \
+                    expr='yes', missing='INDEF', mode='al', Stdout=1)
+                ndimensions = float(ndimensions[0].replace("'",""))
+                
+                waveStart = waveReferenceValue - (waveReferencePixel-1) * waveDelt
+                waveEnd = waveStart + (ndimensions * float(waveDelt[0].replace("'","")))
                 # Then make a blackbody
-                iraf.mk1dspec(input=bb_unscaled+str(extension), output=bb_unscaled+str(extension), ap=1, rv=0.0, \
-                    z='no', title='', ncols=1022, naps=1, header='', wstart = waveStart, wend=waveEnd, continuum=1000,\
+                iraf.mk1dspec(input=bb_unscaled+str(orders[i]), output=bb_unscaled+str(orders[i]), ap=1, rv=0.0, \
+                    z='no', title='', ncols=waveDelt, naps=1, header='', wstart = waveStart, wend=waveEnd, continuum=1000,\
                     slope=0.0, temperature=stdTemperature, fnu='no', lines='', nlines=0, profile='gaussian', \
                     peak=-0.5, gfwhm=20.0, lfwhm=20.0, seed=1, comments='yes', mode='ql')
                 logger.info("Completed making a blackbody.\n")
@@ -327,14 +342,14 @@ def start(configfile):
                 logger.info("Scaling the blackbody to the telluric magnitude.")
                 if 3 <= extension <= 5:
                     # Roughly scale blackbody for orders 3-5 to the respective magnitudes of the telluric
-                    logger.info("Calculating the blackbody scale for order %d.", extension)
+                    logger.info("Calculating the blackbody scale for order %d.", orders[i])
                     
-                    meanCounts = iraf.imstat(images=bb_unscaled+str(extension), fields="mean", lower='INDEF', \
+                    meanCounts = iraf.imstat(images=bb_unscaled+str(orders[i]), fields="mean", lower='INDEF', \
                         upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', cache='no', \
                         mode='al', Stdout=1)
 
                     blackbodyScaleFactor = flambda / float(meanCounts[1].replace("'",""))
-                    logger.info("The blackbody scale factor for order %d is %f", extension, blackbodyScaleFactor)
+                    logger.info("The blackbody scale factor for order %d is %f", orders[i], blackbodyScaleFactor)
                 else:
                     # Scale blackbody for orders 6-8 to the previous order's scaled blackbody
 
@@ -343,24 +358,24 @@ def start(configfile):
                     # and exit if there is no overlap between any two orders
                     
                     # First, find region of overlap with the previous order 
-                    logger.info("Calculating the region of overlap of order %d with the previous order.", extension)
+                    logger.info("Calculating the region of overlap of order %d with the previous order.", orders[i])
                     
                     # waveStart_current is the first wavelength of the current order (i.e, the short-wavelength end of 
                     # the region of overlap)
-                    waveStart = iraf.hselect(images=bb_unscaled+str(i), fields='CRVAL1', expr='yes', missing='INDEF', \
+                    waveStart = iraf.hselect(images=bb_unscaled+str(orders[i]), fields='CRVAL1', expr='yes', missing='INDEF', \
                         mode='al', Stdout=1)
                     waveStart = float(waveStart[0].replace("'",""))
                     
                     # waveEnd_previous is the last wavelength of the previous order (i.e, the long-wavelength end of 
                     # the region of overlap)
-                    waveTemp = iraf.hselect(bb_unscaled+str(extension), field='CRVAL1', expr='yes',  missing='INDEF', \
+                    waveTemp = iraf.hselect(bb_unscaled+str(orders[i-1]), field='CRVAL1', expr='yes',  missing='INDEF', \
                         mode='al', Stdout=1)
-                    waveDelt = iraf.hselect(bb_unscaled+str(extension), field='CDELT1', expr='yes',  missing='INDEF', \
+                    waveDelt = iraf.hselect(bb_unscaled+str(orders[i-1]), field='CDELT1', expr='yes',  missing='INDEF', \
                         mode='al', Stdout=1)
                     waveEnd = float(waveTemp[0].replace("'","")) + (1022 * float(waveDelt[0].replace("'","")))
 
                     if waveEnd < waveStart:
-                        logging.error("Orders %d and %d do not overlap in wavelength.", extension, i)
+                        logging.error("Orders %d and %d do not overlap in wavelength.", orders[i-1], [orderi])
                         loggeing.error("This is unusual and suggests that the grating was not at the expected position.")
                         logging.error("This may not be a problem for the scientific use of the data, but the script")
                         logging.error("cannot handle this and is not able to flux calibrate the spectral orders.") 
@@ -371,13 +386,13 @@ def start(configfile):
                     else:
                         # Find the mean in the overlapping wavelength region (using the scaled blackbody of the 
                         # previous order
-                        iraf.scopy(input=bb_unscaled+str(extension), output='temp'+bb_unscaled, w1=waveStart, w2=waveEnd, 
+                        iraf.scopy(input=bb_unscaled+str(orders[i]), output='temp'+bb_unscaled, w1=waveStart, w2=waveEnd, 
                             apertures='', bands='', beams='', apmodulus=0, format='multispec', renumber='no', offset=0, 
                             clobber='no', merge='no', rebin='yes', verbose='no',mode='ql')
                         iraf.scopy(input=bb_scaled+str(i), output='temp'+bb_scaled, w1=waveStart, w2=waveEnd,
                             apertures='', bands='', beams='', apmodulus=0, format='multispec', renumber='no', offset=0,
                             clobber='no', merge='no', rebin='yes', verbose='no', mode='ql')
-                        meanCounts_temp_bb_unscaled = iraf.imstat(images='temp'+bb_unscaled+str(extension), fields="mean",
+                        meanCounts_temp_bb_unscaled = iraf.imstat(images='temp'+bb_unscaled+str(orders[i]), fields="mean",
                             lower='INDEF', upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', 
                             cache='no', mode='al',Stdout=1)
                         meanCounts_temp_bb_unscaled = float(meanCounts_temp_bb_unscaled[1].replace("'",""))
@@ -388,19 +403,19 @@ def start(configfile):
                         
                         # Scale current blackbody to that for the previous order using ratio of means
                         blackbodyScaleFactor = meanCounts_temp_bb_scaled / meanCounts_temp_bb_unscaled
-                        logger.info("The blackbody scale factor for order %d is %f", extension, blackbodyScaleFactor)
+                        logger.info("The blackbody scale factor for order %d is %f", orders[i], blackbodyScaleFactor)
 
-                iraf.imarith(operand1=bb_unscaled + str(extension), op="*", operand2=blackbodyScaleFactor,
-                    result=bb_scaled + str(extension), title='',divzero=0.0, hparams='', pixtype='', calctype='',
+                iraf.imarith(operand1=bb_unscaled + str(orders[i]), op="*", operand2=blackbodyScaleFactor,
+                    result=bb_scaled + str(extensorders[i]ion), title='',divzero=0.0, hparams='', pixtype='', calctype='',
                     verbose='yes', noact='no', mode='al')
                 logger.info("Completed scaling the blackbody to the telluric magnitude.")
 
                 logger.info("Applying the blackbody to telluric magnitude scaling fator to telluric corrected science")
                 logger.info("spectra.")
-                fluxCalibrationInput = os.path.basename(sci_telluricCorrected[i])+'[SCI,'+str(extension)+']'
+                fluxCalibrationInput = os.path.basename(sci_telluricCorrected[i])+'['+str(orders[i])+']'
                 fluxCalibrationOutput_SEF = fluxCalibPrefix_extractREG + os.path.basename(sci_telluricCorrected[i])
                 fluxCalibrationOutput_MEF = fluxCalibPrefix_extractREG + os.path.basename(sci_telluricCorrected[i])
-                iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(extension),
+                iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(orders[i]),
                     result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', calctype='', 
                     verbose='yes', noact='no', mode='al')
                 # Record flux density units in headers
@@ -411,10 +426,10 @@ def start(configfile):
 
                 if extractFullSlit:
                     '''
-                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(extension)+']'
+                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(orders[i])+']'
                     fluxCalibrationOutput_SEF = fluxCalibPrefix_extractFS + os.path.basename()
                     fluxCalibrationOutput_MEF = fluxCalibPrefix_extractFS + os.path.basename()
-                    iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(extension), 
+                    iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(orders[i]), 
                         result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', 
                         calctype='', verbose='yes', noact='no', mode='al')
                     fluxcalib_units_in_headers("flamfull"+str(j), absolute_fluxcalib)
@@ -422,11 +437,11 @@ def start(configfile):
                     pass
                 if extractStepwise:
                     '''
-                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(extension)+']'
+                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(orders[i])+']'
                     fluxCalibrationOutput_SEF = fluxCalibPrefix_extractFS + os.path.basename()
                     fluxCalibrationOutput_MEF = fluxCalibPrefix_extractFS + os.path.basename()
                     for k in range(1, steps):
-                        iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(extension), 
+                        iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(orders[i]), 
                             result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='',
                             calctype='', verbose='yes', noact='no', mode='al')
                         fluxcalib_units_in_headers(fluxCalibrationInput, absolute_fluxcalib)
@@ -435,7 +450,7 @@ def start(configfile):
                 logger.info("Completed applying the blackbody to telluric magnitude scaling fator to telluric")
                 logger.info("corrected science spectra.")
 
-                logger.info("Completed flux calibrating order %d of %s.", extension, os.path.basename(sci_telluricCorrected[i]))
+                logger.info("Completed flux calibrating order %d of %s.", orders[i], os.path.basename(sci_telluricCorrected[i]))
 
         else:
             logger.error("#######################################################################################")
@@ -455,7 +470,7 @@ def start(configfile):
         logger.info("##############################################################################\n")
 
     # Return to directory script was begun from.
-    iraf.chdir(path)
+    os.chdir(path)
 
     return
 
