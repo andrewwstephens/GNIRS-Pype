@@ -2,9 +2,10 @@
 
 from astropy.io import fits
 import ConfigParser
+import datetime
 import log
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 from matplotlib import pyplot
 from matplotlib.pyplot import table
 from pyraf import iraf
@@ -17,15 +18,11 @@ def write(configfile):
 
     logger = log.getLogger('datasheet.write')
 
-    # iraf.gemini(_doprint=0, motd="no")
-    # iraf.gnirs(_doprint=0)
-    # iraf.imutil(_doprint=0)
-    iraf.onedspec()  # (_doprint=0)
-    # iraf.nsheaders('gnirs')  # , Stdout='/dev/null')
-
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
+
+    iraf.onedspec()
 
     for path, process in config.items("ScienceDirectories"):  # Returns list of (variable, value) pairs
         logger.debug('%s = %s', path, process)
@@ -34,24 +31,71 @@ def write(configfile):
             logger.debug('Skipping %s', path)
             continue
 
-        sci_data = imexam(path)
-        tel_data = imexam(path + '/Telluric')
+        sci = imexam(path)
+        tel = imexam(path + '/Telluric')
 
-        # sci_data['SNR'] = estimate_snr('?')                         # XDGNIRS -> flam1.fits
-        tel_data['SNR'] = estimate_snr(path + '/Telluric/Intermediate/hvsrc_comb_order1_SEF.fits')  # ftell_nolines1
+        sci['SNR'] = 100.  # estimate_snr('?')                                                 # XDGNIRS -> flam1.fits
+        tel['SNR'] = estimate_snr(path + '/Telluric/Intermediate/hvsrc_comb_order1_SEF.fits')  # ftell_nolines1
 
-        sci_data['PARANGLE'] = parallactic(dec=float(sci_data['DEC']),
-                                           ha=hms2deg(sci_data['HA']),
-                                           lat=location(sci_data['OBSERVAT'])['latitude'],
-                                           az=float(sci_data['AZIMUTH']), units='degrees')
+        sci['PARANGLE'] = parallactic(dec=float(sci['DEC']),
+                                      ha=hms2deg(sci['HA']),
+                                      lat=location(sci['OBSERVAT'])['latitude'],
+                                      az=float(sci['AZIMUTH']), units='degrees')
 
-        tel_data['PARANGLE'] = parallactic(dec=float(tel_data['DEC']),
-                                           ha=hms2deg(tel_data['HA']),
-                                           lat=location(tel_data['OBSERVAT'])['latitude'],
-                                           az=float(tel_data['AZIMUTH']), units='degrees')
+        tel['PARANGLE'] = parallactic(dec=float(tel['DEC']),
+                                      ha=hms2deg(tel['HA']),
+                                      lat=location(tel['OBSERVAT'])['latitude'],
+                                      az=float(tel['AZIMUTH']), units='degrees')
 
-        print 'SCI:', sci_data
-        print 'TEL:', tel_data
+        logger.debug('SCI: %s', sci)
+        logger.debug('TEL: %s', tel)
+
+        fig = pyplot.figure()
+        ax = fig.add_subplot(211, frame_on=False)
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+
+        # TOP TABLE:
+        labels = [sci['GEMPRGID'] + '\n' + sci['DATE-OBS'], 'Total counts, K', 'FWHM ("), K', "S/N, 2.1-2.2 um", 'Airmass', 'HA']
+        text = [[sci['OBJECT'], sci['PEAK'], sci['FWHM'], sci['SNR'], sci['AIRMASS'], sci['HA']],
+                [tel['OBJECT'], tel['PEAK'], tel['FWHM'], tel['SNR'], tel['AIRMASS'], tel['HA']]]
+        table(cellText=text, colLabels=labels, loc='upper center')
+
+        # BOTTOM TABLE:
+        labels = [sci['GEMPRGID'] + '\n' + sci['DATE-OBS'], 'Slit Angle', 'Par. Angle', 'Diff', 'IQ', 'CC', 'WV', 'SB']
+        text = [[sci['OBJECT'], sci['PA'], sci['PARANGLE'], abs(sci['PA'] - sci['PARANGLE']), sci['RAWIQ'], sci['RAWCC'], sci['RAWWV'], sci['RAWBG']],
+                [tel['OBJECT'], tel['PA'], tel['PARANGLE'], abs(tel['PA'] - tel['PARANGLE']), tel['RAWIQ'], tel['RAWCC'], tel['RAWWV'], tel['RAWBG']]]
+        table(cellText=text, colLabels=labels, loc='center')
+
+        version = '0.9'  # TODO: Fix the version
+        date = datetime.datetime.now()
+        ax.text(0.0, 0.28, 'GNIRS-Pype version ' + version + ",  " + str(date), size=5)
+
+        # TODO: Query Simbad for the target redshift and add to config file.  at the same time as standard star lookup?
+
+        ax = fig.add_subplot(212)
+
+        sci_wave, sci_flux = numpy.loadtxt(path + '/Final/src.txt', unpack=True)
+        pyplot.plot(sci_wave, sci_flux, color='black', marker='', linestyle='-', linewidth=0.5, label=sci['OBJECT'])
+        pyplot.ylim(0.0, 1.1 * numpy.amax(sci_flux))  # force a lower limit of zero
+
+        vega_wave, vega_flux = numpy.loadtxt(path + '/Final/vega.txt', unpack=True)  # Where will this file be ?
+        # TODO:  if redshift:  vega_wav = vega_wav / (1 + redshift)
+        vega_flux *= 1.05 * numpy.amax(sci_flux) / numpy.amax(vega_flux)
+        pyplot.plot(vega_wave, vega_flux, color='blue', marker='', linestyle='--', linewidth=0.5, label='Vega')
+
+        # TODO: if flux calibrated set the proper axes labels:
+        ylabel = r'erg cm$^{-2}$ s$^{-1}\ \AA^{-1}$'
+        # ylabel = r'F$_{\lambda}$, arbitrary units'
+        pyplot.ylabel(ylabel, size=8)
+        # xlabel is either "Rest" or "Observed" depending on whether a redshift was found and corrected for:
+        xlabel = r'Observed wavelength, $\mu$m'
+        pyplot.xlabel(xlabel, size=8)
+
+        fig.tight_layout()
+        pyplot.legend(loc='best', fancybox=True, numpoints=1, prop={'size': 6})
+        pyplot.grid(linewidth=0.25)
+        pyplot.savefig(path + '/Final/data_sheet.pdf')
 
     return
 
@@ -114,7 +158,7 @@ def imexam(path, ypos=340):
                 fwhm = float(vals[9])
                 break
     logger.debug('center = %s  peak = %s  fwhm = %s', center, peak, fwhm)
-    data = {'peak': peak, 'fwhm': fwhm}
+    data = {'PEAK': peak, 'FWHM': fwhm}
 
     logger.debug('Cleaning up...')
     for f in [cursor, logfile]:
@@ -247,7 +291,6 @@ def location(observatory):
         elevation = 2722            # meters
     else:
         raise SystemExit('Unknown observatory')
-
     return {'latitude': latitude, 'longitude': longitude, 'elevation': elevation}
 
 
