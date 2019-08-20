@@ -113,6 +113,13 @@ def start(configfile):
         else:
             logger.warning('Unhandlded file: %s', filename)
 
+    logger.info('Creating Final directories...')
+    for d in scidirs + teldirs:
+        newpath = d + '/Final'
+        if not os.path.exists(newpath):
+            logger.debug('Creating %s', newpath)
+            os.makedirs(newpath)
+
     logger.info('Adding directories to the config file...')
 
     for d in scidirs:
