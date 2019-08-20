@@ -1,8 +1,36 @@
 #!/usr/bin/env python
 
+# MIT License
+
+# Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+################################################################################
+#                Import some useful Python utilities/modules                   #
+################################################################################
+
 import log, os, glob, ConfigParser
 from astropy.io import fits
 from pyraf import iraf
+
+#---------------------------------------------------------------------------------------------------------------------#
 
 def start(configfile):
     """
@@ -80,22 +108,34 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
+    
     # Read general config.
     manualMode = config.getboolean('defaults', 'manualMode')
     overwrite = config.getboolean('defaults', 'overwrite')
+    
     # config required for extracting 1D spectra
-    # Above order of sections is important to later check for plausible peaks located for science targets by nsextract
+    # Order of sections is important to later check for plausible peaks located for science targets by nsextract
     nsextractInter = config.getboolean('interactive', 'nsextractInter')
     calculateSpectrumSNR = config.getboolean('gnirsPipeline', 'calculateSpectrumSNR')
+    
+    combinedsrc = config.get('runtimeFilenames','combinedsrc')
+    combinedsky = config.get('runtimeFilenames','combinedsky')
+    extractRegularPrefix = config.get('runtimeFilenames','extractRegularPrefix')
+    extractFullSlitPrefix = config.get('runtimeFilenames','extractFullSlitPrefix')
+    extractStepwiseTracePrefix = config.get('runtimeFilenames','extractStepwiseTracePrefix')
+    extractStepwisePrefix = config.get('runtimeFilenames','extractStepwisePrefix')
+    databaseDir = config.get('runtimeFilenames','databaseDir')
+
     # extract1Spectra1D specific config
     useApall = config.getboolean('extractSpectra1D', 'useApall')
-    extractionApertureRadius = config.getfloat('extractSpectra1D', 'extractionApertureRadius')
+    subtractBkg = config.get('extractSpectra1D', 'subtractBkg')
+    extractApertureRadius = config.getfloat('extractSpectra1D', 'extractApertureRadius')
     checkPeaksMatch = config.getboolean('extractSpectra1D', 'checkPeaksMatch')
     toleranceOffset = config.getfloat('extractSpectra1D', 'toleranceOffset')
-    extractionFullSlit = config.getboolean('extractSpectra1D','extractionFullSlit')
-    extractionStepwise = config.getboolean('extractSpectra1D','extractionStepwise')
-    #extractionStepSize = config.getfloat('extractSpectra1D','extractionStepSize')
-    #extractionStepWindow = config.getfloat('extractSpectra1D','extractionStepWindow')
+    extractFullSlit = config.getboolean('extractSpectra1D','extractFullSlit')
+    extractStepwise = config.getboolean('extractSpectra1D','extractStepwise')
+    extractionStepSize = config.getfloat('extractSpectra1D','extractStepSize')
+    extractApertureWindow = config.getfloat('extractSpectra1D','extractApertureWindow')
 
     ###########################################################################
     ##                                                                       ##
@@ -110,11 +150,11 @@ def start(configfile):
     # extracting 1D spectra in those directories.
 
     # Loop through all the observation (telluric and science) directories to extract 1D spectra in each one.
-    for section in ['TelluricDirectories','ScienceDirectories']:
+    for section in ['TelluricDirectories', 'ScienceDirectories']:
         for obspath in config.options(section):
 
             if not config.getboolean(section, obspath):  # Only process directories marked True
-                logger.debug('Skipping %s', obspath)
+                logger.debug('Skipping extraction of 1D spectra in %s', obspath)
                 continue
 
             ###########################################################################
@@ -123,102 +163,46 @@ def start(configfile):
             ##                                                                       ##
             ###########################################################################
 
-            iraf.chdir(obspath + '/Intermediate')  # Change the iraf directory to the current directory.
+            obspath += '/Intermediate'
+            logger.info("Moving to observation directory: %s\n", obspath)
+            os.chdir(obspath)
+            iraf.chdir(obspath) 
 
-            logger.info("Working on extracting 1D spectra in %s\n", obspath)
+            # Check if required combined spectra available in the observations directory
+            logger.info("Checking if required combined spectra available.")
 
-            # Check if required combined spectra available in the observations directory path
-            logger.info("Checking if required combined spectra available...")
-
-            srccombimage = 'src_comb.fits'
-            if os.path.exists(srccombimage):
-                logger.info("Required combined source image available.")
+            if os.path.exists(obspath + '/' + combinedsrc):
+                logger.info("Required combined source spectrum available.")
             else:
-                logger.warning("Required combined source image not available. Please run ")
-                logger.warning("gnirsCombineSpectra2D.py to create the combined source image or provide it ")
-                logger.warning("manually. Exiting script.\n")
+                logger.warning("Required combined source image not available.")
+                logger.warning("please run gnirsCombineSpectra2D.py to create the combined source spectrum or provide")
+                logger.warning("it manually in %s", obspath)
+                logger.warning("Exiting script.\n")
                 raise SystemExit
+        
             if calculateSpectrumSNR:
-                skycombimage = 'sky_comb.fits'
-                if os.path.exists(srccombimage):
-                    logger.info("Required combined sky image available.")
+                if os.path.exists(obspath + '/' + combinedsky):
+                    logger.info("Required combined sky spectrum available.")
                 else:
-                    logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required combined sky image ")
-                    logger.warning("not available. Setting the 'calculateSpectrumSNR' parameter for the current ")
-                    logger.warning("set of observations to 'False'.\n")
+                    logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required combined sky spectrum")
+                    logger.warning("not available. Setting the 'calculateSpectrumSNR' parameter for the current set")
+                    logger.warning("of observations to 'False'.\n")
                     calculateSpectrumSNR = False
 
             logger.info("Required combined spectra check complete.")
 
-            if 'Science' in section:
-
-                # Check if nsextractInter is set: if no, check if checkPeaksMatch is set: if yes, check if the
-                # required telluric extraction reference files available in the telluric /database directory; else,
-                # warn the user that both nsextractInter and checkPeaksMatch are not set, request the user to
-                # manually check if the science target peak identified by task nsextract might
-                # identify a wrong peak if the science target is not bright enough.
-
-                if not nsextractInter:  # conditions if nsextract is not run interactively
-
-                    if checkPeaksMatch:
-
-                        logger.info("Checking if the required telluric extraction reference files available.")
-                        teldatabasepath = obspath + '/Telluric/Intermediate/database'
-
-                        # Check for the telluric /database directory in the current science observation directory
-                        if os.path.exists(teldatabasepath):
-                            logger.info("Telluric /database directory (possibly) containing telluric extraction ")
-                            logger.info("reference files available.")
-                            telCheck_flag = True
-                        else:
-                            logger.warning("Telluric /database directory (possibly) containing telluric ")
-                            logger.warning("extraction reference files not available.")
-                            telCheck_flag = False
-
-                        # Check for telluric extraction aperture reference files
-                        telapfiles = glob.glob(teldatabasepath+'/ap*')
-                        if not telapfiles:
-                            logger.warning("Reference files containing telluric extraction aperture details not ")
-                            logger.warning("available in the telluric /database directory.")
-                            telCheck_flag = telCheck_flag and False
-                        else:
-                            logger.info("Reference files containing telluric extraction aperture details ")
-                            logger.info("available in the telluric /database directory.")
-                            telapfileslength = len(telapfiles)
-                            telCheck_flag = telCheck_flag and True
-
-                        logger.info("Required telluric extraction reference files check complete.\n")
-
-                        if telCheck_flag:
-                            logger.info("All telluric extraction reference files available in %s\n", teldatabasepath)
-                        else:
-                            logger.warning("Parameter 'checkPeakMatch' is set to 'True', but one or more ")
-                            logger.warning("telluric extraction reference files not available in ")
-                            logger.warning("%s . Setting 'checkPeaksMatch' to 'False'.\n", teldatabasepath)
-                            checkPeaksMatch = False
-
-                            # TODO(Viraja):  Can ask the user if they want to perform checkPeaksMatch and set it at
-                            # this point. This would probably need the checks to be called as a function because the
-                            # script must check for the required telluric extraction reference files once the
-                            # parameter 'checkPeaksMatch' is set to 'True'.
-
-                    else:
-                        logger.warning("Parameters 'nsextractInter' and 'checkPeaksMatch' both set to 'False'. ")
-                        logger.warning("After the science spectra extraction, please check manually if nsextract ")
-                        logger.warning("identified the science peaks at expected locations.\n")
-
             # Record the right number of orders (and file extensions) expected according to the GNIRS XD configuration.
             if 'LB_SXD' in obspath:
                 orders = [3, 4, 5]
-                # extractionApertureRadius = 23 (+/-23 pixels or 6.9" covers almost the entire slit length, but
+                # extractApertureRadius = 23 (+/-23 pixels or 6.9" covers almost the entire slit length, but
                 # this is only appropriate for objects centred along length of slit (with absolute Q offset of 0).
-                extractionApertureWindow = 46   # [-46/2,46/2+6)   [-23.0 -17 -11 -5 1 7 13 19 23 29) warn the user if last step in extract >0.1" away from theend of the slit or if extractioj proceeding out of the slit
+                extractApertureWindow = 46   # [-46/2,46/2+6)   [-23.0 -17 -11 -5 1 7 13 19 23 29) warn the user if last step in extract >0.1" away from theend of the slit or if extractioj proceeding out of the slit
             elif 'LB_LXD' in obspath:
                 orders = [3, 4, 5, 6, 7, 8]
-                extractionApertureWindow = 33    # [-33/2,33/2+6]  [-16.5 -10.5 -4.5 2.5 8.5 14.5 20.5]
+                extractApertureWindow = 33    # [-33/2,33/2+6]  [-16.5 -10.5 -4.5 2.5 8.5 14.5 20.5]
             elif 'SB_SXD' in obspath:
                 orders = [3, 4, 5, 6, 7, 8]
-                extractionApertureWindow = 46
+                extractApertureWindow = 46
             else:
                 logger.error("#############################################################################")
                 logger.error("#############################################################################")
@@ -239,15 +223,18 @@ def start(configfile):
             if manualMode:
                 a = raw_input("About to enter extract 1D spectra.")
 
+            if nsextractInter:
+                subtractBkg = 'fit'
+            
             if useApall:
                 # This performs a weighted extraction
                 apertureTracingColumns = 20
-                nsextract(srccombimage, nsextractInter, useApall, apertureTracingColumns,
-                          extractionApertureRadius, overwrite)
+                extractSpectra1D(combinedsrc, extractRegularPrefix, nsextractInter, databaseDir, useApall, subtractBkg, \
+                    apertureTracingColumns, extractApertureRadius, overwrite)
             else:
                 apertureTracingColumns = 10
-                nsextract(srccombimage, nsextractInter, useApall, apertureTracingColumns,
-                          extractionApertureRadius, overwrite)
+                extractSpectra1D(combinedsrc, extractRegularPrefix, nsextractInter, databaseDir, useApall, subtractBkg, \
+                    apertureTracingColumns, extractApertureRadius, overwrite)
 
             # If the parameter 'calculateSpectrumSNR' is set to 'yes', the script will extract spectra from
             # the combined sky image; else, it will only extract spectra from the combined source image.
@@ -255,58 +242,113 @@ def start(configfile):
                 logger.info("Extracting the combined sky spectrum reduced without sky subtraction.\n")
                 if useApall:
                     apertureTracingColumns = 20
-                    nsextract(srccombimage, nsextractInter, useApall, apertureTracingColumns,
-                              extractionApertureRadius, overwrite)
+                    extractSpectra1D(combinedsky, extractRegularPrefix, nsextractInter, databaseDir, useApall, subtractBkg, \
+                        apertureTracingColumns, extractApertureRadius, overwrite)
                 else:
                     apertureTracingColumns = 10
-                    nsextract(srccombimage, nsextractInter, useApall, apertureTracingColumns,
-                              extractionApertureRadius, overwrite)
+                    extractSpectra1D(combinedsky, extractRegularPrefix, nsextractInter, databaseDir, useApall, subtractBkg, \
+                        apertureTracingColumns, extractApertureRadius, overwrite)
 
-            if 'Science' in section and not nsextractInter and checkPeaksMatch:
+            if 'Science' in section:
+                # Check if nsextractInter is set: if no, check if checkPeaksMatch is set: if yes, check if the
+                # required telluric extraction reference files available in the telluric /database directory; else,
+                # warn the user that both nsextractInter and checkPeaksMatch are not set, request the user to
+                # manually check if the science target peak identified by task nsextract might
+                # identify a wrong peak if the science target is not bright enough.
 
-                scidatabasepath = obspath + '/Intermediate/database'
-                teldatabasepath = obspath + '/Telluric/Intermediate/database'
+                # Get symbolic path to the tel database directory in the sci directory
+                # Relative path/link expected to be at the top level of every sci directory
+                scidatabasepath = obspath + '/' + databaseDir
+                logger.info("Science database path: %s", scidatabasepath)
+                telpath = '../Telluric/Intermediate'
+                logger.info("Telluric path: %s", telpath)
+                teldatabasepath = '../Telluric/Intermediate/' + databaseDir
+                logger.info("Telluric database path: %s", teldatabasepath)
+                sci_combinedsrc = obspath + '/' + combinedsrc
+                tel_combinedsrc = telpath + '/' + combinedsrc
 
-                sciapfiles = glob.glob(scidatabasepath+'/ap*')
-                telapfiles = glob.glob(teldatabasepath+'/ap*')
+                if not nsextractInter:  # conditions if nsextract is not run interactively
 
-                telapfileslength = len(telapfiles)
-                sciapfileslength = len(sciapfiles)
+                    if checkPeaksMatch:
+                        logger.info("Checking if the required telluric extraction reference files available.")
 
-                telcombfilename = 'src'
-                scicombfilename = 'src'
+                        # Check for the telluric /database directory in the current science observation directory
+                        if os.path.exists(teldatabasepath):
+                            logger.info("Telluric %s directory (possibly) containing telluric extraction ", databaseDir)
+                            logger.info("reference files available.")
+                            telCheck_flag = True
+                        else:
+                            logger.warning("Telluric %s directory (possibly) containing telluric extraction", databaseDir)
+                            logger.warning("reference files not available.")
+                            telCheck_flag = False
 
-                logger.info("Finding palusible peaks used by nsextract.")
-                telpeaks = peaksFind(teldatabasepath, telapfileslength, telcombfilename)
-                scipeaks = peaksFind(scidatabasepath, sciapfileslength, scicombfilename)
-                logger.info("Completed finding palusible peaks used by nsextract.")
+                        # Check for telluric extraction aperture reference files
+                        telapfiles = glob.glob(teldatabasepath + '/ap' + nofits(os.path.basename(tel_combinedsrc)) + '_SCI_*')
+                        tel_apfileslength = len(telapfiles)
+                        if tel_apfileslength > 0:
+                            logger.info("Reference files containing telluric extraction aperture details available in")
+                            logger.info("the telluric %s directory.", databaseDir)
+                            telCheck_flag = telCheck_flag and True
+                        else:
+                            logger.warning("Reference files containing telluric extraction aperture details not")
+                            logger.warning("available in the telluric %s directory.", databaseDir)
+                            telCheck_flag = telCheck_flag and False
+                            
+                        logger.info("Required telluric extraction reference files check complete.\n")
 
-                logger.info("Matching the peaks found by nsextract.")
-                scitelPeaksMatched, sciReExtract = peaksMatch(scisrccomb, telsrccomb, scipeaks, telpeaks,
-                    toleranceOffset)
-                logger.info("Completed matching the peaks found by nsextract.")
+                        if telCheck_flag:
+                            logger.info("All telluric extraction reference files available in %s\n", teldatabasepath)
+                            sci_apfileslength = len(glob.glob(scidatabasepath + '/ap' + nofits(os.path.basename(sci_combinedsrc)) + '_SCI_*'))
+                            
+                            logger.info("Finding palusible peaks used by nsextract.")
+                            telpeaks = peaksFind(teldatabasepath, tel_apfileslength, nofits(combinedsrc))
+                            scipeaks = peaksFind(scidatabasepath, sci_apfileslength, nofits(combinedsrc))
+                            logger.info("Completed finding palusible peaks used by nsextract.")
 
-                # Re-extract combined science 2D source spectrum if needed
-                if sciReExtract:
-                    logger.info("Re-extracting one or more science spectra.")
-                    newtelapfilenameprefix = 're'
-                    useApall = 'yes'
-                    apertureTracingColumns = 20
-                    reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMatched,
-                        scicombinedimage, telcombinedimage, newtelapfilenameprefix, orders, nsextractInter,
-                        useApall, apertureTracingColumns, extractionApertureRadius)
-                    logger.info("Completed re-extracting one or more science spectra.")
-                else:
-                    logger.info("Not re-extracting any science spectra.")
-                    pass
+                            logger.info("Matching the peaks found by nsextract.")
+                            scitelPeaksMatched, sciReExtract = peaksMatch(obspath, telpath, combinedsrc, scipeaks, telpeaks, \
+                                toleranceOffset)
+                            logger.info("Completed matching the peaks found by nsextract.")
+
+                            # Re-extract combined science 2D source spectrum if needed
+                            if sciReExtract:
+                                logger.info("Re-extracting one or more science spectra.")
+                                newtelapfilePrefix = 're'
+                                useApall = 'yes'
+                                apertureTracingColumns = 20
+                                reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMatched, \
+                                    sci_combinedsrc, tel_combinedsrc, newtelapfilePrefix, orders, nsextractInter, extractRegularPrefix, \
+                                    databaseDir, useApall, subtractBkg, apertureTracingColumns, extractApertureRadius)
+                                logger.info("Completed re-extracting one or more science spectra.")
+                            else:
+                                logger.info("Not re-extracting any science spectra.")
+                                pass
+                        else:
+                            logger.warning("Parameter 'checkPeakMatch' is set to 'True', but one or more telluric")
+                            logger.warning("extraction reference files not available in")
+                            logger.warning("%s", teldatabasepath)
+                            logger.warning("Setting 'checkPeaksMatch' to 'False'.\n")
+                            checkPeaksMatch = False
+
+                            # TODO(Viraja):  Can ask the user if they want to perform checkPeaksMatch and set it at
+                            # this point. This would probably need the checks to be called as a function because the
+                            # script must check for the required telluric extraction reference files once the
+                            # parameter 'checkPeaksMatch' is set to 'True'.
+
+                    else:
+                        logger.warning("Parameters 'nsextractInter' and 'checkPeaksMatch' both set to 'False'.")
+                        logger.warning("Please check manually if nsextract identified the science peaks at expected")
+                        logger.warning("locations.\n")
+
 
             # TODO(Viraja):  Set these up once the respective functions are ready.
-            if extractionFullSlit:
+            if extractFullSlit:
                 pass
             else:
                 pass
 
-            if extractionStepwise:
+
+            if extractStepwise:
                 # Extract in steps on either side of the peak
                 useApall = 'yes'
                 pass
@@ -320,43 +362,53 @@ def start(configfile):
         logger.info("#                                                                            #")
         logger.info("##############################################################################\n")
 
-    os.chdir(path)  # Return to directory script was begun from.
+    # Return to directory script was begun from.
+    os.chdir(path) 
+    iraf.chdir(path)
 
     return
-
 
 ##################################################################################################################
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
 
+def nofits(filename):
+    """
+    Remove extension '.fits' from the filename.
+    """
+    logger = log.getLogger('gnirsExtractSpectra1D.nofits')
+    
+    return filename.replace('.fits', '')
 
-def nsextract(inimages, interactive, apall, nsum, extractionApertureRadius, overwrite):
+#---------------------------------------------------------------------------------------------------------------------#
+
+def extractSpectra1D(inimage, outPrefix, interactive, databaseDir, useApall, subtractBkg, apertureTracingColumns, \
+    extractApertureRadius, overwrite):
     """
     Extracting 1D spectra from the combined 2D spectra using nsextract.
     """
-    logger = log.getLogger('nsextract')
-    logger.debug('inimages: %s', inimages)
+    logger = log.getLogger('gnirsSxtractSpectra1D.extractSpectra1D')
+    logger.debug('%s', os.getcwd())
+    logger.debug('%s', inimage)
 
-    if os.path.exists('v' + inimages):
+    if os.path.exists(outPrefix + inimage):
         if overwrite:
-            logger.warning("Removing old v%s", inimages)
-            os.remove('v' + inimages)
+            logger.warning("Removing old %s", outPrefix + inimage)
+            os.remove(outPrefix + inimage)
         else:
-            logger.warning("Old %s exists and -overwrite not set - skipping nsextract for observations.", inimages)
+            logger.warning("Old %s exists and -overwrite not set - skipping nsextract for observations.", outPrefix + inimage)
             return
 
-    iraf.nsextract(
-        inimages=inimages, outspectra='', outprefix='v', dispaxis=1, database='',
-        line=700, nsum=nsum, ylevel='INDEF', upper=extractionApertureRadius,
-        lower=-extractionApertureRadius, background='none', fl_vardq='yes', fl_addvar='no',
-        fl_skylines='yes', fl_inter=interactive, fl_apall=apall, fl_trace='no',
-        aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes',
-        fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre',
-        tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0,
-        weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
-
+    iraf.nsextract(inimages=inimage, outspectra='', outprefix=outPrefix, dispaxis=1, database='', line=700, 
+        nsum=apertureTracingColumns, ylevel='INDEF', upper=extractApertureRadius, lower=-extractApertureRadius, 
+        background=subtractBkg, fl_vardq='yes', fl_addvar='no', fl_skylines='yes', fl_inter=interactive, fl_apall=useApall, 
+        fl_trace='no', aptable='gnirs$data/apertures.fits', fl_usetabap='no', fl_flipped='yes', fl_project='yes', 
+        fl_findneg='no', bgsample='*', trace='', tr_nsum=10, tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, 
+        tr_sample='*', tr_naver=1, tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, tr_grow=0.0, weights='variance', 
+        logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
 
 # ----------------------------------------------------------------------------------------------------------------------
+
 def peaksFind(databasepath, apfileslength, combinedimage):
     """
     Check the telluric or science extraction reference files in the telluric directory databases to find the location 
@@ -366,7 +418,8 @@ def peaksFind(databasepath, apfileslength, combinedimage):
 
     peaks = []
     for i in range(apfileslength):
-        apfile = open(databasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(i)+'_', 'r') 
+        print(i)
+        apfile = open(databasepath+'/ap'+combinedimage+'_SCI_'+str(i+1)+'_', 'r') 
         for line in apfile:
             # Get the peak location, which is the number in the second column of the line beginning with 'center'
             if 'center' in line:
@@ -376,9 +429,9 @@ def peaksFind(databasepath, apfileslength, combinedimage):
                 peaks.append('Peak not found')  # None?
     return peaks
 
-
 # ----------------------------------------------------------------------------------------------------------------------
-def peaksMatch(scisrccomb, telsrccomb, scipeaks, telpeaks, toleranceOffset):
+
+def peaksMatch(obspath, telpath, combinedimage, scipeaks, telpeaks, toleranceOffset):
     """
     Checks is NSEXTRACT located the peak of the science at a resonable location along the slit given the aperture
     center of extraction of the telluric.
@@ -437,10 +490,11 @@ def peaksMatch(scisrccomb, telsrccomb, scipeaks, telpeaks, toleranceOffset):
 
     return peaksMatched, reExtract
 
-
 # ----------------------------------------------------------------------------------------------------------------------
-def reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMatched, scicombinedimage, \
-    telcombinedimage, newtelapfilenameprefix, orders, apertureTracingColumns, extractionApertureRadius):
+
+def reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMatched, sci_combinedsrc, \
+    tel_combinedsrc, newtelapfilePrefix, orders, nsextractInter, extractRegularPrefix, databaseDir, useApall, subtractBkg, \
+    apertureTracingColumns, extractApertureRadius):
     """
     """
     logger = log.getLogger('gnirsReduce.reExtractSpectra1D')
@@ -452,30 +506,30 @@ def reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMat
         # There is some trouble replacing only the database files for the extracted spectra that were not well centred.
         # So, simply replacing all science database files but using the ones for which nsextract located the peaks at 
         # the right positions.
-        oldsciapfile = scidatabasepath+'/ap'+combinedimage[:-5]+'_SCI_'+str(extension)+'_'
+        oldsciapfile = scidatabasepath+'/ap'+sci_combinedsrc[:-5]+'_SCI_'+str(extension)+'_'
         if os.path.exists(oldsciapfile):
             os.remove(oldsciapfile)
-        oldtelapfile = open(teldatabasepath+'ap'+telcombinedimage+'_SCI_'+str(extension)+'_', 'r')
-        newtelapfile = open(teldatabasepath+'ap'+newapfilenameprefix+telcombinedimage+'_SCI_'+str(extension)+'_', 'w')
+        oldtelapfile = open(teldatabasepath+'ap'+tel_combinedsrc+'_SCI_'+str(extension)+'_', 'r')
+        newtelapfile = open(teldatabasepath+'ap'+newtelapfilePrefix+tel_combinedsrc+'_SCI_'+str(extension)+'_', 'w')
         if not peaks_flag[i]:
             # TODO(Viraja):  Check if there is a better way to replace the peak values then how it is done below.
-            replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], str(float(telpeaks[i])+pixeldifference)+' ').replace(telcombinedimage, newapfilenameprefix+telcombinedimage)
+            replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], str(float(telpeaks[i])+pixeldifference)+' ').replace(tel_combinedsrc, newtelapfilePrefix+tel_combinedsrc)
         else:
-            replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], telpeaks[i]+' ').replace(telcombinedimage, newapfilenameprefix+telcombinedimage)
+            replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], telpeaks[i]+' ').replace(tel_combinedsrc, newtelapfilePrefix+tel_combinedsrc)
         newtelapfile.write(replacetelapfile)
         oldtelapfile.close()
         newtelapfile.close()
         
-    shutil.copy(telpath+'/'+telcombinedimage, telpath+'/'+newtelapfilenameprefix+telcombinedimage)
-    os.remove('v'+scicombinedimage)
+    shutil.copy(telpath+'/'+tel_combinedsrc, telpath+'/'+newtelapfilePrefix+tel_combinedsrc)
+    os.remove('v'+sci_combinedsrc)
     
     # These settings in nsextract will force it to use the aperture size and center in the revised telluric apfiles
-    iraf.nsextract(inimages=scicombinedimage, outspectra='', outprefix='v', dispaxis=1, database='', line=700, \
-        nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
-        lower=-str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes', \
+    iraf.nsextract(inimages=sci_combinedsrc, outspectra='', outprefix=extractRegularPrefix, dispaxis=1, database='', line=700, \
+        nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractApertureRadius), \
+        lower=-str(extractApertureRadius), background=subtractBkg, fl_vardq='yes', fl_addvar='no', fl_skylines='yes', \
         fl_inter=nsextractInter, fl_apall=useApall, fl_trace='no', aptable='gnirs$data/apertures.fits', \
         fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', bgsample='*', \
-        trace=telpath+'/'+newtelapfilenameprefix+telcombinedimage, tr_nsum=10, tr_step=10, tr_nlost=3, \
+        trace=telpath+'/'+newtelapfilePrefix+tel_combinedsrc, tr_nsum=10, tr_step=10, tr_nlost=3, \
         tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1 ,tr_niter=0, tr_lowrej=3.0, tr_highrej=3.0, \
         tr_grow=0.0, weights='variance', logfile=logger.root.handlers[0].baseFilename, verbose='yes', mode='al')
 
@@ -484,12 +538,12 @@ def reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMat
     # for one or more orders. XDGNIRS works around that in XDpiped.csh, where it ignores this error. However, the 
     # error can occur for other reasons. So, here we check if all file extensions are present for the extracted target
     # file (should really add other files as well...)  Viraja:  I believe the other files are the database files.
-    extractedSpectraExtensions = iraf.gemextn(inimages=scicombinedimage, check='exists,mef', process='expand', \
+    extractedSpectraExtensions = iraf.gemextn(inimages=sci_combinedsrc, check='exists,mef', process='expand', \
         index='', extname='SCI', extversion='', ikparams='', omit='', replace='', outfile='STDOUT', \
         logfile=logger.root.handlers[0].baseFilename, glogpars='', verbose='yes', fail_count='0', count='20', \
         status='0', Stdout=1)
     if len(extractedSpectraExtensions) != len(orders):
-        # TODO(Viraja):  Can ask the user to change the extractionApertureRadius and redo the extraction. Check with 
+        # TODO(Viraja):  Can ask the user to change the extractApertureRadius and redo the extraction. Check with 
         # Andy if this could work. If yes, I think this is something that can also be done when the spectra are first 
         # extracted non-interactively (although I am not sure if that would make sense if we do a peak check).
         logger.error("The combined science image file contains only %d extensions.", len(extractedSpectraExtensions))
@@ -513,8 +567,8 @@ def stepwiseExtractSpectra1D(combinedimage, nsextractInter, useApall, apertureTr
     logger = log.getLogger('gnirsReduce.stepwiseExtractSpectra1D')
 
     iraf.nsextract(inimages=combinedimage, outspectra='', outprefix='a', dispaxis=1, database='', line=700, \
-        nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
-        lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes',\
+        nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractApertureRadius), \
+        lower='-'+str(extractApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes',\
         fl_inter=nsextractInter, fl_apall=useApall, fl_trace='no', aptable='gnirs$data/apertures.fits', \
         fl_usetabap='no', fl_flipped='yes', fl_project='yes', fl_findneg='no', bgsample='*', trace='', tr_nsum=10, \
         tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='*', tr_naver=1, tr_niter=0, \
@@ -527,10 +581,10 @@ def stepwiseExtractSpectra1D(combinedimage, nsextractInter, useApall, apertureTr
     
     # This first nsextract step performed outside the loop gets the trace into the science extraction database to be 
     # used during the actual stepwise extraction.
-    extractionApertureRadius = 3
+    extractApertureRadius = 3
     iraf.nsextract(inimages=combinedimage, outspectra='extractionStepwiseTraceReference', outprefix='x', dispaxis=1, \
-        database='', line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractionApertureRadius), \
-        lower='-'+str(extractionApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes',\
+        database='', line=700, nsum=apertureTracingColumns, ylevel='INDEF', upper=str(extractApertureRadius), \
+        lower='-'+str(extractApertureRadius), background='none', fl_vardq='yes', fl_addvar='no', fl_skylines='yes',\
         fl_inter=nsextractInter, fl_apall=useApall, fl_trace='yes', aptable='gnirs$data/apertures.fits', \
         fl_usetabap='no', fl_flipped='yes', fl_project='no', fl_findneg='no', bgsample='*', trace='', tr_nsum=10, \
         tr_step=10, tr_nlost=3, tr_function='legendre', tr_order=5, tr_sample='300:1000', tr_naver=1, tr_niter=0, \

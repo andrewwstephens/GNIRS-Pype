@@ -77,25 +77,34 @@ def start(configfile):
     us_clobber=iraf.envget("clobber")
     iraf.reset(clobber='yes')
     
+    logger.info("Parameters read from %s", configfile)
+
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
+    
     # Read general config
     manualMode = config.getboolean('defaults','manualMode')
     overwrite = config.getboolean('defaults','overwrite')
+    
     # config required for flux calibration
-    combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
-    combinedsky = config.get('runtimeFilenames', 'combinedsky')
-    bb_unscaled = config.get('runtimeFilenames', 'bb_unscaled')
-    bb_scaled = config.get('runtimeFilenames','bb_scaled')
     extractFullSlit = config.getboolean('extractSpectra1D','extractFullSlit')
     extractStepwise = config.getboolean('extractSpectra1D','extractStepwise')
     extractStepSize = config.getfloat('extractSpectra1D','extractStepSize')
-    dividedTelluricPrefix = config.get('runtimeFilenames', 'dividedTelluricPrefix')
-    dividedSciencePrefix_extractREG = config.get('runtimeFilenames', 'dividedSciencePrefix_extractREG')
-    dividedSciencePrefix_extractFS = config.get('runtimeFilenames', 'dividedSciencePrefix_extractFS')
-    dividedSciencePrefix_extractSW = config.get('runtimeFilenames', 'dividedSciencePrefix_extractSW')
-    # fluxCalibration specific config
+
+    combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
+#    combinedsky = config.get('runtimeFilenames', 'combinedsky')  # Viraja:  Not sure if this is required; surprising though
+    extractRegularPrefix = config.get('runtimeFilenames', 'extractRegularPrefix')
+    extractFullSlitPrefix = config.get('runtimeFilenames', 'extractFullSlitPrefix')
+    extractStepwisePrefix = config.get('runtimeFilenames', 'extractStepwisePrefix')
+    hLinePrefix = config.get('runtimeFilenames', 'hLinePrefix')
+    dividedTelContinuumPrefix = config.get('runtimeFilenames', 'dividedTelContinuumPrefix')
+    telluricPrefix = config.get('runtimeFilenames', 'telluricPrefix')
+    bb_unscaled = config.get('runtimeFilenames', 'bb_unscaled')
+    bb_scaled = config.get('runtimeFilenames','bb_scaled')
+    fluxCalibPrefix = config.get('runtimeFilenames', 'fluxCalibPrefix')
+    
+    # Read fluxCalibration specific config
     fluxCalibrationMethod = config.get('fluxCalibration','fluxCalibrationMethod')
 
 
@@ -112,7 +121,7 @@ def start(configfile):
         ###########################################################################
 
         scipath += '/Intermediate'
-        logger.info("Moving to science directory: %s", scipath)
+        logger.info("Moving to science directory: %s\n", scipath)
         os.chdir(scipath)
         iraf.chdir(scipath)
 
@@ -120,12 +129,11 @@ def start(configfile):
         # Relative path/link expected to be at the top level of every sci directory
         stdpath = '../Standard/Intermediate' 
         telpath = '../Telluric/Intermediate'
-        runtimedatapath = '../../runtimeData'
 
         if os.path.exists(stdpath):
             logger.info("Standard directory: %s", stdpath)
             if fluxCalibrationMethod == 'fluxcalibrator':
-                logger.info("Using 'fluxcalibrator' method for flux calibration in %s", scipath)
+                logger.info("Using 'fluxcalibrator' method for flux calibration in %s\n", scipath)
             elif fluxCalibrationMethod == 'telluricapproximate':
                 logger.warning("Standard directory for flux calibrator available, but flux calibration method set to")
                 logger.warning("'telluricapproximate'. This may affect your science.")
@@ -146,9 +154,9 @@ def start(configfile):
                 logger.error("calibration method set to 'fluxcalibrator'. Expects 'telluricapproximate'.")
                 fluxCalibrationMethod = raw_input("Confirm <fluxcalibrator> or <telluricapproximate> for flux calibration:")
             elif fluxCalibrationMethod == 'telluricapproximate':
-                logger.info("Moving on to use the telluric to derive the approximate flux calibration.\n")
+                logger.info("Moving on to use the telluric as the standard to derive the approximate flux calibration.\n")
                 stdpath = telpath
-                logger.info("Standard directory: %s\n", stdpath)
+                logger.info("Telluric (used as standard) directory: %s\n", stdpath)
             else:
                 logger.error("#######################################################################################")
                 logger.error("#######################################################################################")
@@ -160,15 +168,15 @@ def start(configfile):
                 raise SystemExit
         else:
             logger.warning("Parameter 'fluxCalibration' is set to 'yes', but no standard and telluric data available.")
-            logger.warning("Skipping flux calibration in %s", scipath)
+            logger.warning("Skipping flux calibration in %s\n", scipath)
             continue
 
         # Check if required sci and std source spectra available in their respective paths
-        logger.info("Checking if required science and standard source spectra available in %s",scipath)
-        logger.info("and %s, respectively.\n", stdpath)
+        logger.info("Checking if required science and standard source spectra available in %s", scipath)
+        logger.info("and %s, respectively.", stdpath)
 
-        sci_telluricCorrected = sorted(glob.glob(scipath + '/' + dividedSciencePrefix_extractREG + \
-            nofits(combinedsrc) + '_order*_MEF.fits'))
+        sci_telluricCorrected = sorted(glob.glob(scipath + '/' + dividedTelContinuumPrefix + telluricPrefix + \
+            extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
         if len(sci_telluricCorrected) > 0:
             logger.info("Required telluric corrected science source spectra available.")
             sci_header_info = gnirsHeaders.info(sci_telluricCorrected[0])
@@ -185,8 +193,8 @@ def start(configfile):
             # the same way as the science and are in a directory with a symbolic link to the top level processed data 
             # directory (similar to the telluric symbolic link in the science directory)
             '''
-            std_telluricCorrected = sorted(glob.glob(stdpath + '/' + dividedStandardPrefix + nofits(combinedsrc) + \
-                '_order*_MEF.fits'))
+            std_telluricCorrected = sorted(glob.glob(stdpath + '/' + dividedTelContinuumPrefix + telluricPrefix + \
+                extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
             if len(std_telluricCorrected) > 0:
                 logger.info("Required telluric corrected standard source spectra available.")
                 std_header_info = gnirsHeaders.info(std_telluricCorrected[0])  
@@ -200,8 +208,8 @@ def start(configfile):
             pass
         
         if fluxCalibrationMethod == 'telluricapproximate':
-            tel_dividedContinuum = sorted(glob.glob(telpath + '/' + dividedTelluricPrefix + nofits(combinedsrc) + \
-                '_order*_MEF.fits'))
+            tel_dividedContinuum = sorted(glob.glob(telpath + '/' + dividedTelContinuumPrefix + hLinePrefix + \
+                extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
             if len(tel_dividedContinuum) > 0:
                 logger.info("Required continuum divided telluric source spectra available.")
                 tel_header_info = gnirsHeaders.info(tel_dividedContinuum[0])
@@ -214,7 +222,7 @@ def start(configfile):
 
         # TODO:  if extractionStepwise:
 
-        logger.info("Required telluric corrected science and standard source spectra check complete.")
+        logger.info("Required telluric corrected science and standard source spectra check complete.\n")
         
         stdName = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['OBJECT']
 
@@ -223,31 +231,23 @@ def start(configfile):
             orders = [3, 4, 5]
             stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
                 config.get(stdName,'stdMagnitude_order5')]
-            zeroMagnitudeFluxes = [config.getfloat(stdName,'zeroMagnitudeFlux_order3'), \
-                config.getfloat(stdName,'zeroMagnitudeFlux_order4'), config.getfloat(stdName,'zeroMagnitudeFlux_order5')]
         elif 'LB_LXD' in scipath:
             orders = [3, 4, 5, 6, 7, 8]
-            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), config.getfloat(stdName,'stdMagnitude_order4'), \
-                config.getfloat(stdName,'stdMagnitude_order5'), config.getfloat(stdName,'stdMagnitude_order6'), \
-                config.getfloat(stdName,'stdMagnitude_order7'), config.getfloat(stdName,'stdMagnitude_order8')]
-            zeroMagnitudeFluxes = [config.getfloat(stdName,'zeroMagnitudeFlux_order3'), \
-                config.getfloat(stdName,'zeroMagnitudeFlux_order4'), config.getfloat(stdName,'zeroMagnitudeFlux_order5'), \
-                config.getfloat(stdName,'zeroMagnitudeFlux_order6'), config.getfloat(stdName,'zeroMagnitudeFlux_order7'), \
-                config.getfloat(stdName,'zeroMagnitudeFlux_order8')]
+            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), \
+                config.getfloat(stdName,'stdMagnitude_order4'), config.getfloat(stdName,'stdMagnitude_order5'), \
+                config.getfloat(stdName,'stdMagnitude_order6'), config.getfloat(stdName,'stdMagnitude_order7'), \
+                config.getfloat(stdName,'stdMagnitude_order8')]
         elif 'SB_SXD' in scipath:
             orders = [3, 4, 5, 6, 7, 8]
-            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), config.getfloat(stdName,'stdMagnitude_order4'), \
-                config.getfloat(stdName,'stdMagnitude_order5'), config.getfloat(stdName,'stdMagnitude_order6'), \
-                config.getfloat(stdName,'stdMagnitude_order7'), config.getfloat(stdName,'stdMagnitude_order8')]
-            zeroMagnitudeFluxes = [config.getfloat(stdName,'zeroMagnitudeFlux_order3'), \
-                config.getfloat(stdName,'zeroMagnitudeFlux_order4'), config.getfloat(stdName,'zeroMagnitudeFlux_order5'), \
-                config.getfloat(stdName,'zeroMagnitudeFlux_order6'), config.getfloat(stdName,'zeroMagnitudeFlux_order7'), \
-                config.getfloat(stdName,'zeroMagnitudeFlux_order8')]
+            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), \
+                config.getfloat(stdName,'stdMagnitude_order4'), config.getfloat(stdName,'stdMagnitude_order5'), \
+                config.getfloat(stdName,'stdMagnitude_order6'), config.getfloat(stdName,'stdMagnitude_order7'), \
+                config.getfloat(stdName,'stdMagnitude_order8')]
         else:
             logger.error("###################################################################################")
             logger.error("###################################################################################")
             logger.error("#                                                                                 #")
-            logger.error("#   ERROR in get telluric info: unknown GNIRS XD configuration. Exiting script.   #")
+            logger.error("#     ERROR in flux calibrate: unknown GNIRS XD configuration. Exiting script.    #")
             logger.error("#                                                                                 #")
             logger.error("###################################################################################")
             logger.error("###################################################################################\n")
@@ -278,20 +278,41 @@ def start(configfile):
             - Scale the blackbody to the telluric derived spectrum.
             - Scaled blackbody at each order.
             """
-
             if manualMode:
-                a = raw_input("About to enter ")
+                a = raw_input("About to enter flux calibration.\n")
 
             stdTemperature = config.getfloat(stdName,'stdTemperature')
 
             # EXPTIME keyword is the "Exposure time (s) for sum of all coadds"
             sciExptime = sci_header_info[os.path.basename(sci_telluricCorrected[0])]['EXPTIME']
-            logger.debug("sciExptime: %f", sciExptime)
             stdExptime = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['EXPTIME']
             
+            zeroMagnitudeFluxes = {}
+            for order, zeroFlux in config.items('zeroMagnitudeFluxes'):
+                zeroMagnitudeFluxes[int(order)] = zeroFlux
+
             for i in range(len(orders)):
-                
-                logger.info("Flux-calibrating order %d of %s.", extension, os.path.basename(sci_telluricCorrected[i]))
+
+                fluxCalibrationInput = os.path.basename(sci_telluricCorrected[i])+'[1]'
+                sci_telluricCorrected_base_nofits = nofits(os.path.basename(sci_telluricCorrected[i])) 
+                fluxCalibrationOutput_SEF = fluxCalibPrefix + \
+                    sci_telluricCorrected_base_nofits[:sci_telluricCorrected_base_nofits.rfind('_')+1] + 'SEF.fits'
+                logger.debug("fluxCalibrationOutput_SEF: %s", fluxCalibrationOutput_SEF)
+                fluxCalibrationOutput_MEF = fluxCalibPrefix + os.path.basename(sci_telluricCorrected[i])
+                logger.debug("fluxCalibrationOutput_MEF: %s", fluxCalibrationOutput_MEF)
+
+                oldfiles = glob.glob(bb_unscaled+str(orders[i])+'.fits') + glob.glob(bb_scaled+str(orders[i])+'.fits') + \
+                    glob.glob(fluxCalibrationOutput_SEF) + glob.glob(fluxCalibrationOutput_MEF)
+                if overwrite:
+                    logger.warning("Removing old %s%d.fits, %s%d.fits,", bb_unscaled, orders[i], bb_scaled, orders[i])
+                    logger.warning("%s, and %s", fluxCalibrationOutput_SEF, fluxCalibrationOutput_MEF)
+                    [os.remove(filename) for filename in oldfiles]
+                else:
+                    logger.warning("Output exists and -overwrite not set - skipping flux calibration for %d", orders[i])
+                    logger.warning("of the telluric corrected science 1D source spectra.")
+                    continue
+
+                logger.info("Flux calibrating order %d of %s.", orders[i], os.path.basename(sci_telluricCorrected[i]))
 
                 logger.info("Converting magnitude to flux density for the telluric.")
                 # if the magnitude value in the configuration file is not empty
@@ -300,7 +321,7 @@ def start(configfile):
                     # Account for standard/science exposure times
                     logger.info("Performing absolute flux calibration accounting for the ratio of standard to science")
                     logger.info("exposure times.")
-                    flambda = 10**(- float(stdMagnitudes[i])/2.5) * zeroMagnitudeFluxes[i] * (stdExptime / sciExptime)
+                    flambda = 10**(- float(stdMagnitudes[i])/2.5) * float(zeroMagnitudeFluxes[orders[i]]) * (stdExptime / sciExptime)
                     absolute_fluxcalib = True
                 # if the magnitude value in the configuration file is empty, no absolute flux calibration is performed
                 else:  
@@ -308,48 +329,48 @@ def start(configfile):
                     logger.info("exposure times.")
                     flambda = 1 * (stdExptime / sciExptime)
                     absolute_fluxcalib = False
-                logger.info("Completed converting magnitude to flux density for the telluric.\n")
+                logger.info("Completed converting magnitude to flux density for the telluric.")
 
                 logger.info("Making a blackbody.")
                 # First find the start and end wavelengths of the spectral order
-                waveReferencePixel = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='CRPIX1', \
-                    expr='yes',  missing='INDEF', mode='al', Stdout=1)
-                logger.debug("waveReferencePixel: %d", waveReferencePixel)
-                waveReferencePixel = float(waveReferencePixel[0].replace("'",""))
-                logger.debug("waveReferencePixel: %d", waveReferencePixel)
+                waveReferencePixel = iraf.hselect(images=tel_dividedContinuum[i]+'[1]', fields='CRPIX1', expr='yes',
+                    missing='INDEF', mode='al', Stdout=1)
+                waveReferencePixel = float_from_singleElementList(waveReferencePixel)
 
-                waveReferenceValue = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='CRVAL1', \
-                    expr='yes',  missing='INDEF', mode='al', Stdout=1)
-                waveReferenceValue = float(waveReferenceVlue[0].replace("'",""))
+                waveReferenceValue = iraf.hselect(images=tel_dividedContinuum[i]+'[1]', fields='CRVAL1', expr='yes',
+                    missing='INDEF', mode='al', Stdout=1)
+                waveReferenceValue = float_from_singleElementList(waveReferenceValue)
                 
-                waveDelt = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='CD1_1', \
-                    expr='yes', missing='INDEF', mode='al', Stdout=1)
-                waveDelt = float(waveDelt[0].replace("'",""))
-                
-                ndimensions = iraf.hselect(images=tel_dividedContinuum[i]+'['+str(orders[i])+']', fields='NAXIS1', \
-                    expr='yes', missing='INDEF', mode='al', Stdout=1)
-                ndimensions = float(ndimensions[0].replace("'",""))
-                
+                waveDelt = iraf.hselect(images=tel_dividedContinuum[i]+'[1]', fields='CD1_1', expr='yes',
+                    missing='INDEF', mode='al', Stdout=1)
+                waveDelt = float_from_singleElementList(waveDelt)
+
                 waveStart = waveReferenceValue - (waveReferencePixel-1) * waveDelt
-                waveEnd = waveStart + (ndimensions * float(waveDelt[0].replace("'","")))
-                # Then make a blackbody
-                iraf.mk1dspec(input=bb_unscaled+str(orders[i]), output=bb_unscaled+str(orders[i]), ap=1, rv=0.0, \
-                    z='no', title='', ncols=waveDelt, naps=1, header='', wstart = waveStart, wend=waveEnd, continuum=1000,\
-                    slope=0.0, temperature=stdTemperature, fnu='no', lines='', nlines=0, profile='gaussian', \
-                    peak=-0.5, gfwhm=20.0, lfwhm=20.0, seed=1, comments='yes', mode='ql')
-                logger.info("Completed making a blackbody.\n")
 
+                ndimensions = iraf.hselect(images=tel_dividedContinuum[i]+'[1]', fields='NAXIS1', expr='yes',
+                    missing='INDEF', mode='al', Stdout=1)
+                ndimensions = float_from_singleElementList(ndimensions)
+            
+                waveEnd = waveStart + (ndimensions * waveDelt)
+                
+                # Then make a blackbody
+                iraf.mk1dspec(input=bb_unscaled+str(orders[i]), output=bb_unscaled+str(orders[i]), ap=1, rv=0.0, z='no', 
+                    title='', ncols=ndimensions, naps=1, header='', wstart = waveStart, wend=waveEnd, continuum=1000, 
+                    slope=0.0, temperature=stdTemperature, fnu='no', lines='', nlines=0, profile='gaussian', peak=-0.5, 
+                    gfwhm=20.0, lfwhm=20.0, seed=1, comments='yes', mode='ql')
+                logger.info("Completed making a blackbody.")
+                
                 logger.info("Scaling the blackbody to the telluric magnitude.")
-                if 3 <= extension <= 5:
+                if 3 <= orders[i] <= 5:
                     # Roughly scale blackbody for orders 3-5 to the respective magnitudes of the telluric
                     logger.info("Calculating the blackbody scale for order %d.", orders[i])
                     
-                    meanCounts = iraf.imstat(images=bb_unscaled+str(orders[i]), fields="mean", lower='INDEF', \
-                        upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', cache='no', \
+                    meanCounts = iraf.imstat(images=bb_unscaled+str(orders[i]), fields="mean", lower='INDEF',
+                        upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', cache='no', 
                         mode='al', Stdout=1)
 
                     blackbodyScaleFactor = flambda / float(meanCounts[1].replace("'",""))
-                    logger.info("The blackbody scale factor for order %d is %f", orders[i], blackbodyScaleFactor)
+                    logger.info("The blackbody scale factor for order %d is %e", orders[i], blackbodyScaleFactor)
                 else:
                     # Scale blackbody for orders 6-8 to the previous order's scaled blackbody
 
@@ -360,61 +381,90 @@ def start(configfile):
                     # First, find region of overlap with the previous order 
                     logger.info("Calculating the region of overlap of order %d with the previous order.", orders[i])
                     
-                    # waveStart_current is the first wavelength of the current order (i.e, the short-wavelength end of 
-                    # the region of overlap)
-                    waveStart = iraf.hselect(images=bb_unscaled+str(orders[i]), fields='CRVAL1', expr='yes', missing='INDEF', \
-                        mode='al', Stdout=1)
-                    waveStart = float(waveStart[0].replace("'",""))
+                    # waveStart_previous is the first wavelength of the previous order (i.e, the short-wavelength end
+                    # of the region of overlap)
                     
-                    # waveEnd_previous is the last wavelength of the previous order (i.e, the long-wavelength end of 
-                    # the region of overlap)
-                    waveTemp = iraf.hselect(bb_unscaled+str(orders[i-1]), field='CRVAL1', expr='yes',  missing='INDEF', \
-                        mode='al', Stdout=1)
-                    waveDelt = iraf.hselect(bb_unscaled+str(orders[i-1]), field='CDELT1', expr='yes',  missing='INDEF', \
-                        mode='al', Stdout=1)
-                    waveEnd = float(waveTemp[0].replace("'","")) + (1022 * float(waveDelt[0].replace("'","")))
+                    waveReferencePixel_previous = iraf.hselect(images=bb_unscaled+str(orders[i-1]), fields='CRPIX1', 
+                        expr='yes', missing='INDEF', mode='al', Stdout=1)
+                    waveReferencePixel_previous = float_from_singleElementList(waveReferencePixel_previous)
+                    
+                    waveReferenceValue_previous = iraf.hselect(images=bb_unscaled+str(orders[i-1]), fields='CRVAL1', 
+                        expr='yes', missing='INDEF', mode='al', Stdout=1)
+                    waveReferenceValue_previous = float_from_singleElementList(waveReferenceValue_previous)
 
-                    if waveEnd < waveStart:
-                        logging.error("Orders %d and %d do not overlap in wavelength.", orders[i-1], [orderi])
-                        loggeing.error("This is unusual and suggests that the grating was not at the expected position.")
-                        logging.error("This may not be a problem for the scientific use of the data, but the script")
-                        logging.error("cannot handle this and is not able to flux calibrate the spectral orders.") 
-                        logging.error("Please plot the calibrated arc spectrum (plotted with different orders) to see")
-                        logging.error("if the data cover the wavelength range you need.")
-                        logging.error("Exiting script.\n")
+                    waveDelt_previous = iraf.hselect(images=bb_unscaled+str(orders[i-1]), fields='CDELT1', expr='yes',
+                        missing='INDEF', mode='al', Stdout=1)
+                    waveDelt_previous = float_from_singleElementList(waveDelt_previous)
+
+                    waveStart_previous = waveReferenceValue_previous - (waveReferencePixel_previous-1) * waveDelt_previous
+
+                    # waveEnd_current is the last wavelength of the current order (i.e, the long-wavelength end of the
+                    # region of overlap)
+                    waveReferencePixel_current = iraf.hselect(images=bb_unscaled+str(orders[i]), fields='CRPIX1', 
+                        expr='yes', missing='INDEF', mode='al', Stdout=1)
+                    waveReferencePixel_current = float_from_singleElementList(waveReferencePixel_current)
+
+                    waveReferenceValue_current = iraf.hselect(images=bb_unscaled+str(orders[i]), fields='CRVAL1', 
+                        expr='yes', missing='INDEF', mode='al', Stdout=1)
+                    waveReferenceValue_current = float_from_singleElementList(waveReferenceValue_current)
+
+                    waveDelt_current = iraf.hselect(images=bb_unscaled+str(orders[i]), fields='CDELT1', expr='yes', 
+                        missing='INDEF', mode='al', Stdout=1)
+                    waveDelt_current = float_from_singleElementList(waveDelt_current)
+
+                    waveStart_current = waveReferenceValue_current - (waveReferencePixel_current-1) * waveDelt_current
+
+                    ndimensions_current = iraf.hselect(images=bb_unscaled+str(orders[i]), fields='NAXIS1', expr='yes', 
+                        missing='INDEF', mode='al', Stdout=1)
+                    ndimensions_current = float_from_singleElementList(ndimensions_current)
+
+                    waveEnd_current = waveStart_current + (ndimensions_current * waveDelt_current)
+
+                    if waveEnd_current < waveStart_previous:
+                        logger.error("Orders %d and %d do not overlap in wavelength.", orders[i-1], [orderi])
+                        logger.error("This is unusual and suggests that the grating was not at the expected position.")
+                        logger.error("This may not be a problem for the scientific use of the data, but the script")
+                        logger.error("cannot handle this and is not able to flux calibrate the spectral orders.") 
+                        logger.error("Please plot the calibrated arc spectrum (plotted with different orders) to see")
+                        logger.error("if the data cover the wavelength range you need.")
+                        logger.error("Exiting script.\n")
                         raise SystemExit
                     else:
-                        # Find the mean in the overlapping wavelength region (using the scaled blackbody of the 
+                        # Find the mean in the overlapping wavelength region (using the scaled blackbody of the
                         # previous order
-                        iraf.scopy(input=bb_unscaled+str(orders[i]), output='temp'+bb_unscaled, w1=waveStart, w2=waveEnd, 
-                            apertures='', bands='', beams='', apmodulus=0, format='multispec', renumber='no', offset=0, 
-                            clobber='no', merge='no', rebin='yes', verbose='no',mode='ql')
-                        iraf.scopy(input=bb_scaled+str(i), output='temp'+bb_scaled, w1=waveStart, w2=waveEnd,
-                            apertures='', bands='', beams='', apmodulus=0, format='multispec', renumber='no', offset=0,
-                            clobber='no', merge='no', rebin='yes', verbose='no', mode='ql')
-                        meanCounts_temp_bb_unscaled = iraf.imstat(images='temp'+bb_unscaled+str(orders[i]), fields="mean",
-                            lower='INDEF', upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', 
-                            cache='no', mode='al',Stdout=1)
-                        meanCounts_temp_bb_unscaled = float(meanCounts_temp_bb_unscaled[1].replace("'",""))
-                        meanCounts_temp_bb_scaled = iraf.imstat(images='temp'+bb_scaled, fields='mean', lower='INDEF', 
-                            upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, format='yes', cache='no', 
-                            mode='al', Stdout=1)
-                        meanCounts_temp_bb_scaled = float(meanCounts_temp_bb_scaled[1].replace("'",""))
+                        oldfiles_temp = glob.glob('overlap_*')
+                        [os.remove(filename) for filename in oldfiles_temp]
+                        iraf.scopy(input=bb_unscaled+str(orders[i]), output='overlap_'+bb_unscaled+str(orders[i])+str(orders[i-1]),
+                            w1=waveStart, w2=waveEnd, apertures='', beams='', bands='', apmodulus=0, 
+                            format='multispec', renumber='no', offset=0, clobber='no', merge='no', rebin='yes', 
+                            verbose='yes', mode='ql')
+                        logger.debug("scopy 1 done")
+                        iraf.scopy(input=bb_scaled+str(orders[i-1]), output='overlap_'+bb_scaled+str(orders[i])+str(orders[i-1]), 
+                            w1=waveStart, w2=waveEnd, apertures='', beams='', bands='', apmodulus=0, 
+                            format='multispec', renumber='no', offset=0, clobber='no', merge='no', rebin='yes', 
+                            verbose='yes', mode='ql')
+                        logger.debug("scopy 2 done")
+                        meanCounts_overlap_bb_unscaled = iraf.imstat(images='overlap_'+bb_unscaled+str(orders[i])+str(orders[i-1]), 
+                            fields='mean', lower='INDEF', upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, 
+                            binwidth=0.1, format='yes', cache='no', mode='al', Stdout=1)
+                        meanCounts_overlap_bb_unscaled = float(meanCounts_overlap_bb_unscaled[1].replace("'",""))
+                        meanCounts_overlap_bb_scaled = iraf.imstat(images='overlap_'+bb_scaled+str(orders[i])+str(orders[i-1]), 
+                            fields='mean', lower='INDEF', upper='INDEF', nclip=0, lsigma=3.0, usigma=3.0, binwidth=0.1, 
+                            format='yes', cache='no', mode='al', Stdout=1)
+                        meanCounts_overlap_bb_scaled = float(meanCounts_overlap_bb_scaled[1].replace("'",""))
                         
                         # Scale current blackbody to that for the previous order using ratio of means
-                        blackbodyScaleFactor = meanCounts_temp_bb_scaled / meanCounts_temp_bb_unscaled
+                        blackbodyScaleFactor = meanCounts_overlap_bb_scaled / meanCounts_overlap_bb_unscaled
                         logger.info("The blackbody scale factor for order %d is %f", orders[i], blackbodyScaleFactor)
 
-                iraf.imarith(operand1=bb_unscaled + str(orders[i]), op="*", operand2=blackbodyScaleFactor,
-                    result=bb_scaled + str(extensorders[i]ion), title='',divzero=0.0, hparams='', pixtype='', calctype='',
+                iraf.imarith(operand1=bb_unscaled+str(orders[i]), op="*", operand2=blackbodyScaleFactor,
+                    result=bb_scaled+str(orders[i]), title='',divzero=0.0, hparams='', pixtype='', calctype='',
                     verbose='yes', noact='no', mode='al')
                 logger.info("Completed scaling the blackbody to the telluric magnitude.")
 
-                logger.info("Applying the blackbody to telluric magnitude scaling fator to telluric corrected science")
-                logger.info("spectra.")
-                fluxCalibrationInput = os.path.basename(sci_telluricCorrected[i])+'['+str(orders[i])+']'
-                fluxCalibrationOutput_SEF = fluxCalibPrefix_extractREG + os.path.basename(sci_telluricCorrected[i])
-                fluxCalibrationOutput_MEF = fluxCalibPrefix_extractREG + os.path.basename(sci_telluricCorrected[i])
+                logger.info("Applying the blackbody to telluric magnitude scaling fator to the telluric corrected")
+                logger.info("science 1D source spectra.")
+                
                 iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(orders[i]),
                     result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', calctype='', 
                     verbose='yes', noact='no', mode='al')
@@ -423,12 +473,12 @@ def start(configfile):
 
                 iraf.wmef(input=fluxCalibrationOutput_SEF, output=fluxCalibrationOutput_MEF, extnames='',
                     phu=os.path.basename(sci_telluricCorrected[i]), verbose='yes', mode='al')
-
+                
                 if extractFullSlit:
                     '''
-                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(orders[i])+']'
-                    fluxCalibrationOutput_SEF = fluxCalibPrefix_extractFS + os.path.basename()
-                    fluxCalibrationOutput_MEF = fluxCalibPrefix_extractFS + os.path.basename()
+                    fluxCalibrationInput = os.path.basename()+'[1]'
+                    fluxCalibrationOutput_SEF = fluxCalibPrefix + os.path.basename()
+                    fluxCalibrationOutput_MEF = fluxCalibPrefix + os.path.basename()
                     iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(orders[i]), 
                         result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='', 
                         calctype='', verbose='yes', noact='no', mode='al')
@@ -437,9 +487,9 @@ def start(configfile):
                     pass
                 if extractStepwise:
                     '''
-                    fluxCalibrationInput = os.path.basename()+'[SCI,'+str(orders[i])+']'
-                    fluxCalibrationOutput_SEF = fluxCalibPrefix_extractFS + os.path.basename()
-                    fluxCalibrationOutput_MEF = fluxCalibPrefix_extractFS + os.path.basename()
+                    fluxCalibrationInput = os.path.basename()+'[1]'
+                    fluxCalibrationOutput_SEF = fluxCalibPrefix + os.path.basename()
+                    fluxCalibrationOutput_MEF = fluxCalibPrefix + os.path.basename()
                     for k in range(1, steps):
                         iraf.imarith(operand1=fluxCalibrationInput, op="*", operand2=bb_scaled + str(orders[i]), 
                             result=fluxCalibrationOutput_SEF, title='', divzero=0.0, hparams='', pixtype='',
@@ -447,10 +497,10 @@ def start(configfile):
                         fluxcalib_units_in_headers(fluxCalibrationInput, absolute_fluxcalib)
                     '''
                     pass
-                logger.info("Completed applying the blackbody to telluric magnitude scaling fator to telluric")
-                logger.info("corrected science spectra.")
-
-                logger.info("Completed flux calibrating order %d of %s.", orders[i], os.path.basename(sci_telluricCorrected[i]))
+                logger.info("Completed applying the blackbody to telluric magnitude scaling fator to the telluric")
+                logger.info("corrected science 1D source spectra.")
+                
+                logger.info("Completed flux calibrating order %d of %s.\n", orders[i], os.path.basename(sci_telluricCorrected[i]))
 
         else:
             logger.error("#######################################################################################")
@@ -479,7 +529,22 @@ def start(configfile):
 ##################################################################################################################
 
 def nofits(filename):
+    """
+    Remove extension '.fits' from the filename.
+    """
+    logger = log.getLogger('gnirsFluxCalibration.nofits')
+    
     return filename.replace('.fits', '')
+
+#---------------------------------------------------------------------------------------------------------------------#
+
+def float_from_singleElementList(single_element_list):
+    """
+    Get the single element in a list and convert it into a float.
+    """
+    logger = log.getLogger('gnirsFluxCalibration.getFloat_from_singleElementList')
+    
+    return float(single_element_list[0].replace("'",""))
 
 #---------------------------------------------------------------------------------------------------------------------#
 
@@ -492,7 +557,7 @@ def fluxcalib_units_in_headers(image, abs_fluxcal):
 
     #This is so we know whether we did absolute or relative flux cal
     if abs_fluxcal:
-		iraf.hedit(images=image, fields='FUNITS', value='erg/cm^2/s/A', add='yes', addonly='no', delete='no',
+        iraf.hedit(images=image, fields='FUNITS', value='erg/cm^2/s/A', add='yes', addonly='no', delete='no',
             verify='no', show='no', update='yes')
     else:
         iraf.hedit(images=image, fields='FUNITS', value='Flambda, relative', add='yes', addonly='no', delete='no',

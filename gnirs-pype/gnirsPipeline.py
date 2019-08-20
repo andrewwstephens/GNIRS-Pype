@@ -15,7 +15,8 @@ import gnirsReduce
 import gnirsCombineSpectra2D
 import gnirsExtractSpectra1D
 import gnirsTelluric
-#import gnirsFluxCalibrate
+import gnirsGetTelluricInfo
+import gnirsFluxCalibrate
 #import gnirsCombineOrdersXD
 #import gnirsCalculateSpectrumSNR
 #import writeDataSheet
@@ -177,6 +178,7 @@ def start(args):
     if config.getboolean('gnirsPipeline', 'fluxCalibration'):
         if manualMode:
             a = raw_input('About to enter gnirsFluxCalibrate to create flux calibrated science spectra.')
+        gnirsGetTelluricInfo.start(args.config)
         gnirsFluxCalibrate.start(args.config)
 
     #########################################################################

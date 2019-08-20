@@ -70,17 +70,15 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
+    
     # Read general config
     manualMode = config.getboolean('defaults','manualMode')
-    overwrite = config.getboolean('defaults','overwrite')
+    
     # config required for getting standard info
-    extractionStepwise = config.getboolean('extractSpectra1D','extractStepwise')
     combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
-    combinedsky = config.get('runtimeFilenames', 'combinedsky')
-    dividedTelluricPrefix = config.get('runtimeFilenames', 'dividedTelluricPrefix')
-    dividedSciencePrefix_extractREG = config.get('runtimeFilenames', 'dividedSciencePrefix_extractREG')
-    dividedSciencePrefix_extractFS = config.get('runtimeFilenames', 'dividedSciencePrefix_extractFS')
-    dividedSciencePrefix_extractSW = config.get('runtimeFilenames', 'dividedSciencePrefix_extractSW')
+    extractRegularPrefix = config.get('runtimeFilenames', 'extractRegularPrefix')
+    hLinePrefix = config.get('runtimeFilenames', 'hLinePrefix')
+    dividedTelContinuumPrefix = config.get('runtimeFilenames', 'dividedTelContinuumPrefix')
     referenceStarTableFilename = config.get('fluxCalibration','referenceStarTableFilename')
 
     for scipath in config.options("ScienceDirectories"):
@@ -101,25 +99,19 @@ def start(configfile):
         os.chdir(scipath)
 
         # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
-        stdpath = '../Standard/Intermediate'  # relative path/link expected to be at the top level of every sci directory
+        # Relative path/link expected to be at the top level of every sci directory
+        stdpath = '../Standard/Intermediate'
         telpath = '../Telluric/Intermediate'
         runtimedatapath = '../../runtimeData'
+        logger.info("Runtime data path: %s\n", runtimedatapath)
 
         # Record the right number of order expected according to the GNIRS XD configuration.
         if 'LB_SXD' in scipath:
             orders = [3, 4, 5]
-            # Zero magnitude fluxes for bands corresponding to different orders [K, H, J] in erg/s/cm^2/A
-            zeroMagnitudeFluxVars = ['zeroMagnitudeFluxVar_order' + str(order) for order in orders]
-            zeroMagnitudeFluxes = [4.283E-10, 1.13E-9, 3.129E-10]
         elif 'LB_LXD' in scipath:
             orders = [3, 4, 5, 6, 7, 8]
-            # Zero magnitude fluxes for bands corresponding to different orders [K, H, J, J, J, J] in erg/s/cm^2/A
-            zeroMagnitudeFluxVars = ['fluxZeroPoint_order' + str(order) for order in orders]
-            zeroMagnitudeFLuxes = [4.283E-10, 1.13E-9, 3.129E-10, 3.129E-10, 3.129E-10, 3.129E-10]
         elif 'SB_SXD' in scipath:
             orders = [3, 4, 5, 6, 7, 8]
-            zeroMagnitudeFluxVars = ['fluxZeroPoint_order' + str(order) for order in orders]
-            zeroMagnitudeFluxes = [4.283E-10, 1.13E-9, 3.129E-10, 3.129E-10, 3.129E-10, 3.129E-10]
         else:
             logger.error("###################################################################################")
             logger.error("###################################################################################")
@@ -136,9 +128,9 @@ def start(configfile):
             continue
         elif os.path.exists(telpath):
             logger.info("Standard directory does not exist.")
-            logger.info("Moving on to use the telluric to derive the approximate flux calibration.\n")
+            logger.info("Moving on to use the telluric as the standard to derive the approximate flux calibration.")
             stdpath = telpath
-            logger.info("Standard directory: %s\n", stdpath)
+            logger.info("Telluric (used as standard) directory: %s\n", stdpath)
         else:
             logger.error("#############################################################################################")
             logger.error("#############################################################################################")
@@ -149,12 +141,10 @@ def start(configfile):
             logger.error("#############################################################################################\n")
             raise SystemExit
 
-        logger.info("Runtime data path: %s\n", runtimedatapath)
-
         # Check if required runtime data files and telluric corrected science source spectra available in their
         # respective paths
         logger.info("Checking if required runtime data files and continuum divided telluric source spectra available")
-        logger.info("in %s and %s, respectively.\n", runtimedatapath, stdpath)
+        logger.info("in %s and %s, respectively.", runtimedatapath, stdpath)
 
         if os.path.exists(runtimedatapath + '/' + referenceStarTableFilename):
             logger.info("Required reference star table of spectral types and temperatures available.")
@@ -165,8 +155,8 @@ def start(configfile):
             logger.warning("Exiting script.\n")
             raise SystemExit
 
-        tel_dividedContinuum = sorted(glob.glob(stdpath + '/' + dividedTelluricPrefix + nofits(combinedsrc) + \
-            '_order*_MEF.fits'))
+        tel_dividedContinuum = sorted(glob.glob(stdpath + '/' + dividedTelContinuumPrefix + hLinePrefix + \
+            extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
         if len(tel_dividedContinuum) > 0:
             logger.info("Required continuum divided telluric source spectra available.")
             tel_header_info = gnirsHeaders.info(tel_dividedContinuum[0])
@@ -177,7 +167,7 @@ def start(configfile):
             logger.warning("Exiting script.\n")
             raise SystemExit
 
-        logger.info("Required runtime data files and continuum divided telluric spectra check complete.")
+        logger.info("Required runtime data files and continuum divided telluric spectra check complete.\n")
         
         ###########################################################################
         ##                                                                       ##
@@ -200,33 +190,33 @@ def start(configfile):
         if config.has_section(stdName):
             logger.info("Section for the telluric %s available in the configuration file.", stdName)
             for option in parameters:
-                if option in parameters and option in config.options(stdName):
-                    if overwrite:
-                        logger.warning("Removing current parameter %s for %s in the configuration file.", option, stdName)
-                        logger.info("Adding empty parameter %s for %s in the configuration file.", option, stdName)
-                        config.remove_option(stdName,option)
-                        config.set(stdName,option,None)
-                    else:
-                        logger.warning("Parameter %s for %s available in the configuration file and -overwrite not")
-                        logger.warning("set - no action taken.")
-                elif option in parameters and option not in config.options(stdName):
-                    logger.info("Parameter %s for %s not available in the configuration file.", option, stdName)
-                    logger.info("Adding Parameter %s for %s in the configuration file.", option, stdName)
-                    [config.set(stdName,option) for option in parameters]
+                if config.has_option(stdName,option) and config.get(stdName,option):
+                    logger.warning("Parameter %s for %s available and set in the configuration file.", option, stdName)
+                    logger.warning("Not updating parameter %s from the query to SIMBAD.", option)
+                elif config.has_option(stdName,option) and not config.get(stdName,option):
+                    logger.warning("Parameter %s for %s available but not set in the configuration file.", option, stdName)
+                    logger.info("Setting an empty parameter %s for %s in the configuration file.", option, stdName)
+                    config.set(stdName,option,None)
                 else:
-                    logger.info("Parameter %s for %s not required in the configuration file.", option, stdName)
-                    logger.info("Removing parameter %s for %s in the configuration file.", option, stdName)
-                    [config.remove_option(stdName,option) for option in config.options(stdName)]
+                    logger.info("Parameter %s for %s not available in the configuration file.", option, stdName)
+                    logger.info("Setting an empty parameter %s for %s in the configuration file.", option, stdName)
+                    config.set(stdName,option,None)
         else:
-            logger.info("Section for the telluric %s not found in the configuration file.", stdName)
-            logger.info("Adding the telluric section with empty options in the configuration file.")
+            logger.info("Section for the telluric %s not available in the configuration file.", stdName)
+            logger.info("Creating the telluric section with empty options in the configuration file.\n")
             config.add_section(stdName)
             [config.set(stdName,option,None) for option in parameters]
 
-        with open('../../'+configfile, 'w') as f:
-            logger.info('Updating the configuration file with empty telluric parameters.')
-            config.write(f)
+        for option in config.options(stdName):
+            if option not in parameters:
+                logger.info("Parameter %s for %s not required in the configuration file.", option, stdName)
+                logger.info("Removing parameter %s for %s in the configuration file.\n", option, stdName)
+                config.remove_option(stdName,option)
 
+        with open('../../'+configfile, 'w') as f:
+            logger.info('Updating the configuration file if any empty parameers were set.\n')
+            config.write(f)
+       
         stdRA = config.get(stdName,'stdRA')
         stdDEC = config.get(stdName,'stdDEC')
         stdSpectralType = config.get(stdName,'stdSpectralType')
@@ -238,28 +228,26 @@ def start(configfile):
         stdMagnitude_order7 = config.get(stdName,'stdMagnitude_order7')
         stdMagnitude_order8 = config.get(stdName,'stdMagnitude_order8')
 
+        # If user did not specify stdRA or stdDEC, get them from the science extension [1] of the continuum divided 
+        # telluric spectrum header.
+        if stdRA:
+            pass
+        else:
+            stdRA = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['RA']
+        if stdDEC:
+            pass
+        else:
+            stdDEC = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['DEC']
+        
         # If user did not specify stdMagnitude_order3, stdMagnitude_order4, stdMagnitude_order5, stdMagnitude_order6, 
-        # stdMagnitude_order7, stdMagnitude_order8, or stdTemperature, and stdRA or stdDEC, get stdRA and stdDEC from 
-        # the science extension [1] of the continuum divided telluric spectrum header. Use SIMBAD to look up 
-        # stdSpectralType, stdMagnitude_order3, stdMagnitude_order4, stdMagnitude_order5, stdMagnitude_order6, 
-        # stdMagnitude_order7, stdMagnitude_order8, and stdTemperature.
-        if (not stdMagnitude_order3 or not stdMagnitude_order4 or not stdMagnitude_order5 or not stdMagnitude_order6 \
-            or not stdMagnitude_order7 or not stdMagnitude_order8) and (not stdTemperature or not stdSpectralType) and\
-            (not stdRA or not stdDEC):
-            logger.debug("yeah!!!")
-            if not stdRA:
-                stdRA = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['RA']
-            if not stdDEC:
-                stdDEC = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['DEC']
-
-        # Check to see if a spectral type or temperature has been given
+        # stdMagnitude_order7, stdMagnitude_order8, or (stdTemperature or stdSpectralType), query SIMBAD for them.
         if stdTemperature:
             findSpectralType = False
             findTemperature = False
         else:
             findSpectralType = True
             findTemperature = True
-        
+
         if stdMagnitude_order3:
             findMagnitude_order3 = False
         else:
@@ -269,7 +257,7 @@ def start(configfile):
             findMagnitude_order4 = False
         else:
             findMagnitude_order4 = True
-        
+
         if stdMagnitude_order5:
             findMagnitude_order5 = False
         else:
@@ -292,9 +280,11 @@ def start(configfile):
 
         if findSpectralType or findTemperature or findMagnitude_order3 or findMagnitude_order4 or findMagnitude_order5\
             or findMagnitude_order6 or findMagnitude_order7 or findMagnitude_order8:
+            logger.info("Preparing to query SIMBAD for the standard star parameters.")
             # Construct URL based on telluric coordinates and execute SIMBAD query to find the spectral type
             Simbad.add_votable_fields('flux(K)', 'flux(J)', 'flux(H)', 'sp')
             try:
+                logger.info("Querying SIMBAD...")
                 simbadStarTable = Simbad.query_region(coord.SkyCoord(ra=stdRA, dec=stdDEC, unit=(u.deg, u.deg), \
                     frame='fk5'), radius=0.1 * u.deg)
                 # Viraja:  How are the RA and DEC formatted in XDpiped.csh???
@@ -306,70 +296,19 @@ def start(configfile):
                 logger.warning("Exiting script.\n")
                 raise SystemExit
 
+            logger.info("SIMBAD query successful!\n")
+
             if findSpectralType:
-                # Get spectral type -- only the first 3 characters (strip off end of types like AIVn as they are not
-                # in the referenceStarTable)
-                stdSpectralType = simbadStarTable['SP_TYPE'][0][0:3]
-            else:
-                logger.error("Cannot locate the spectral type of the telluric in the table generated by the")
-                logger.error("SIMBAD query. Please update the parameter 'stdSpectralType' in the")
-                logger.error("configuration file.")
-                raise SystemExit
+                try:
+                    # Get spectral type -- only the first 3 characters (strip off end of types like AIVn as they are not
+                    # in the referenceStarTable)
+                    stdSpectralType = simbadStarTable['SP_TYPE'][0][0:3]
+                except:
+                    logger.error("Cannot locate the spectral type of the telluric in the table generated by the")
+                    logger.error("SIMBAD query. Please update the parameter 'stdSpectralType' in the")
+                    logger.error("configuration file.")
+                    raise SystemExit
             
-            if findMagnitude_order3:
-                stdMagnitude_order3 = str(simbadStarTable['FLUX_K'][0])
-            else:
-                logger.error("Cannot find a K magnitude for order 3 of the telluric in the table generated by the")
-                logger.error("SIMBAD query.")
-                logger.error("Please manually update the parameter 'stdMagnitudeK' in the configuration file.")
-                logger.error("Exiting script.\n")
-                raise SystemExit
-
-            if findMagnitude_order4:
-                stdMagnitude_order4 = str(simbadStarTable['FLUX_H'][0])
-            else:
-                logger.error("Cannot find a H magnitude for order 4 of the telluric in the table generated by the")
-                logger.error("SIMBAD query.")
-                logger.error("Please manually update the parameter 'stdMagnitudeH' in the configuration file.")
-                logger.error("Exiting script.\n")
-                raise SystemExit
-
-            if findMagnitude_order5:
-                stdMagnitude_order5 = str(simbadStarTable['FLUX_J'][0])
-            else:
-                logger.error("Cannot find a J magnitude for order 5 of the telluric in the table generated by the")
-                logger.error("SIMBAD query.")
-                logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                logger.error("Exiting script.\n")
-                raise SystemExit
-            
-            if findMagnitude_order6:
-                stdMagnitude_order6 = str(simbadStarTable['FLUX_J'][0])
-            else:
-                logger.error("Cannot find a J magnitude for order 6 of the telluric in the table generated by the")
-                logger.error("SIMBAD query.")
-                logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                logger.error("Exiting script.\n")
-                raise SystemExit
-            
-            if findMagnitude_order7:
-                stdMagnitude_order7 = str(simbadStarTable['FLUX_J'][0])
-            else:
-                logger.error("Cannot find a J magnitude for order 7 of the telluric in the table generated by the")
-                logger.error("SIMBAD query.")
-                logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                logger.error("Exiting script.\n")
-                raise SystemExit
-            
-            if findMagnitude_order8:
-                stdMagnitude_order8 = str(simbadStarTable['FLUX_J'][0])
-            else:
-                logger.error("Cannot find a J magnitude for order 8 of the telluric in the table generated by the")
-                logger.error("SIMBAD query.")
-                logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                logger.error("Exiting script.\n")
-                raise SystemExit
-
             if findTemperature:
                 # Find temperature for the spectral type in referenceStarTable in runtime data path
                 count = 0
@@ -385,7 +324,68 @@ def start(configfile):
                             count += 1
                 if count > 0:  ## Viraja:  I am wondering why this condition is given and why is this an error??
                     logger.error("Cannot find a temperature for spectral type %s of the telluric.", stdSpectralType)
-                    logger.error("Please update the parameter 'stdTemperature' in the configuration file.")
+                    logger.error("Please manually update the parameter 'stdTemperature' in the configuration file.")
+                    logger.error("Exiting script.\n")
+                    raise SystemExit
+            
+            if findMagnitude_order3:
+                try:
+                    stdMagnitude_order3 = str(simbadStarTable['FLUX_K'][0])
+                except:
+                    logger.error("Cannot find a K magnitude for order 3 of the telluric in the table generated by the")
+                    logger.error("SIMBAD query.")
+                    logger.error("Please manually update the parameter 'stdMagnitudeK' in the configuration file.")
+                    logger.error("Exiting script.\n")
+                    raise SystemExit
+
+            if findMagnitude_order4:
+                try:
+                    stdMagnitude_order4 = str(simbadStarTable['FLUX_H'][0])
+                except:
+                    logger.error("Cannot find a H magnitude for order 4 of the telluric in the table generated by the")
+                    logger.error("SIMBAD query.")
+                    logger.error("Please manually update the parameter 'stdMagnitudeH' in the configuration file.")
+                    logger.error("Exiting script.\n")
+                    raise SystemExit
+
+            if findMagnitude_order5:
+                try:
+                    stdMagnitude_order5 = str(simbadStarTable['FLUX_J'][0])
+                except:
+                    logger.error("Cannot find a J magnitude for order 5 of the telluric in the table generated by the")
+                    logger.error("SIMBAD query.")
+                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
+                    logger.error("Exiting script.\n")
+                    raise SystemExit
+            
+            if findMagnitude_order6:
+                try:
+                    stdMagnitude_order6 = str(simbadStarTable['FLUX_J'][0])
+                except:
+                    logger.error("Cannot find a J magnitude for order 6 of the telluric in the table generated by the")
+                    logger.error("SIMBAD query.")
+                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
+                    logger.error("Exiting script.\n")
+                    raise SystemExit
+            
+            if findMagnitude_order7:
+                try:
+                    stdMagnitude_order7 = str(simbadStarTable['FLUX_J'][0])
+                except:
+                    logger.error("Cannot find a J magnitude for order 7 of the telluric in the table generated by the")
+                    logger.error("SIMBAD query.")
+                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
+                    logger.error("Exiting script.\n")
+                    raise SystemExit
+            
+            if findMagnitude_order8:
+                try:
+                    stdMagnitude_order8 = str(simbadStarTable['FLUX_J'][0])
+                except:
+                    logger.error("Cannot find a J magnitude for order 8 of the telluric in the table generated by the")
+                    logger.error("SIMBAD query.")
+                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
+                    logger.error("Exiting script.\n")
                     raise SystemExit
 
         config.set(stdName,'stdRA',stdRA)
@@ -398,7 +398,6 @@ def start(configfile):
         config.set(stdName,'stdMagnitude_order6',stdMagnitude_order6)
         config.set(stdName,'stdMagnitude_order7',stdMagnitude_order7)
         config.set(stdName,'stdMagnitude_order8',stdMagnitude_order8)
-        [config.set(stdName,zeroMagnitudeFluxVars[i],zeroMagnitudeFluxes[i]) for i in range(len(orders))]
         
         with open('../../'+configfile, 'w') as f:
             logger.info('Updating the configuration file with telluric parameters obtained from SIMBAD.')
@@ -406,8 +405,8 @@ def start(configfile):
         
         logger.info("Updated the following section to the configuration file:")
         logger.info("[%s]", stdName)
-        logger.info("stdRA = %f", stdRA)
-        logger.info("stdDEC = %f", stdDEC)
+        logger.info("stdRA = %s", stdRA)
+        logger.info("stdDEC = %s", stdDEC)
         logger.info("stdSpectralType = %s", stdSpectralType)
         logger.info("stdTemperature = %s", stdTemperature)
         logger.info("stdMagnitude_order3 = %s", stdMagnitude_order3)
@@ -415,9 +414,7 @@ def start(configfile):
         logger.info("stdMagnitude_order5 = %s", stdMagnitude_order5)
         logger.info("stdMagnitude_order6 = %s", stdMagnitude_order6)
         logger.info("stdMagnitude_order7 = %s", stdMagnitude_order7)
-        logger.info("stdMagnitude_order8 = %s", stdMagnitude_order8)
-        for i in range(len(orders)):
-            logger.info("%s = %e", zeroMagnitudeFluxVars[i], zeroMagnitudeFluxes[i])
+        logger.info("stdMagnitude_order8 = %s\n", stdMagnitude_order8)
 
         logger.info("##############################################################################")
         logger.info("#                                                                            #")

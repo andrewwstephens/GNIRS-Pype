@@ -768,8 +768,8 @@ def SdistCorrection_SpectralTransform(databasepath, outprefix, obslist, sdistfil
 
     return
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     a = raw_input('Enter <Science> for science reduction or <Telluric> for telluric reduction: ')

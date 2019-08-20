@@ -10,26 +10,11 @@ import os
 
 def start(configfile):
     """
-    This module contains all the functions needed to perform the full reduction of SCIENCE or TELLURIC data.
+    This module combines reduced 2D science and/or telluric spectra.
 
-    Parameters are loaded from gnirs.cfg configuration file. This script will automatically detect if it is being run
-    on telluric data or science data. There are 5 steps.
-
-    INPUT FILES:
-        - Configuration file
-        - Science or Telluric frames
-        - mdfshiftrefimage
-        - masterflat
-        - /database files from the appropriate calibrations directory
-
-    OUTPUT FILES:
-        - If telluric:  cleaned (optional), prepared, radiation-event corrected, reduced, spatial distortion corrected, 
-          and transformed images
-        - If science:  cleaned (optional), prepared, radiation-event corrected, reduced, spatial distortion corrected, 
-          and transformed images
+    Parameters are loaded from gnirs.cfg configuration file.
 
     Args:
-        - kind (string): Either 'Science' or 'Telluric'
         - configfile: gnirs.cfg configuration file.
                 - Paths to the Science (str), reduction truth value (boolean)
                   E.g. 'target/date/config/{Sci,Tel}_ObsID/{Calibrations,Intermediate}', True
@@ -37,7 +22,7 @@ def start(configfile):
                   E.g. 'target/date/config/{Sci,Tel}_ObsID/{Calibrations,Intermediate}', True
                 - manualMode (boolean): Enable optional manualModeging pauses? Default: False
                 - overwrite (boolean): Overwrite old files? Default: False
-                # And gnirsReduce specific settings
+                # And gnirsCombineSpectra2D specific settings
     """
     logger = log.getLogger('gnirsCombineSpectra2D.start')
 
@@ -75,12 +60,23 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
+    
     # Read general config.
     manualMode = config.getboolean('defaults', 'manualMode')
     overwrite = config.getboolean('defaults', 'overwrite')
+    
     # config required for combining 2D spectra
     nscombineInter = config.getboolean('interactive', 'nscombineInter')
     calculateSpectrumSNR = config.getboolean('gnirsPipeline', 'calculateSpectrumSNR')
+
+    preparedPrefix = config.get('runtimeFilenames','preparedPrefix')
+    reducedPrefix = config.get('runtimeFilenames','reducedPrefix')
+    fitcoordsPrefix = config.get('runtimeFilenames','fitcoordsPrefix')
+    transformPrefix = config.get('runtimeFilenames','transformPrefix')
+    radiationCorrectedPrefix = config.get('runtimeFilenames','radiationCorrectedPrefix')
+    noskysubReducedPrefix = config.get('runtimeFilenames','noskysubReducedPrefix')
+    combinedsrc = config.get('runtimeFilenames','combinedsrc')
+    combinedsky = config.get('runtimeFilenames','combinedsky')
 
     ###########################################################################
     ##                                                                       ##
@@ -109,12 +105,25 @@ def start(configfile):
             ###########################################################################
 
             obspath += '/Intermediate'
+            os.chdir(obspath)
             iraf.chdir(obspath)
             logger.info("Currently working on combining 2D spectra in %s\n", obspath)
 
+            # Check if the 2D spectra to combine avalable in the observations directory path
+            logger.info("Checking if required lists and reduced 2D spectra available in %s", obspath)
+
             srclistfilename = 'src.list'
-            srclist = open(srclistfilename, "r").readlines()
-            srclist = [filename.strip() for filename in srclist]
+            if os.path.exists(srclistfilename):
+                logger.info("List of 2D source spectra available.")
+                srclist = open(srclistfilename, "r").readlines()
+                srclist = [filename.strip() for filename in srclist]
+            else:
+                logger.warning("List of 2D source spectra not available.")
+                logger.warning("Please run make_lists.py to generate the required list or provide it manually in")
+                logger.warning("%s", obspath)
+                logger.warning("Exiting script.\n")
+                raise SystemExit
+            
             if calculateSpectrumSNR:
                 # Check if there is a list of sky images in obspath
                 skylistfilename = 'sky.list'
@@ -126,33 +135,52 @@ def start(configfile):
                     logger.warning("available in %s . Setting the 'calculateSpectrumSNR' parameter for ", obspath)
                     logger.warning("the current set of observations to 'False'.\n")
                     calculateSpectrumSNR = False
+            
             nodAlistfilename = 'nodA.list'
-            nodAlist = open(nodAlistfilename, "r").readlines()
-            nodAlist = [filename.strip() for filename in nodAlist]
-            nodBlistfilename = 'nodB.list'
-            nodBlist = open(nodBlistfilename, "r").readlines()
-            nodBlist = [filename.strip() for filename in nodBlist]
-
-            # Check if the 2D spectra to combine avalable in the observations directory path
-            logger.info("Checking if required 2D spectra available in %s", obspath)
-
-            reduce_outputPrefix = 'r'
-            srccomblist = sorted(glob.glob('ttf'+reduce_outputPrefix+'lnN*.fits'))
-            if not srccomblist:  ## Check for spectral transformation calibration files
-                logger.warning("Required 2D source spectra not available.")
+            if os.path.exists(nodAlistfilename):
+                logger.info("List of 2D source spectra available.")
+                nodAlist = open(nodAlistfilename, "r").readlines()
+                nodAlist = [filename.strip() for filename in nodAlist]
             else:
-                logger.info("Required 2D spectra available.")
-            if calculateSpectrumSNR:
-                reduce_outputPrefix = 'k'
-                skycomblist = sorted(glob.glob('ttf'+reduce_outputPrefix+'lnN*.fits'))
-                if not skycomblist:  ## Check for spectral transformation calibration files
-                    logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required 2D sky spectra not ")
-                    logger.warning("available. Setting the 'calculateSpectrumSNR' parameter for the current set ")
-                    logger.warning("of observations to 'False'.\n")
-                    calculateSpectrumSNR = False
-                else:
-                    logger.info("Required 2D sky spectra available.\n")
+                logger.warning("List of nodA images not available.")
+                logger.warning("Please run make_lists.py to generate the required list or provide it manually in")
+                logger.warning("%s", obspath)
+                logger.warning("Exiting script.\n")
+                raise SystemExit
 
+            nodBlistfilename = 'nodB.list'
+            if os.path.exists(nodBlistfilename):
+                logger.info("List of nodA images available.")
+                nodBlist = open(nodBlistfilename, "r").readlines()
+                nodBlist = [filename.strip() for filename in nodBlist]
+            else:
+                logger.warning("List of nodB images not available.")
+                logger.warning("Please run make_lists.py to generate the required list or provide it manually in")
+                logger.warning("%s", obspath)
+                logger.warning("Exiting script.\n")
+                raise SystemExit
+
+            finalReducedPrefix = transformPrefix + transformPrefix + fitcoordsPrefix + reducedPrefix + \
+                radiationCorrectedPrefix + preparedPrefix
+            combineinlist = sorted(glob.glob(finalReducedPrefix + 'N*.fits'))
+            if len(combineinlist) > 0:  ## Check for spectral transformation files
+                logger.info("Required 2D source spectra available.")
+            else:
+                logger.warning("Required 2D spectra not available.")
+                logger.warning("Please run gnirsReduce.py to generate the required spectra or provide them manually")
+                logger.warning("in %s", obspath)
+            if calculateSpectrumSNR:
+                finalReducedPrefix = transformPrefix + transformPrefix + fitcoordsPrefix + noskysubReducedPrefix + \
+                    radiationCorrectedPrefix + preparedPrefix
+                combineinlist = sorted(glob.glob(finalReducedPrefix + 'N*.fits'))
+                if len(combineinlist) > 0:  ## Check for spectral transformation files
+                    logger.info("Required 2D sky spectra available.")
+                else:
+                    logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required 2D sky spectra not")
+                    logger.warning("available. Setting the 'calculateSpectrumSNR' parameter for the current set")
+                    logger.warning("of observations to 'False'.")
+                    calculateSpectrumSNR = False
+                    
             logger.info("Required 2D spectra check complete.")
 
             ###########################################################################
@@ -165,17 +193,17 @@ def start(configfile):
             if manualMode:
                 a = raw_input("About to enter combine 2D spectra.")
 
-            reduce_outPrefix = 'r'
-            srccombimage = 'src_comb.fits'
+            finalReducedPrefix = transformPrefix + transformPrefix + fitcoordsPrefix + reducedPrefix + \
+                radiationCorrectedPrefix + preparedPrefix
             crossCorrelation = 'yes'
-            combineSpectra2D(srclistfilename, srclist, nscombineInter, reduce_outputPrefix, srccombimage,
+            combineSpectra2D(srclistfilename, srclist, nscombineInter, finalReducedPrefix, combinedsrc,
                 crossCorrelation, overwrite)
-            shiftsMatch_flag = shiftsMatch(nodAlist, nodBlist, srccombimage)
+            shiftsMatch_flag = shiftsMatch(nodAlist, nodBlist, combinedsrc, preparedPrefix)
             if not shiftsMatch_flag:
                 crossCorrelation = 'no'
-                combineSpectra2D(srclistfilename, srclist, nscombineInter, reduce_outputPrefix, srccombimage,
+                combineSpectra2D(srclistfilename, srclist, nscombineInter, reducedPrefix, combinedsrc,
                     crossCorrelation, overwrite)
-                shiftsMatch_flag = shiftsMatch(nodAlist, nodBlist, srccombimage)
+                shiftsMatch_flag = shiftsMatch(nodAlist, nodBlist, combinedsrc, preparedPrefix)
                 if not shiftsMatch_flag:
                     logger.warning("Shifts calculated by nscombine with fl_cross='%s' not ", crossCorrelation)
                     logger.warning("within the acceptable range. The script already tried using nscombine with ")
@@ -190,11 +218,11 @@ def start(configfile):
             # reduced without sky subtraction (having reduce_outputPrefix 'k'); else, all observations reduced
             # with sky subtraction only (having reduce_outputPrefix 'r') will be combined.
             if calculateSpectrumSNR:
+                finalReducedPrefix = transformPrefix + transformPrefix + fitcoordsPrefix + noskysubReducedPrefix + \
+                    radiationCorrectedPrefix + preparedPrefix
                 logger.info("Combining the sky observations reduced without sky subtraction.\n")
-                reduce_outputPrefix = 'k'
-                skycombimage = 'sky_comb.fits'
                 crossCorrelation = 'no'
-                combineSpectra2D(skylistfilesname, skylist, nscombineInter, reduce_outputPrefix, skycombimage,
+                combineSpectra2D(skylistfilename, skylist, nscombineInter, finalReducedPrefix, combinedsky,
                     crossCorrelation, overwrite)
 
         logger.info("##############################################################################")
@@ -204,13 +232,17 @@ def start(configfile):
         logger.info("#                                                                            #")
         logger.info("##############################################################################\n")
 
-    os.chdir(path)  # Return to directory script was begun from.
+    # Return to directory script was begun from.
+    os.chdir(path)  
+    iraf.chdir(path)
 
     return
 
+##################################################################################################################
+#                                                     ROUTINES                                                   #
+##################################################################################################################
 
-# ----------------------------------------------------------------------------------------------------------------------
-def combineSpectra2D(combinlistfilename, combinlist, nscombineInter, reduce_outputPrefix, combinedimage, crossCorrelation, overwrite):
+def combineSpectra2D(combinlistfilename, combinlist, nscombineInter, inputPrefix, combinedimage, crossCorrelation, overwrite):
     """
     Combining the transformed science or telluric frames.
     """
@@ -226,18 +258,17 @@ def combineSpectra2D(combinlistfilename, combinlist, nscombineInter, reduce_outp
             return
 
     iraf.nscombine(
-        inimages='ttf'+reduce_outputPrefix+'ln//@'+combinlistfilename, tolerance=0.5,
-        output=combinedimage, output_suffix='', bpm="", dispaxis=1, pixscale=1., fl_cross=crossCorrelation,
-        fl_keepshift='no', fl_shiftint='yes', interptype="linear", boundary="nearest", constant=0.,
-        combtype="average", rejtype="none", masktype="none", maskvalue=0., statsec="[*,*]", scale="none",
-        zero="none", weight="none", lthreshold="INDEF", hthreshold="INDEF", nlow=1, nhigh=1, nkeep=0,
-        mclip='yes', lsigma=5., hsigma=5., ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5,
+        inimages=inputPrefix+'//@'+combinlistfilename, tolerance=0.5, output=combinedimage, output_suffix='', bpm="", 
+        dispaxis=1, pixscale=1., fl_cross=crossCorrelation, fl_keepshift='no', fl_shiftint='yes', interptype="linear", 
+        boundary="nearest", constant=0., combtype="average", rejtype="none", masktype="none", maskvalue=0., 
+        statsec="[*,*]", scale="none", zero="none", weight="none", lthreshold="INDEF", hthreshold="INDEF", nlow=1, 
+        nhigh=1, nkeep=0, mclip='yes', lsigma=5., hsigma=5., ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5,
         grow=0.0, nrejfile='', fl_vardq='yes', fl_inter=nscombineInter,
         logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
 
+#---------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
-def shiftsMatch(nodAlist, nodBlist, combinedimage):
+def shiftsMatch(nodAlist, nodBlist, combinedimage, preparedPrefix):
     """
     There is currently (2015) a bug in nscombine that miscalculates the shifts at certain position angles while 
     cross-correlating different frames. Unfortunately, we cannot provide a shift to nscombine directly. 
@@ -254,8 +285,8 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage):
     # robust way of doing this will be calculating the shifts between every two consecutive image sets from the nod 
     # lists and checking if the shift is within the acceptable range; and warn the user if it is not.
 
-    nodAheader = fits.open('n'+nodAlist[0])[0].header
-    nodBheader = fits.open('n'+nodBlist[0])[0].header
+    nodAheader = fits.open(preparedPrefix + nodAlist[0])[0].header
+    nodBheader = fits.open(preparedPrefix + nodBlist[0])[0].header
     nodQoffset = abs(nodAheader['QOFFSET'] - nodBheader['QOFFSET'])
     pixelscale = nodAheader['PIXSCALE']
     '''
@@ -285,8 +316,8 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage):
     
     return shiftsMatch_flag
 
+#----------------------------------------------------------------------------------------------------------------------#
 
-# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     start('gnirs.cfg')

@@ -1,4 +1,4 @@
-# Tue 13:58:45 13-Aug-2019
+# Tue 11:55:02 20-Aug-2019
 begin	aperture src_comb[SCI,4] 1 60.64085 772.
 	image	src_comb[SCI,4]
 	aperture	1
