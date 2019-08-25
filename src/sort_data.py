@@ -1,17 +1,12 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Sort GNIRS data into directories
 """
-import ConfigParser
-import datetime
-import log
-import numpy
-import obslog
 import os
-import re
 import shutil
+import ConfigParser
 import gnirsHeaders
+import log
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -31,7 +26,7 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make config file options case-sensitive
     config.read(configfile)
-    rawpath = config.get('getData', 'rawPath')
+    rawpath = config.get('getData', 'RawDataDir')
 
     info = gnirsHeaders.info(rawpath)
 

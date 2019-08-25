@@ -1,41 +1,12 @@
 #!/usr/bin/env python
 
-# MIT License
-
-# Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-################################################################################
-#                Import some useful Python utilities/modules                   #
-################################################################################
-
-import os, glob, log, ConfigParser, pkg_resources, gnirsHeaders
+import os, glob, log, ConfigParser, gnirsHeaders
 from astroquery.simbad import Simbad
-from astropy.table import Table
-from astropy.io import fits
 from astropy import units as u
 import astropy.coordinates as coord
-from pyraf import iraf
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def start(configfile):
     """
     - Checks if standard star directory exists in the science path; else, uses the telluric to do an approximate flux 
@@ -65,21 +36,19 @@ def start(configfile):
     logger.info('#                                               #')
     logger.info('#         Start GNIRS Get Telluric Info         #')
     logger.info('#                                               #')
-    logger.info('#################################################\n')
+    logger.info('#################################################')
 
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
-    
-    # Read general config
-    manualMode = config.getboolean('defaults','manualMode')
-    
-    # config required for getting standard info
+
+    manualMode = config.getboolean('defaults', 'manualMode')
+    runtimedata = config.get('defaults', 'runtimeData')
     combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
     extractRegularPrefix = config.get('runtimeFilenames', 'extractRegularPrefix')
     hLinePrefix = config.get('runtimeFilenames', 'hLinePrefix')
     dividedTelContinuumPrefix = config.get('runtimeFilenames', 'dividedTelContinuumPrefix')
-    referenceStarTableFilename = config.get('fluxCalibration','referenceStarTableFilename')
+    referenceStarTableFilename = config.get('fluxCalibration', 'referenceStarTableFilename')
 
     for scipath in config.options("ScienceDirectories"):
 
@@ -87,25 +56,17 @@ def start(configfile):
             logger.info('Skipping getting telluric info in %s', scipath)
             continue
 
-        ###########################################################################
-        ##                                                                       ##
-        ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
-        ##                                                                       ##
-        ###########################################################################
+        #########################################################################
+        #                                                                       #
+        #                  BEGIN - OBSERVATION SPECIFIC SETUP                   #
+        #                                                                       #
+        #########################################################################
 
+        stdpath = scipath + '/Standard/Intermediate'
+        telpath = scipath + '/Telluric/Intermediate'
         scipath += '/Intermediate'
 
-        logger.info("Moving to science directory: %s", scipath)
-        os.chdir(scipath)
-
-        # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
-        # Relative path/link expected to be at the top level of every sci directory
-        stdpath = '../Standard/Intermediate'
-        telpath = '../Telluric/Intermediate'
-        runtimedatapath = '../../runtimeData'
-        logger.info("Runtime data path: %s\n", runtimedatapath)
-
-        # Record the right number of order expected according to the GNIRS XD configuration.
+        # Record the right number of orders expected according to the GNIRS XD configuration.
         if 'LB_SXD' in scipath:
             orders = [3, 4, 5]
         elif 'LB_LXD' in scipath:
@@ -114,12 +75,10 @@ def start(configfile):
             orders = [3, 4, 5, 6, 7, 8]
         else:
             logger.error("###################################################################################")
-            logger.error("###################################################################################")
             logger.error("#                                                                                 #")
             logger.error("#   ERROR in get telluric info: unknown GNIRS XD configuration. Exiting script.   #")
             logger.error("#                                                                                 #")
             logger.error("###################################################################################")
-            logger.error("###################################################################################\n")
             raise SystemExit
 
         if os.path.exists(stdpath):
@@ -132,26 +91,24 @@ def start(configfile):
             stdpath = telpath
             logger.info("Telluric (used as standard) directory: %s\n", stdpath)
         else:
-            logger.error("#############################################################################################")
-            logger.error("#############################################################################################")
-            logger.error("#                                                                                           #")
-            logger.error("#   ERROR in get telluric info: standard and telluric data not available. Exiting script.   #")
-            logger.error("#                                                                                           #")
-            logger.error("#############################################################################################")
-            logger.error("#############################################################################################\n")
+            logger.error("############################################################################################")
+            logger.error("#                                                                                          #")
+            logger.error("#   ERROR in get telluric info: standard and telluric data not available. Exiting script.  #")
+            logger.error("#                                                                                          #")
+            logger.error("############################################################################################")
             raise SystemExit
 
         # Check if required runtime data files and telluric corrected science source spectra available in their
         # respective paths
         logger.info("Checking if required runtime data files and continuum divided telluric source spectra available")
-        logger.info("in %s and %s, respectively.", runtimedatapath, stdpath)
+        logger.info("in %s and %s, respectively.", runtimedata, stdpath)
 
-        if os.path.exists(runtimedatapath + '/' + referenceStarTableFilename):
+        if os.path.exists(runtimedata + '/' + referenceStarTableFilename):
             logger.info("Required reference star table of spectral types and temperatures available.")
-            referenceStarTable = open(runtimedatapath + '/' + referenceStarTableFilename, "r").readlines()
+            referenceStarTable = open(runtimedata + '/' + referenceStarTableFilename, "r").readlines()
         else:
             logger.warning("Required reference star table of spectral types and temperatures not available.")
-            logger.warning("Please provide the star table in %s.", runtimedatapath)
+            logger.warning("Please provide the star table in %s.", runtimedata)
             logger.warning("Exiting script.\n")
             raise SystemExit
 
@@ -169,12 +126,12 @@ def start(configfile):
 
         logger.info("Required runtime data files and continuum divided telluric spectra check complete.\n")
         
-        ###########################################################################
-        ##                                                                       ##
-        ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
-        ##               BEGIN GET TELLURIC INFO FOR AN OBSERVATION              ##
-        ##                                                                       ##
-        ###########################################################################
+        #########################################################################
+        #                                                                       #
+        #                 COMPLETE - OBSERVATION SPECIFIC SETUP                 #
+        #               BEGIN GET TELLURIC INFO FOR AN OBSERVATION              #
+        #                                                                       #
+        #########################################################################
         
         if manualMode:
             a = raw_input("About to enter getting telluric (used as standard star) info.")
@@ -184,8 +141,8 @@ def start(configfile):
         logger.info("Checking if there exists a section (possibly) with parameters for the telluric %s in", stdName)
         logger.info("the configuration file.")
 
-        parameters = ['stdRA', 'stdDEC', 'stdSpectralType', 'stdTemperature', 'stdMagnitude_order3', \
-            'stdMagnitude_order4', 'stdMagnitude_order5', 'stdMagnitude_order6', 'stdMagnitude_order7', \
+        parameters = ['stdRA', 'stdDEC', 'stdSpectralType', 'stdTemperature', 'stdMagnitude_order3',
+            'stdMagnitude_order4', 'stdMagnitude_order5', 'stdMagnitude_order6', 'stdMagnitude_order7',
             'stdMagnitude_order8']
         if config.has_section(stdName):
             logger.info("Section for the telluric %s available in the configuration file.", stdName)
@@ -285,7 +242,7 @@ def start(configfile):
             Simbad.add_votable_fields('flux(K)', 'flux(J)', 'flux(H)', 'sp')
             try:
                 logger.info("Querying SIMBAD...")
-                simbadStarTable = Simbad.query_region(coord.SkyCoord(ra=stdRA, dec=stdDEC, unit=(u.deg, u.deg), \
+                simbadStarTable = Simbad.query_region(coord.SkyCoord(ra=stdRA, dec=stdDEC, unit=(u.deg, u.deg),
                     frame='fk5'), radius=0.1 * u.deg)
                 # Viraja:  How are the RA and DEC formatted in XDpiped.csh???
             except:
@@ -419,21 +376,19 @@ def start(configfile):
         logger.info("##############################################################################")
         logger.info("#                                                                            #")
         logger.info("#  COMPLETE - Getting telluric info completed for                            #")
-        logger.info("#  %s", scipath                                                                )
+        logger.info("#  %s", scipath)
         logger.info("#                                                                            #")
-        logger.info("##############################################################################\n")
-
-    os.chdir(path)
+        logger.info("##############################################################################")
 
     return
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def nofits(filename):
     return filename.replace('.fits', '')
- 
-#---------------------------------------------------------------------------------------------------------------------#
 
+
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     start('gnirs.cfg')

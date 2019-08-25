@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Create file lists
 """
@@ -23,7 +22,7 @@ def start(configfile):
     config.optionxform = str  # make config file options case-sensitive
     config.read(configfile)
 
-    rawpath = config.get('getData', 'rawPath')
+    rawpath = config.get('getData', 'RawDataDir')
     scipath = config.items("ScienceDirectories")
     telpath = config.items("TelluricDirectories")
     calpath = config.items("CalibrationDirectories")

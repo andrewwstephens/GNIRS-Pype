@@ -1,31 +1,5 @@
 #!/usr/bin/env python
 
-# MIT License
-
-# Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-################################################################################
-#                Import some useful Python utilities/modules                   #
-################################################################################
-
 from astropy.io import fits
 import ConfigParser
 import datetime
@@ -38,8 +12,8 @@ from pyraf import iraf
 import numpy
 import os
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def write(configfile):
 
     logger = log.getLogger('gnirsWriteDataSheet.write')
@@ -125,8 +99,8 @@ def write(configfile):
 
     return
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def imexam(path, ypos=340):
     """
     Measure the spectrum peak and FWHM
@@ -205,8 +179,8 @@ def imexam(path, ypos=340):
     logger.debug('data: %s', data)
     return data
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def estimate_snr(onedspectrum, wav1=21000, wav2=22000, interactive=False):
     """
     Estimate Signal-to-Noise ratio
@@ -259,8 +233,8 @@ def estimate_snr(onedspectrum, wav1=21000, wav2=22000, interactive=False):
 
     return snr
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def parallactic(dec, ha, lat, az, units='degrees'):
     """
     Compute the parallactic angle
@@ -295,16 +269,16 @@ def parallactic(dec, ha, lat, az, units='degrees'):
     logger.debug('Parallactic Angle: %.3f %s', pa, units)
     return pa
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def hms2deg(angle):
     """Convert sexagesimal HH:MM:SS.sss to decimal degrees"""
     h, m, s = angle.split(':')
     hours = float(h) + float(m)/60. + float(s)/3600.
     return hours / 24. * 360.
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def location(observatory):
     """Return the observatory location as a dictionary"""
     if observatory == 'Gemini-North':
@@ -319,8 +293,8 @@ def location(observatory):
         raise SystemExit('Unknown observatory')
     return {'latitude': latitude, 'longitude': longitude, 'elevation': elevation}
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def plot_orders (file, extension, colour, ax):
     region = initcut[extension-1]
     region = str(region).split()
@@ -335,10 +309,10 @@ def plot_orders (file, extension, colour, ax):
         ydata.append(vals[1])
     ax.plot (xdata[start:end], ydata[start:end], '-', color=colour, alpha=0.7)
 
-#----------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def make_orders_fig(what, name):
-    fig = plt.figure ()
+    fig = pyplot.figure ()
     ax = fig.add_subplot(111)
     plot_orders (what+str(1)+'.txt', 1, 'black', ax)
     plot_orders (what+str(2)+'.txt', 2, 'blue', ax)
@@ -346,16 +320,20 @@ def make_orders_fig(what, name):
     plot_orders (what+str(4)+'.txt', 4, 'blue', ax)
     plot_orders (what+str(5)+'.txt', 5, 'black', ax)
     plot_orders (what+str(6)+'.txt', 6, 'blue', ax)
-    ylim = iraf.imstat(images=what+str(3), fields="midpt", lower=0, upper="INDEF", nclip=0, lsigma=3, usigma=3, binwidth=0.1, format="yes", Stdout=1)
+
+    # Use numpy instead of imstat?
+    ylim = iraf.imstat(images=what+str(3), fields="midpt", lower=0, upper="INDEF", nclip=0, lsigma=3, usigma=3,
+                       binwidth=0.1, format="yes", Stdout=1)
+
     ylim = ylim[1]
     ax.set_ylim(bottom=0, top=float(ylim)*2)
     ax.set_xlim (0.82, 2.55)
-    plt.xlabel (r"$\mu$m, observed")
-    plt.ylabel (r"F$_{\lambda}$")
-    plt.savefig(name)
+    pyplot.xlabel (r"$\mu$m, observed")
+    pyplot.ylabel (r"F$_{\lambda}$")
+    pyplot.savefig(name)
 
-#----------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     write('gnirs.cfg')

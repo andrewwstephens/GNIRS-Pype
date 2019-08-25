@@ -1,31 +1,5 @@
 #!/usr/bin/env python
 
-# MIT License
-
-# Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-################################################################################
-#                Import some useful Python utilities/modules                   #
-################################################################################
-
 from astropy.io import fits
 import ConfigParser
 import glob
@@ -34,8 +8,8 @@ import matplotlib.pyplot as plt
 import os
 from pyraf import iraf
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def start(configfile):
     """
     Do a Telluric correction using the IRAF TELLURIC task.
@@ -71,12 +45,10 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
-    
-    # Read general config
+
     manualMode = config.getboolean('defaults', 'manualMode')
     overwrite = config.getboolean('defaults', 'overwrite')
-    
-    # config required for telluric correction
+    runtimedata = config.get('defaults', 'runtimeData')
     hLineInter = config.getboolean('interactive', 'hLineInter')
     continuumInter = config.getboolean('interactive', 'continuumInter')
     telluricInter = config.getboolean('interactive', 'telluricInter')
@@ -103,7 +75,6 @@ def start(configfile):
     continuumRegions = config.items('continuumRegions')
     telluricRegions = config.items('telluricRegions')
 
-
     for scipath in config.options("ScienceDirectories"):
 
         if not config.getboolean("ScienceDirectories", scipath):  # only process directories that are marked True
@@ -125,19 +96,18 @@ def start(configfile):
         # Relative path/link expected to be at the top level of every sci directory
         telpath = '../Telluric/Intermediate'
         logger.info("Telluric directory: %s\n", telpath)
-        runtimedatapath = '../../runtimeData'
-        logger.info("Runtime data path: %s\n", runtimedatapath)
+        logger.info("Runtime data path: %s\n", runtimedata)
         
         # Check if required runtime data files and extracted science source spectra available in their respective paths
-        logger.info("Checking if required runtime data files and extracted spectra available in %s", runtimedatapath)
+        logger.info("Checking if required runtime data files and extracted spectra available in %s", runtimedata)
         logger.info("and %s, respectively.\n", scipath)
 
-        vega_spectrum = runtimedatapath+'/vega_ext.fits'
+        vega_spectrum = runtimedata + 'vega_ext.fits'
         if os.path.exists(vega_spectrum):
             logger.info("Required vega spectrum available.")
         else:
             logger.warning("Required vega spectrum not available. Please provide the vega spectrum in")
-            logger.warning("%s", runtimedatapath)
+            logger.warning("%s", runtimedata)
             logger.warning("Exiting script.\n")
             raise SystemExit
 
@@ -236,8 +206,8 @@ def start(configfile):
                 if manualMode:
                     a = raw_input("About to enter step 1: H line removal.")
 
-                hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, \
-                    hLineMethod, hLineRegions, tel_airmass, vega_spectrum, tempInter, \
+                hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders,
+                    hLineMethod, hLineRegions, tel_airmass, vega_spectrum, tempInter,
                     telpath+'/telluric_hLineInfo.txt', overwrite)
 
                 logger.info("##################################################################")
@@ -255,7 +225,7 @@ def start(configfile):
                 if manualMode:
                     a = raw_input("About to enter step 2: Fit telluric continuum.")
 
-                fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter, orders, \
+                fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter, orders,
                     continuumRegions, fitTelContinuumOrders, tempInter, overwrite)
 
                 logger.info("##################################################################")
@@ -348,7 +318,7 @@ def nofits(filename):
 
 #---------------------------------------------------------------------------------------------------------------------#
 
-def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, hLineMethod, \
+def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, hLineMethod,
     hLineRegions, tel_airmass, vega_spectrum, tempInter, tel_hline_infofile, overwrite):
     """
     Remove hydrogen (H) absorption lines from the extracted 1D telluric source spectrum. Output filename prefix is 'h'.
@@ -369,7 +339,7 @@ def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hL
 
         extension = i+1
         telluric_hLineRemovalInput = tel_src_extracted_spectrum+'[SCI,'+str(extension)+']'
-        calibrationInput = vega_spectrum+'['+str(extension)+']'
+        calibrationInput = vega_spectrum + '['+str(extension)+']'
         telluric_hLineRemovalOutput_SEF = telluric_hLineCorrectedSpectrum+'_order'+str(orders[i])+'_SEF.fits'
         telluric_hLineRemovalOutput_MEF = telluric_hLineCorrectedSpectrum+'_order'+str(orders[i])+'_MEF.fits'
 
@@ -394,10 +364,10 @@ def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hL
         else:
             logger.info("Removing H lines from order %d of the telluric 1D source spectra.", orders[i])
             if hLineMethod == 'vega':
-                vega(telluric_hLineRemovalInput, calibrationInput, telluric_hLineRemovalOutput_SEF, hLineInter, \
+                vega(telluric_hLineRemovalInput, calibrationInput, telluric_hLineRemovalOutput_SEF, hLineInter,
                     tel_airmass, sample[orders[i]], tel_hline_infofile, overwrite)
 
-            # TODO(Viraja):  Update the functions for the rest of the H line removal options (commented below).
+            # TODO(Viraja):  Update the functions for the rest of the H line removal options (commented out below).
             # NOTE: Untested because interactive scripted iraf tasks are broken... Once ready, add them to the 
             # part of the script where the output did not already exists and the task had to be run to generate
             # files for the first time. 
@@ -498,10 +468,10 @@ def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, tel_
         # Viraja:  Why is operand1 set to 1? I would imagine it is set to itself as the divisor is 0.
     '''
 
-#---------------------------------------------------------------------------------------------------------------------#
 
-def fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter, orders, \
-    continuumRegions, fitTelContinuumOrders, tempInter, overwrite):
+# ----------------------------------------------------------------------------------------------------------------------
+def fitTelluricContinuum(telluric_hLineCorrectedSpectrum, telluric_fitContinuum, continuumInter, orders,
+                         continuumRegions, fitTelContinuumOrders, tempInter, overwrite):
     """
     Fit the continua of the H line corrected telluric 1D source spectra using IRAF CONTINUUM task to normalize them.
     """

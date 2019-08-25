@@ -5,7 +5,7 @@ import argparse
 import ConfigParser
 import log
 import os
-import gnirsGetData
+import download_data
 import sort_data
 import make_lists
 import link_cals
@@ -19,9 +19,9 @@ import gnirsGetTelluricInfo
 import gnirsFluxCalibrate
 #import gnirsCombineOrdersXD
 #import gnirsCalculateSpectrumSNR
-#import writeDataSheet
+import gnirsWriteDataSheet
 
-__version__ = "2019.08.11"
+__version__ = "2019.08.23"
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -56,7 +56,6 @@ def start(args):
     logger.info("|                                      |")
     logger.info(" -------------------------------------- ")
 
-    # Make sure to change this if you change the default logfile.
     logger.info('The log file is gnirs.log.')
 
     logger.info("Reading parameters from %s\n", args.config)
@@ -70,17 +69,12 @@ def start(args):
             logger.info(option + " = " + config.get(section,option))
     logger.info("")
 
-    # Andy wonders why there are TWO config files: gnirs.cfg and defaultConfig.cfg              
-    # Viraja:  If the script gives the flexibility of how the user wishes to reduce the data, which I think gnirs.cfg \
-    # does offer, then we do not need a gnirsDefault.cfg
-
     manualMode = config.getboolean('defaults','manualMode')
 
     ####################################################################################
     #                         SETUP COMPLETE                                           #
     #                      BEGIN DATA REDUCTION                                        #
     #                                                                                  #
-    #   Twelve Steps:                                                                  #
     #       1) Get raw data - gnirsData.py                                             #
     #       2) Sort raw data - sort_data, make_lists, link_cals                        #
     #       3) Check raw data - gnirsCheckData.py                                      #
@@ -96,17 +90,17 @@ def start(args):
     #                                                                                  #
     ####################################################################################
 
-    #########################################################################
-    #                      STEP 1: Get raw data                             #
-    #########################################################################
-    
+    # ------------------------------------------------------------------------------------------------------------------
+    # STEP 1: Download the raw data:
+
     if config.getboolean('gnirsPipeline', 'getData'):
         if manualMode:
-            a = raw_input('About to enter gnirsGetData to locate the raw data directory or download data from the Gemini public archive.')
-        gnirsGetData.start(args.config)
+            a = raw_input('About to enter gnirsGetData to download data from the Gemini public archive.')
+        download_data.start(args.config)
 
     # ------------------------------------------------------------------------------------------------------------------
     # STEP 2: Sort the data into directories, make the file lists, and link the best calibrations:
+
     if config.getboolean('gnirsPipeline', 'sort'):
         sort_data.start(args.config)
         make_lists.start(args.config)
@@ -206,7 +200,7 @@ def start(args):
     if config.getboolean('gnirsPipeline', 'writeDataSheet'):
         if manualMode:
             a = raw_input('About to enter gnirsWriteDataSheet to write a data sheet of results from GNIRS data reduction.')
-        writeDataSheet.start(args.config)
+        gnirsWriteDataSheet.start(args.config)
 
     #########################################################################
     #                    Data Reduction Complete!                           #

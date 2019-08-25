@@ -1,4 +1,4 @@
-"""Copyright (C) 2015-2016 Association of Universities for Research in Astronomy, Inc. (AURA)
+"""Copyright (C) 2015-2019 Association of Universities for Research in Astronomy, Inc. (AURA)
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -32,9 +32,8 @@ POSSIBILITY OF SUCH DAMAGE."""
 import os, os.path
 import sys
 from contextlib import closing
-from StringIO import StringIO
+import StringIO
 import urllib2
-import xml.dom.minidom as xmd
 import tarfile
 import hashlib
 

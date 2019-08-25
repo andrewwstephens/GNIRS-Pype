@@ -677,7 +677,7 @@ def reduceObservations(skySubtraction, outprefix, masterflat, radiationThreshold
                 os.remove(f)
         else:
             logger.warning("Output files exist and overwrite flag not set.")
-            logger.warnign('Skipping nsreduce for all observations.')
+            logger.warning('Skipping nsreduce for all observations.')
             return
 
     iraf.nsreduce(

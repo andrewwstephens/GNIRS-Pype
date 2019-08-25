@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Associate and link GNIRS calibrations
 """
@@ -34,8 +33,8 @@ def start(configfile):
     # Survey all the directories and record the average time when each was observed.
     # This is complicated because calibrations might not have the same ObsID as the science.
     # Also, the "AVETIME" is the average over all files with the same OBSID, so highly weighted towards the science.
-    # What we really want is the average time of the files in each directory (sci, tel, cal).
-    # Re-calculate the average time using only the files in each directory (so without mixing science and cals).
+    # What we really want is the average time of the files in each directory (sci, tel, cal), so
+    # recalculate the average times using only the files in each directory (so without mixing science and cals).
 
     alldirs = []   # List of all output directories
     caldirs = []   # List of calibration directories
@@ -43,6 +42,7 @@ def start(configfile):
     teldirs = []   # List of Telluric standard directories
     obstype = []   # list of observation types (science, telluric, calibration)
     obstime = []   # List of average observation times in each directory
+    obsconf = []   # List of observation configurations
 
     for path, process in scipath:
         logger.debug('%s = %s', path, process)
@@ -52,6 +52,7 @@ def start(configfile):
             logger.debug('first_file = %s', first_file)
             alldirs.append(path)
             scidirs.append(path)
+            obsconf.append(header[first_file]['CONFIG'])
             obstype.append('science')
             obstime.append(header[first_file]['AVETIME'])
 
@@ -63,6 +64,7 @@ def start(configfile):
             logger.debug('first_file = %s', first_file)
             alldirs.append(path)
             teldirs.append(path)
+            obsconf.append(header[first_file]['CONFIG'])
             obstype.append('telluric')
             obstime.append(header[first_file]['AVETIME'])
 
@@ -74,30 +76,39 @@ def start(configfile):
             logger.debug('first_file = %s', first_file)
             alldirs.append(path)
             caldirs.append(path)
+            obsconf.append(header[first_file]['CONFIG'])
             obstype.append('calibration')
             obstime.append(header[first_file]['AVETIME'])
 
     obstime = numpy.array(obstime)
     obstype = numpy.array(obstype)
+    obsconf = numpy.array(obsconf)
 
     logger.debug('alldirs: %s', alldirs)
 
-    logger.info('------------------------------------------')
-    logger.info('Calibration Summary')  # Print a summary table for humans to decide if the best choices were made
+    logger.info('------------------------------------------------------------------')
+    logger.info('Observation Summary')  # Print a summary table for humans to decide if the best choices were made
     for i in range(len(alldirs)):
-        logger.info('%s %s %s', alldirs[i], obstype[i], obstime[i])
-    logger.info('------------------------------------------')
+        logger.info('%s %s %s %s', alldirs[i], obstype[i], obsconf[i], obstime[i])
+    logger.info('------------------------------------------------------------------')
 
-    logger.info('Searching for best Telluric standards...')
+    logger.info('Searching for best Telluric standard for each science observation...')
     for d in scidirs:
         logger.info('Science: %s', d)
-        scitime = obstime[alldirs.index(d)]
-        logger.debug('scitime = %s', scitime)
-        dt = obstime[obstype == 'telluric'] - scitime
+        indx = alldirs.index(d)
+        sciconf = obsconf[indx]
+        scitime = obstime[indx]
+        match = numpy.where((obstype == 'telluric') & (obsconf == sciconf))
+        logger.debug('match: %s', match)
+        dt = obstime[match] - scitime
         logger.debug('dt = %s', dt)
-        imin = numpy.argmin(dt)
-        logger.debug('imin = %s', imin)
-        logger.info('Best Telluric: %s (dt: %s)', teldirs[imin], str(dt[imin]))
+        imin = numpy.argmin(dt)  # the index of the min dt
+        logger.debug('imin: %s', imin)
+
+        indx = match[imin][0]   # the index of the best observation in the list of all observations
+        logger.debug('indx: %s', indx)
+
+        logger.info('Best Telluric: %s (dt = %s)', alldirs[indx], dt[imin])
         if abs(dt[imin] > datetime.timedelta(hours=1.5)):
             logger.warning('Time difference > 1.5 hours')
         dest = d + '/Telluric'
@@ -109,19 +120,26 @@ def start(configfile):
                 logger.warning('Cannot create link %s', dest)
                 logger.warning('Link already exists and overwrite = False')
                 continue
-        logger.info('Linking: %s -> %s', teldirs[imin], dest)
-        os.symlink(teldirs[imin], dest)
+        logger.info('Linking: %s -> %s', alldirs[indx], dest)
+        os.symlink(alldirs[indx], dest)
 
-    logger.info('Searching for best Telluric calibrations...')
+    logger.info('Searching for best calibrations for each Telluric standard...')
     for d in teldirs:
         logger.info('Telluric: %s', d)
-        teltime = obstime[alldirs.index(d)]
-        logger.debug('teltime = %s', teltime)
-        dt = obstime[obstype == 'calibration'] - teltime
+        indx = alldirs.index(d)
+        telconf = obsconf[indx]
+        teltime = obstime[indx]
+        match = numpy.where((obstype == 'calibration') & (obsconf == telconf))
+        dt = obstime[match] - teltime
         logger.debug('dt = %s', dt)
-        imin = numpy.argmin(dt)
-        logger.debug('imin = %s', imin)
-        logger.info('Best Calibration: %s (dt: %s)', caldirs[imin], str(dt[imin]))
+
+        imin = numpy.argmin(dt)  # the index of the min dt
+        logger.debug('imin: %s', imin)
+
+        indx = match[numpy.argmin(dt)][0]  # the index of the best observation in the list of all observations
+        logger.debug('indx = %s', indx)
+
+        logger.info('Best Calibration: %s (dt = %s)', alldirs[indx], dt[imin])
         if abs(dt[imin] > datetime.timedelta(hours=1)):
             logger.warning('Time difference > 1 hour')
         dest = d + '/Calibrations'
@@ -133,8 +151,8 @@ def start(configfile):
                 logger.warning('Cannot create link %s', dest)
                 logger.warning('Link already exists and overwrite = False')
                 continue
-        logger.info('Linking %s -> %s', caldirs[imin], dest)
-        os.symlink(caldirs[imin], dest)
+        logger.info('Linking %s -> %s', alldirs[indx], dest)
+        os.symlink(alldirs[indx], dest)
 
     return
 
