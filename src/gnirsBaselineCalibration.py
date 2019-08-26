@@ -509,16 +509,8 @@ def start(configfile):
 #                                        FUNCTIONS                                  #
 #####################################################################################
 
-def nofits(filename):
-    """
-    Remove extension '.fits' from the filename.
-    """
-    logger = log.getLogger('gnirsFluxCalibration.nofits')
-    
-    return filename.replace('.fits', '')
 
 #---------------------------------------------------------------------------------------------------------------------#
-
 def cleanNoise(inputlist, outputPrefix, overwrite):
     """
     Clean detectoer pattern noise in images.  

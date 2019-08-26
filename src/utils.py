@@ -28,6 +28,24 @@ def boxit(text, character, center=True):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+def get_orders(path):
+    if 'LB_SXD' in path:
+        orders = [3, 4, 5]
+    elif 'LB_LXD' in path:
+        orders = [3, 4, 5, 6, 7, 8]
+    elif 'SB_SXD' in path:
+        orders = [3, 4, 5, 6, 7, 8]
+    else:
+        raise SystemExit("Unknown GNIRS configuration.  Cannot determine the XD orders.")
+    return orders
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def nofits(filename):
+    return filename.replace('.fits', '')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     boxit('Some text that needs a star box around it', '*')

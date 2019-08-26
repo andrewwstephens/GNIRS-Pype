@@ -1,39 +1,14 @@
 #!/usr/bin/env python
 
-# MIT License
-
-# Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-################################################################################
-#                Import some useful Python utilities/modules                   #
-################################################################################
-
-import os, sys, glob, log, ConfigParser, gnirsHeaders
+import ConfigParser
+import glob
+import gnirsHeaders
+import log
 from pyraf import iraf
-from astropy.io import fits
-import numpy as np
-import matplotlib.pyplot as plt
+import os
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def start(configfile):
     """
     Do a flux calibration.
@@ -57,15 +32,7 @@ def start(configfile):
     iraf.imutil()
 
     # Reset to default parameters the used IRAF tasks.
-    iraf.unlearn(iraf.gemini,iraf.gemtools,iraf.gnirs
-    ,iraf.imutil)
-
-    # From http://bishop.astro.pomona.edu/Penprase/webdocuments/iraf/beg/beg-image.html:
-    # Before doing anything involving image display the environment variable stdimage must be set to the correct frame 
-    # buffer size for the display servers (as described in the dev$graphcap file under the section "STDIMAGE devices") 
-    # or to the correct image display device. The task GDEVICES is helpful for determining this information for the 
-    # display servers.
-    iraf.set(stdimage='imt1024')
+    iraf.unlearn(iraf.gemini, iraf.gemtools, iraf.gnirs, iraf.imutil)
 
     # Prepare the IRAF package for GNIRS.
     # NSHEADERS lists the header parameters used by the various tasks in the GNIRS package (excluding headers values 
@@ -114,11 +81,11 @@ def start(configfile):
             logger.info('Skipping flux calibaration in %s', scipath)
             continue
 
-        ###########################################################################
-        ##                                                                       ##
-        ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
-        ##                                                                       ##
-        ###########################################################################
+        #########################################################################
+        #                                                                       #
+        #                  BEGIN - OBSERVATION SPECIFIC SETUP                   #
+        #                                                                       #
+        #########################################################################
 
         scipath += '/Intermediate'
         logger.info("Moving to science directory: %s\n", scipath)
@@ -140,12 +107,10 @@ def start(configfile):
                 fluxCalibrationMethod = raw_input("Confirm <fluxcalibrator> or <telluricapproximate> for flux calibration:")
             else:
                 logger.error("#######################################################################################")
-                logger.error("#######################################################################################")
                 logger.error("#                                                                                     #")
                 logger.error("#   ERROR in get flux calibration: unknown flux calibration method. Exiting script.   #")
                 logger.error("#                                                                                     #")
                 logger.error("#######################################################################################")
-                logger.error("#######################################################################################\n")
                 raise SystemExit
         elif os.path.exists(telpath):
             logger.info("Standard directory does not exist.")
@@ -159,12 +124,10 @@ def start(configfile):
                 logger.info("Telluric (used as standard) directory: %s\n", stdpath)
             else:
                 logger.error("#######################################################################################")
-                logger.error("#######################################################################################")
                 logger.error("#                                                                                     #")
                 logger.error("#   ERROR in get flux calibration: unknown flux calibration method. Exiting script.   #")
                 logger.error("#                                                                                     #")
                 logger.error("#######################################################################################")
-                logger.error("#######################################################################################\n")
                 raise SystemExit
         else:
             logger.warning("Parameter 'fluxCalibration' is set to 'yes', but no standard and telluric data available.")
@@ -245,20 +208,18 @@ def start(configfile):
                 config.getfloat(stdName,'stdMagnitude_order8')]
         else:
             logger.error("###################################################################################")
-            logger.error("###################################################################################")
             logger.error("#                                                                                 #")
             logger.error("#     ERROR in flux calibrate: unknown GNIRS XD configuration. Exiting script.    #")
             logger.error("#                                                                                 #")
             logger.error("###################################################################################")
-            logger.error("###################################################################################\n")
             raise SystemExit
 
-        ###########################################################################
-        ##                                                                       ##
-        ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
-        ##               BEGIN FLUX CALIBRATION FOR AN OBSERVATION               ##
-        ##                                                                       ##
-        ###########################################################################
+        #########################################################################
+        #                                                                       #
+        #                 COMPLETE - OBSERVATION SPECIFIC SETUP                 #
+        #               BEGIN FLUX CALIBRATION FOR AN OBSERVATION               #
+        #                                                                       #
+        #########################################################################
 
         if fluxCalibrationMethod == 'fluxcalibrator':
             # This block is not currently set up.
@@ -281,7 +242,7 @@ def start(configfile):
             if manualMode:
                 a = raw_input("About to enter flux calibration.\n")
 
-            stdTemperature = config.getfloat(stdName,'stdTemperature')
+            stdTemperature = config.getfloat(stdName, 'stdTemperature')
 
             # EXPTIME keyword is the "Exposure time (s) for sum of all coadds"
             sciExptime = sci_header_info[os.path.basename(sci_telluricCorrected[0])]['EXPTIME']
@@ -329,9 +290,8 @@ def start(configfile):
                     logger.info("exposure times.")
                     flambda = 1 * (stdExptime / sciExptime)
                     absolute_fluxcalib = False
-                logger.info("Completed converting magnitude to flux density for the telluric.")
 
-                logger.info("Making a blackbody.")
+                logger.info("Making a %dK blackbody.", stdTemperature)
                 # First find the start and end wavelengths of the spectral order
                 waveReferencePixel = iraf.hselect(images=tel_dividedContinuum[i]+'[1]', fields='CRPIX1', expr='yes',
                     missing='INDEF', mode='al', Stdout=1)
@@ -358,7 +318,6 @@ def start(configfile):
                     title='', ncols=ndimensions, naps=1, header='', wstart = waveStart, wend=waveEnd, continuum=1000, 
                     slope=0.0, temperature=stdTemperature, fnu='no', lines='', nlines=0, profile='gaussian', peak=-0.5, 
                     gfwhm=20.0, lfwhm=20.0, seed=1, comments='yes', mode='ql')
-                logger.info("Completed making a blackbody.")
                 
                 logger.info("Scaling the blackbody to the telluric magnitude.")
                 if 3 <= orders[i] <= 5:
@@ -504,20 +463,18 @@ def start(configfile):
 
         else:
             logger.error("#######################################################################################")
-            logger.error("#######################################################################################")
             logger.error("#                                                                                     #")
             logger.error("#     ERROR in flux calibration: unknown flux calibration method. Exiting script.     #")
             logger.error("#                                                                                     #")
             logger.error("#######################################################################################")
-            logger.error("#######################################################################################\n")
             raise SystemExit
 
         logger.info("##############################################################################")
         logger.info("#                                                                            #")
         logger.info("#  COMPLETE - Flux calibration completed for                                 #")
-        logger.info("#  %s", scipath                                                                )
+        logger.info("#  %s", scipath)
         logger.info("#                                                                            #")
-        logger.info("##############################################################################\n")
+        logger.info("##############################################################################")
 
     # Return to directory script was begun from.
     os.chdir(path)
@@ -528,26 +485,18 @@ def start(configfile):
 #                                                     ROUTINES                                                   #
 ##################################################################################################################
 
-def nofits(filename):
-    """
-    Remove extension '.fits' from the filename.
-    """
-    logger = log.getLogger('gnirsFluxCalibration.nofits')
-    
-    return filename.replace('.fits', '')
 
-#---------------------------------------------------------------------------------------------------------------------#
-
+# ----------------------------------------------------------------------------------------------------------------------
 def float_from_singleElementList(single_element_list):
     """
     Get the single element in a list and convert it into a float.
     """
     logger = log.getLogger('gnirsFluxCalibration.getFloat_from_singleElementList')
     
-    return float(single_element_list[0].replace("'",""))
+    return float(single_element_list[0].replace("'", ""))
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 def fluxcalib_units_in_headers(image, abs_fluxcal):
     """
     Add appropriate flux calibration units (whether absolute or relative flux calibration) to the image headers after
@@ -563,8 +512,8 @@ def fluxcalib_units_in_headers(image, abs_fluxcal):
         iraf.hedit(images=image, fields='FUNITS', value='Flambda, relative', add='yes', addonly='no', delete='no',
             verify='no', show='no', update='yes')
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
     start('gnirs.cfg')

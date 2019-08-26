@@ -25,7 +25,7 @@ def start(configfile):
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
 
-    rawdatadir = config.get('getData', 'RawDataDir')
+    rawdatadir = config.get('DownloadData', 'RawDataDir')
     program = config.get('getData', 'Program')
     logger.debug('rawdata: %s', rawdatadir)
     logger.debug('program: %s', program)

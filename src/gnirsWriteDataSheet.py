@@ -295,6 +295,8 @@ def location(observatory):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# Copied from XDGNIRS/CombineOrdersXD.py
+
 def plot_orders (file, extension, colour, ax):
     region = initcut[extension-1]
     region = str(region).split()
@@ -311,6 +313,8 @@ def plot_orders (file, extension, colour, ax):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# Copied from XDGNIRS/CombineOrdersXD.py
+
 def make_orders_fig(what, name):
     fig = pyplot.figure ()
     ax = fig.add_subplot(111)

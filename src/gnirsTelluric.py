@@ -89,7 +89,6 @@ def start(configfile):
 
         scipath += '/Intermediate'
         logger.info("Moving to science directory: %s", scipath)
-        os.chdir(scipath)
         iraf.chdir(scipath)
 
         # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
@@ -303,21 +302,15 @@ def start(configfile):
         logger.info("#  COMPLETE - Telluric correction completed for                              #")
         logger.info("#  %s", scipath)
         logger.info("#                                                                            #")
-        logger.info("##############################################################################\n")
+        logger.info("##############################################################################")
 
-    ## Return to the original directory
-    iraf.chdir(path) 
-    os.chdir(path)
+
+    iraf.chdir(path)  # Return to the original directory
 
     return
 
-#---------------------------------------------------------------------------------------------------------------------#
 
-def nofits(filename):
-    return filename.replace('.fits', '')
-
-#---------------------------------------------------------------------------------------------------------------------#
-
+# ----------------------------------------------------------------------------------------------------------------------
 def hLineRemoval(tel_src_extracted_spectrum, telluric_hLineCorrectedSpectrum, hLineInter, orders, hLineMethod,
     hLineRegions, tel_airmass, vega_spectrum, tempInter, tel_hline_infofile, overwrite):
     """

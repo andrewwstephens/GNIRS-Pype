@@ -17,11 +17,11 @@ import gnirsExtractSpectra1D
 import gnirsTelluric
 import gnirsGetTelluricInfo
 import gnirsFluxCalibrate
-#import gnirsCombineOrdersXD
+import gnirsCombineOrdersXD
 #import gnirsCalculateSpectrumSNR
 import gnirsWriteDataSheet
 
-__version__ = "2019.08.23"
+__version__ = "2019.08.25"
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ def start(args):
     # ------------------------------------------------------------------------------------------------------------------
     # STEP 1: Download the raw data:
 
-    if config.getboolean('gnirsPipeline', 'getData'):
+    if config.getboolean('gnirsPipeline', 'DownloadData'):
         if manualMode:
             a = raw_input('About to enter gnirsGetData to download data from the Gemini public archive.')
         download_data.start(args.config)
@@ -182,7 +182,7 @@ def start(args):
     if config.getboolean('gnirsPipeline', 'combineOrdersXD'):
         if manualMode:
             a = raw_input('About to enter gnirsCombineOrdersXD to combine diferent spectral orders.')
-        combineOrdersXD.start(args.config)
+        gnirsCombineOrdersXD.start(args.config)
     
     #########################################################################
     #                    STEP 11: Calculate SNR spectrum                    #
@@ -191,7 +191,7 @@ def start(args):
     if config.getboolean('gnirsPipeline', 'calculateSpectrumSNR'):
         if manualMode:
             a = raw_input('About to enter gnirsCalculateSpectrumSNR to calculate the SNR spectrum.')
-        calculateSpectrumSNR.start(args.config)
+        gnirsCalculateSpectrumSNR.start(args.config)
     
     #########################################################################
     #                        STEP 12: Write Data Sheet                      #
