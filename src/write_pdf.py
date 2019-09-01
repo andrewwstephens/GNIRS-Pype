@@ -16,7 +16,7 @@ import os
 # ----------------------------------------------------------------------------------------------------------------------
 def write(configfile):
 
-    logger = log.getLogger('gnirsWriteDataSheet.write')
+    logger = log.getLogger('write')
 
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
@@ -91,11 +91,24 @@ def write(configfile):
         # xlabel is either "Rest" or "Observed" depending on whether a redshift was found and corrected for:
         xlabel = r'Observed wavelength, $\mu$m'
         pyplot.xlabel(xlabel, size=8)
-
         fig.tight_layout()
         pyplot.legend(loc='best', fancybox=True, numpoints=1, prop={'size': 6})
         pyplot.grid(linewidth=0.25)
         pyplot.savefig(path + '/Final/data_sheet.pdf')
+
+        # Plot the separate orders so the user can judge if there are any unacceptable offsets
+        # and edit the regions used for combining, if they like:
+        pyplot.figure()
+        make_orders_fig ("final", "../PRODUCTS/orders.pdf")
+        if extras == 'yes':
+            make_orders_fig ("flamfull", "../PRODUCTS/orders_fullslit.pdf")
+            for k in range (1,steps):
+                make_orders_fig ("flamstep"+str(k)+"_", "../PRODUCTS/orders_step"+str(k)+".pdf")
+        pyplot.grid(linewidth=0.25)
+        pyplot.savefig(path + '/Final/data_sheet.pdf')
+
+
+
 
     return
 
@@ -318,14 +331,14 @@ def plot_orders (file, extension, colour, ax):
 def make_orders_fig(what, name):
     fig = pyplot.figure ()
     ax = fig.add_subplot(111)
-    plot_orders (what+str(1)+'.txt', 1, 'black', ax)
-    plot_orders (what+str(2)+'.txt', 2, 'blue', ax)
-    plot_orders (what+str(3)+'.txt', 3, 'black', ax)
-    plot_orders (what+str(4)+'.txt', 4, 'blue', ax)
-    plot_orders (what+str(5)+'.txt', 5, 'black', ax)
-    plot_orders (what+str(6)+'.txt', 6, 'blue', ax)
+    plot_orders(what+str(1)+'.txt', 1, 'black', ax)
+    plot_orders(what+str(2)+'.txt', 2, 'blue', ax)
+    plot_orders(what+str(3)+'.txt', 3, 'black', ax)
+    plot_orders(what+str(4)+'.txt', 4, 'blue', ax)
+    plot_orders(what+str(5)+'.txt', 5, 'black', ax)
+    plot_orders(what+str(6)+'.txt', 6, 'blue', ax)
 
-    # Use numpy instead of imstat?
+    # Faster to use numpy instead of imstat?
     ylim = iraf.imstat(images=what+str(3), fields="midpt", lower=0, upper="INDEF", nclip=0, lsigma=3, usigma=3,
                        binwidth=0.1, format="yes", Stdout=1)
 

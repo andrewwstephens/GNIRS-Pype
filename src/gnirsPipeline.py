@@ -17,7 +17,7 @@ import gnirsExtractSpectra1D
 import gnirsTelluric
 import gnirsGetTelluricInfo
 import gnirsFluxCalibrate
-import gnirsCombineOrdersXD
+import combine_orders
 #import gnirsCalculateSpectrumSNR
 import gnirsWriteDataSheet
 
@@ -84,7 +84,7 @@ def start(args):
     #       7) Extract 1D spectra - gnirsExtract1Dspectra.py                           #
     #       8) Perform telluric correction - gnirsTelluric.py                          #
     #       9) Perform flux calibration - gnirsFluxCalibrate.py                        #
-    #      10) Combine XD Orders - gnirsCombineOrdersXD.py                             #
+    #      10) Combine XD Orders - combine_orders.py                                   #
     #      11) Calculate the SNR spectrum - gnirsCalculateSpectrumSNR.py               #
     #      12) Write data sheet - gnirsWriteDataSheet.py                               #
     #                                                                                  #
@@ -179,10 +179,10 @@ def start(args):
     #                       STEP 10: Combine XD Orders                      #
     #########################################################################
 
-    if config.getboolean('gnirsPipeline', 'combineOrdersXD'):
+    if config.getboolean('gnirsPipeline', 'combineOrders'):
         if manualMode:
             a = raw_input('About to enter gnirsCombineOrdersXD to combine diferent spectral orders.')
-        gnirsCombineOrdersXD.start(args.config)
+        combine_orders.start(args.config)
     
     #########################################################################
     #                    STEP 11: Calculate SNR spectrum                    #

@@ -6,6 +6,7 @@ import gnirsHeaders
 import log
 from pyraf import iraf
 import os
+import utils
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -139,7 +140,7 @@ def start(configfile):
         logger.info("and %s, respectively.", stdpath)
 
         sci_telluricCorrected = sorted(glob.glob(scipath + '/' + dividedTelContinuumPrefix + telluricPrefix + \
-            extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
+            extractRegularPrefix + utils.nofits(combinedsrc) + '_order*_MEF.fits'))
         if len(sci_telluricCorrected) > 0:
             logger.info("Required telluric corrected science source spectra available.")
             sci_header_info = gnirsHeaders.info(sci_telluricCorrected[0])
@@ -157,7 +158,7 @@ def start(configfile):
             # directory (similar to the telluric symbolic link in the science directory)
             '''
             std_telluricCorrected = sorted(glob.glob(stdpath + '/' + dividedTelContinuumPrefix + telluricPrefix + \
-                extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
+                extractRegularPrefix + utils.nofits(combinedsrc) + '_order*_MEF.fits'))
             if len(std_telluricCorrected) > 0:
                 logger.info("Required telluric corrected standard source spectra available.")
                 std_header_info = gnirsHeaders.info(std_telluricCorrected[0])  
@@ -172,7 +173,7 @@ def start(configfile):
         
         if fluxCalibrationMethod == 'telluricapproximate':
             tel_dividedContinuum = sorted(glob.glob(telpath + '/' + dividedTelContinuumPrefix + hLinePrefix + \
-                extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
+                extractRegularPrefix + utils.nofits(combinedsrc) + '_order*_MEF.fits'))
             if len(tel_dividedContinuum) > 0:
                 logger.info("Required continuum divided telluric source spectra available.")
                 tel_header_info = gnirsHeaders.info(tel_dividedContinuum[0])
@@ -255,7 +256,7 @@ def start(configfile):
             for i in range(len(orders)):
 
                 fluxCalibrationInput = os.path.basename(sci_telluricCorrected[i])+'[1]'
-                sci_telluricCorrected_base_nofits = nofits(os.path.basename(sci_telluricCorrected[i])) 
+                sci_telluricCorrected_base_nofits = utils.nofits(os.path.basename(sci_telluricCorrected[i]))
                 fluxCalibrationOutput_SEF = fluxCalibPrefix + \
                     sci_telluricCorrected_base_nofits[:sci_telluricCorrected_base_nofits.rfind('_')+1] + 'SEF.fits'
                 logger.debug("fluxCalibrationOutput_SEF: %s", fluxCalibrationOutput_SEF)
