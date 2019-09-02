@@ -19,7 +19,7 @@ import gnirsGetTelluricInfo
 import gnirsFluxCalibrate
 import combine_orders
 #import gnirsCalculateSpectrumSNR
-import gnirsWriteDataSheet
+import write_pdf
 
 __version__ = "2019.08.25"
 
@@ -200,7 +200,7 @@ def start(args):
     if config.getboolean('gnirsPipeline', 'writeDataSheet'):
         if manualMode:
             a = raw_input('About to enter gnirsWriteDataSheet to write a data sheet of results from GNIRS data reduction.')
-        gnirsWriteDataSheet.start(args.config)
+        write_pdf.start(args.config)
 
     #########################################################################
     #                    Data Reduction Complete!                           #

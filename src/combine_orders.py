@@ -347,7 +347,7 @@ def start(configfile):
                         output=finalpath + finalSpectrum + '_step' + str(k) + '_rest.txt',
                         header='no', wformat='')
 
-        # Write ASCII output of the individual orders for later plotting:
+        # Write ASCII output of the individual orders for plotting:
         prefix = finalPrefix + fluxCalibPrefix + dividedTelContinuumPrefix + telluricPrefix + extractRegularPrefix
         output = utils.make_list(prefix + utils.nofits(combinedsrc), orders=orders, suffix='.txt')
         if not utils.exists(output, overwrite):

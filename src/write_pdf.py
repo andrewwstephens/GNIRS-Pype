@@ -7,14 +7,17 @@ import log
 import matplotlib
 # matplotlib.use('Agg')
 from matplotlib import pyplot
+from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.pyplot import table
 from pyraf import iraf
 import numpy
 import os
+import re
+import utils
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def write(configfile):
+def start(configfile):
 
     logger = log.getLogger('write')
 
@@ -31,11 +34,13 @@ def write(configfile):
             logger.debug('Skipping %s', path)
             continue
 
+        pdf = PdfPages(path + '/Final/data_sheet.pdf')
+
         sci = imexam(path)
         tel = imexam(path + '/Telluric')
 
-        sci['SNR'] = 100.  # estimate_snr('?')                                                 # XDGNIRS -> flam1.fits
-        tel['SNR'] = estimate_snr(path + '/Telluric/Intermediate/hvsrc_comb_order1_SEF.fits')  # ftell_nolines1
+        sci['SNR'] = estimate_snr(path + '/Intermediate/ zbduvsrc_comb_order3_MEF.fits[1]')       # flam1.fits
+        tel['SNR'] = estimate_snr(path + '/Telluric/Intermediate/hvsrc_comb_order3_SEF.fits')  # ftell_nolines1
 
         sci['PARANGLE'] = parallactic(dec=float(sci['DEC']),
                                       ha=hms2deg(sci['HA']),
@@ -71,15 +76,16 @@ def write(configfile):
         date = datetime.datetime.now()
         ax.text(0.0, 0.28, 'GNIRS-Pype version ' + version + ",  " + str(date), size=5)
 
-        # TODO: Query Simbad for the target redshift and add to config file.  at the same time as standard star lookup?
+        # TODO: Query Simbad for the target redshift and add to config file.
+        #   Possibly do it at the same time as standard star lookup?
 
         ax = fig.add_subplot(212)
 
-        sci_wave, sci_flux = numpy.loadtxt(path + '/Final/src.txt', unpack=True)
+        sci_wave, sci_flux = numpy.loadtxt(path + '/Final/' + sci['OBJECT'] + '_src.txt', unpack=True)
         pyplot.plot(sci_wave, sci_flux, color='black', marker='', linestyle='-', linewidth=0.5, label=sci['OBJECT'])
         pyplot.ylim(0.0, 1.1 * numpy.amax(sci_flux))  # force a lower limit of zero
 
-        vega_wave, vega_flux = numpy.loadtxt(path + '/Final/vega.txt', unpack=True)  # Where will this file be ?
+        vega_wave, vega_flux = numpy.loadtxt(config.get('defaults', 'runtimeData') + 'vega.txt', unpack=True)
         # TODO:  if redshift:  vega_wav = vega_wav / (1 + redshift)
         vega_flux *= 1.05 * numpy.amax(sci_flux) / numpy.amax(vega_flux)
         pyplot.plot(vega_wave, vega_flux, color='blue', marker='', linestyle='--', linewidth=0.5, label='Vega')
@@ -88,27 +94,45 @@ def write(configfile):
         ylabel = r'erg cm$^{-2}$ s$^{-1}\ \AA^{-1}$'
         # ylabel = r'F$_{\lambda}$, arbitrary units'
         pyplot.ylabel(ylabel, size=8)
-        # xlabel is either "Rest" or "Observed" depending on whether a redshift was found and corrected for:
+        # xlabel should be either "Rest" or "Observed" depending on whether a redshift was found and corrected for:
         xlabel = r'Observed wavelength, $\mu$m'
         pyplot.xlabel(xlabel, size=8)
         fig.tight_layout()
         pyplot.legend(loc='best', fancybox=True, numpoints=1, prop={'size': 6})
         pyplot.grid(linewidth=0.25)
-        pyplot.savefig(path + '/Final/data_sheet.pdf')
+        pdf.savefig(fig)
+        pyplot.close(fig)
 
+        # --------------------------------------------------------------------------------------------------------------
         # Plot the separate orders so the user can judge if there are any unacceptable offsets
-        # and edit the regions used for combining, if they like:
-        pyplot.figure()
-        make_orders_fig ("final", "../PRODUCTS/orders.pdf")
-        if extras == 'yes':
-            make_orders_fig ("flamfull", "../PRODUCTS/orders_fullslit.pdf")
-            for k in range (1,steps):
-                make_orders_fig ("flamstep"+str(k)+"_", "../PRODUCTS/orders_step"+str(k)+".pdf")
-        pyplot.grid(linewidth=0.25)
-        pyplot.savefig(path + '/Final/data_sheet.pdf')
+        # and edit the regions used for combining if they like:
 
+        regions = {}
+        for order, r in config.items('orderScalingRegions'):
+            regions[int(order)] = r
+        logger.debug('orderScalingRegions: %s', regions)
 
+        prefix = \
+            config.get('runtimeFilenames', 'finalPrefix') + \
+            config.get('runtimeFilenames', 'fluxCalibPrefix') + \
+            config.get('runtimeFilenames', 'dividedTelContinuumPrefix') + \
+            config.get('runtimeFilenames', 'telluricPrefix') + \
+            config.get('runtimeFilenames', 'extractRegularPrefix')
+        combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
 
+        plot_orders(
+            filelist=utils.make_list(prefix + utils.nofits(combinedsrc), regions=regions, suffix='.txt'),
+            path=path + '/Intermediate/',
+            output=pdf)
+
+        if config.getboolean('extractSpectra1D', 'extractFullSlit'):
+            plot_orders("flamfull", "../PRODUCTS/orders_fullslit.pdf")
+
+        if config.getboolean('extractSpectra1D', 'extractStepwise'):
+            for k in range(1, steps):
+                plot_orders("flamstep"+str(k)+"_", "../PRODUCTS/orders_step"+str(k)+".pdf")
+
+        pdf.close()
 
     return
 
@@ -179,13 +203,15 @@ def imexam(path, ypos=340):
 
     logger.debug('Reading some FITS header keywords...')
     header = fits.open(fits_file)[0].header
-    for key in ['OBJECT', 'GEMPRGID', 'AIRMASS', 'RA', 'DEC', 'HA', 'AZIMUTH', 'PA',
+    for key in ['GEMPRGID', 'AIRMASS', 'RA', 'DEC', 'HA', 'AZIMUTH', 'PA',
                 'OBSERVAT', 'RAWIQ', 'RAWCC', 'RAWWV', 'RAWBG', 'DATE-OBS']:
         try:
             data[key] = header[key].strip() if isinstance(header[key], str) else header[key]
         except:
             logger.warning('%s[%s] is undefined', f, key)
             data[key] = None
+
+    data['OBJECT'] = re.sub('[^a-zA-Z0-9]', '', header['OBJECT'])  # replace non-alphanumeric characters
 
     iraf.chdir(original_path)
 
@@ -308,49 +334,35 @@ def location(observatory):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Copied from XDGNIRS/CombineOrdersXD.py
+def plot_orders(filelist, path, output):
+    logger = log.getLogger('plot_orders')
+    logger.debug('filelist: %s', filelist)
+    logger.debug('path: %s', path)
+    logger.debug('output: %s', output)
 
-def plot_orders (file, extension, colour, ax):
-    region = initcut[extension-1]
-    region = str(region).split()
-    start = int(region[0])
-    end = int(region[1])
-    specdata = open(file)
-    xdata = []
-    ydata = []
-    for line in specdata:
-        vals = map(float, line.split())
-        xdata.append(vals[0]/10000)
-        ydata.append(vals[1])
-    ax.plot (xdata[start:end], ydata[start:end], '-', color=colour, alpha=0.7)
+    fig = pyplot.figure()
+    goodbits = []
 
+    for f in filelist:
+        filename, start, end, junk = re.split(r'[\[:\]]', f)
+        start = int(start)
+        end = int(end)
+        logger.debug('filename: %s', filename)
+        logger.debug('start: %s, end: %s', start, end)
+        wave, flux = numpy.loadtxt(path + filename, unpack=True)
+        pyplot.plot(wave, flux, color='red', marker='', linestyle='-', linewidth=0.5)  # label the orders?
+        pyplot.plot(wave[start:end], flux[start:end], color='green', marker='', linestyle='-', linewidth=0.5)
+        goodbits.extend(flux[start:end])
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Copied from XDGNIRS/CombineOrdersXD.py
-
-def make_orders_fig(what, name):
-    fig = pyplot.figure ()
-    ax = fig.add_subplot(111)
-    plot_orders(what+str(1)+'.txt', 1, 'black', ax)
-    plot_orders(what+str(2)+'.txt', 2, 'blue', ax)
-    plot_orders(what+str(3)+'.txt', 3, 'black', ax)
-    plot_orders(what+str(4)+'.txt', 4, 'blue', ax)
-    plot_orders(what+str(5)+'.txt', 5, 'black', ax)
-    plot_orders(what+str(6)+'.txt', 6, 'blue', ax)
-
-    # Faster to use numpy instead of imstat?
-    ylim = iraf.imstat(images=what+str(3), fields="midpt", lower=0, upper="INDEF", nclip=0, lsigma=3, usigma=3,
-                       binwidth=0.1, format="yes", Stdout=1)
-
-    ylim = ylim[1]
-    ax.set_ylim(bottom=0, top=float(ylim)*2)
-    ax.set_xlim (0.82, 2.55)
-    pyplot.xlabel (r"$\mu$m, observed")
-    pyplot.ylabel (r"F$_{\lambda}$")
-    pyplot.savefig(name)
+    pyplot.ylim(numpy.amin(goodbits), 1.05 * numpy.amax(goodbits))
+    pyplot.xlabel(r"$\mu$m, observed")
+    pyplot.ylabel(r"F$_{\lambda}$")
+    output.savefig(fig)
+    pyplot.close(fig)
+    return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    write('gnirs.cfg')
+    start('gnirs.cfg')

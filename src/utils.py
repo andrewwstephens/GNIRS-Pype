@@ -62,7 +62,7 @@ def exists(inlist, overwrite):
         else:
             # We're stuck.  We don't have all the files required to skip this step,
             # but we can't erase files and try again.  Give up and let the user figure it out.
-            logger.error('Some (but not all) files exist and overwrite = False')
+            logger.error('Some (but not all) the files exist and overwrite = False')
             raise SystemExit
 
 
