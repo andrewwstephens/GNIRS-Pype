@@ -12,10 +12,10 @@ def start(configfile):
     """
     This module combines reduced 2D science and/or telluric spectra.
 
-    Parameters are loaded from gnirs.cfg configuration file.
+    Parameters are loaded from gnirs-pype.cfg configuration file.
 
     Args:
-        - configfile: gnirs.cfg configuration file.
+        - configfile: gnirs-pype.cfg configuration file.
                 - Paths to the Science (str), reduction truth value (boolean)
                   E.g. 'target/date/config/{Sci,Tel}_ObsID/{Calibrations,Intermediate}', True
                 - Paths to the Tellurics (str), reduction truth value (boolean)
@@ -24,7 +24,7 @@ def start(configfile):
                 - overwrite (boolean): Overwrite old files? Default: False
                 # And gnirsCombineSpectra2D specific settings
     """
-    logger = log.getLogger('gnirsCombineSpectra2D.start')
+    logger = log.getLogger('gnirsCombineSpectra2D')
 
     ###########################################################################
     ##                                                                       ##
@@ -67,7 +67,7 @@ def start(configfile):
     
     # config required for combining 2D spectra
     nscombineInter = config.getboolean('interactive', 'nscombineInter')
-    calculateSpectrumSNR = config.getboolean('gnirsPipeline', 'calculateSpectrumSNR')
+    calculateSNR = config.getboolean('gnirsPipeline', 'calculateSNR')
 
     preparedPrefix = config.get('runtimeFilenames','preparedPrefix')
     reducedPrefix = config.get('runtimeFilenames','reducedPrefix')
@@ -124,17 +124,17 @@ def start(configfile):
                 logger.warning("Exiting script.\n")
                 raise SystemExit
             
-            if calculateSpectrumSNR:
+            if calculateSNR:
                 # Check if there is a list of sky images in obspath
                 skylistfilename = 'sky.list'
                 if os.path.exists(skylistfilename):
                     skylist = open(skylistfilename, "r").readlines()
                     skylist = [filename.strip() for filename in skylist]
                 else:
-                    logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but a list of sky images not ")
-                    logger.warning("available in %s . Setting the 'calculateSpectrumSNR' parameter for ", obspath)
+                    logger.warning("Parameter 'calculateSNR' is 'True', but a list of sky images not ")
+                    logger.warning("available in %s . Setting the 'calculateSNR' parameter for ", obspath)
                     logger.warning("the current set of observations to 'False'.\n")
-                    calculateSpectrumSNR = False
+                    calculateSNR = False
             
             nodAlistfilename = 'nodA.list'
             if os.path.exists(nodAlistfilename):
@@ -169,17 +169,17 @@ def start(configfile):
                 logger.warning("Required 2D spectra not available.")
                 logger.warning("Please run gnirsReduce.py to generate the required spectra or provide them manually")
                 logger.warning("in %s", obspath)
-            if calculateSpectrumSNR:
+            if calculateSNR:
                 finalReducedPrefix = transformPrefix + transformPrefix + fitcoordsPrefix + noskysubReducedPrefix + \
                     radiationCorrectedPrefix + preparedPrefix
                 combineinlist = sorted(glob.glob(finalReducedPrefix + 'N*.fits'))
                 if len(combineinlist) > 0:  ## Check for spectral transformation files
                     logger.info("Required 2D sky spectra available.")
                 else:
-                    logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but required 2D sky spectra not")
-                    logger.warning("available. Setting the 'calculateSpectrumSNR' parameter for the current set")
+                    logger.warning("Parameter 'calculateSNR' is 'True', but required 2D sky spectra not")
+                    logger.warning("available. Setting the 'calculateSNR' parameter for the current set")
                     logger.warning("of observations to 'False'.")
-                    calculateSpectrumSNR = False
+                    calculateSNR = False
                     
             logger.info("Required 2D spectra check complete.")
 
@@ -214,10 +214,10 @@ def start(configfile):
             else:
                 logger.info("Combining 2D spectra using nscombine with fl_cross='%s' worked.\n", crossCorrelation)
 
-            # If the parameter 'calculateSpectrumSNR' is set to 'yes', the script will combine all observations
+            # If the parameter 'calculateSNR' is set to 'yes', the script will combine all observations
             # reduced without sky subtraction (having reduce_outputPrefix 'k'); else, all observations reduced
             # with sky subtraction only (having reduce_outputPrefix 'r') will be combined.
-            if calculateSpectrumSNR:
+            if calculateSNR:
                 finalReducedPrefix = transformPrefix + transformPrefix + fitcoordsPrefix + noskysubReducedPrefix + \
                     radiationCorrectedPrefix + preparedPrefix
                 logger.info("Combining the sky observations reduced without sky subtraction.\n")
@@ -230,7 +230,7 @@ def start(configfile):
         logger.info("#  COMPLETE - Combining 2D spectra completed for                             #")
         logger.info("#  %s", obspath)
         logger.info("#                                                                            #")
-        logger.info("##############################################################################\n")
+        logger.info("##############################################################################")
 
     # Return to directory script was begun from.
     os.chdir(path)  
@@ -316,8 +316,8 @@ def shiftsMatch(nodAlist, nodBlist, combinedimage, preparedPrefix):
     
     return shiftsMatch_flag
 
-#----------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

@@ -1,39 +1,17 @@
 #!/usr/bin/env python
 
-# MIT License
-
-# Copyright (c) 2015, 2017 Marie Lemoine-Busserolle
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-################################################################################
-#                Import some useful Python utilities/modules                   #
-################################################################################
-
-import log, os, sys, pkg_resources, glob, shutil, ConfigParser, cleanir
+import log
+import os
+import sys
+import pkg_resources
+import glob
+import ConfigParser
+import utils
 from astropy.io import fits
 from pyraf import iraf
 
-## IMPORTANT NOTE:  The command line options are not available for GNIRS as of August 2019.
 
-#---------------------------------------------------------------------------------------------------------------------#
-
+# ----------------------------------------------------------------------------------------------------------------------
 def start(configfile):
     """
     This module contains all the functions needed to reduce GNIRS GENERAL BASELINE CALIBRATIONS.
@@ -53,7 +31,7 @@ def start(configfile):
         - wavelength calibrated arc image
 
     Args:
-        - configfile: gnirs.cfg configuration file
+        - configfile: gnirs-pype.cfg configuration file
                 - Paths to the calibrations (str), reduction truth value (boolean): 
                   E.g. 'target/date/config/{Sci,Tel}_ObsID/{Calibrations,Intermediate}', True
                 - manualMode (boolean): Enable optional manualModeging pauses? Default: False
@@ -171,12 +149,10 @@ def start(configfile):
                 advertised_accuracy_percent = 5
             else:
                 logger.error("#############################################################################")
-                logger.error("#############################################################################")
                 logger.error("#                                                                           #")
                 logger.error("#    ERROR in calibrate: unknown GNIRS XD configuration. Exiting script.    #")
                 logger.error("#                                                                           #")
                 logger.error("#############################################################################")
-                logger.error("#############################################################################\n")
                 raise SystemExit
 
             # Check if lists of each type of calibration available in the Calibrations directory.
@@ -251,13 +227,11 @@ def start(configfile):
             valindex = start
             while valindex > stop  or valindex < 1 or stop > 5:
                 logger.warning("######################################################################")
-                logger.warning("######################################################################")
                 logger.warning("#                                                                    #")
                 logger.warning("#   WARNING in calibrate: invalid start/stop values of calibration   #")
                 logger.warning("#                         reduction steps.                           #")
                 logger.warning("#                                                                    #")
                 logger.warning("######################################################################")
-                logger.warning("######################################################################\n")
 
                 valindex = int(raw_input("Please enter a valid start value (1 to 5, default 1): "))
                 stop = int(raw_input("Please enter a valid stop value (1 to 5, default 5): "))
@@ -279,23 +253,19 @@ def start(configfile):
                         pass
                     else:
                         logger.warning("######################################################################")
-                        logger.warning("######################################################################")
                         logger.warning("#                                                                    #")
                         logger.warning("#              WARNING in calibrate: QHflats not cleaned.            #")
                         logger.warning("#                                                                    #")
                         logger.warning("######################################################################")
-                        logger.warning("######################################################################")
-                
+
                     if cleanir_IRflats:
 #                        cleanNoise(IRflatslist, cleanirPrefix, overwrite)
                         pass
                     else:
                         logger.warning("######################################################################")
-                        logger.warning("######################################################################")
                         logger.warning("#                                                                    #")
                         logger.warning("#               WARNING in calibrate: IRflats not cleaned.           #")
                         logger.warning("#                                                                    #")
-                        logger.warning("######################################################################")
                         logger.warning("######################################################################")
 
                     if cleanir_arcs:
@@ -303,11 +273,9 @@ def start(configfile):
                         pass
                     else:
                         logger.warning("######################################################################")
-                        logger.warning("######################################################################")
                         logger.warning("#                                                                    #")
                         logger.warning("#               WARNING in calibrate: arcs not cleaned.              #")
                         logger.warning("#                                                                    #")
-                        logger.warning("######################################################################")
                         logger.warning("######################################################################")
 
                     if cleanir_pinholes:
@@ -315,13 +283,11 @@ def start(configfile):
                         pass
                     else:
                         logger.warning("######################################################################")
-                        logger.warning("######################################################################")
                         logger.warning("#                                                                    #")
                         logger.warning("#              WARNING in calibrate: pinholes not cleaned.           #")
                         logger.warning("#                                                                    #")
                         logger.warning("######################################################################")
-                        logger.warning("######################################################################")
-                    
+
                     # NOTE:  At this point in XDGNIRS, StatsAndPrepartXD.py checks for any deviations in statistical
                     # parameters between the raw and the cleaned images. Since cleaning is not incorporated yet in 
                     # this pipeline, this check is skipped here.
@@ -335,7 +301,7 @@ def start(configfile):
                     logger.info("#                                                                #")
                     logger.info("#          STEP 1: Clean calibration frames - COMPLETED          #")
                     logger.info("#                                                                #")
-                    logger.info("##################################################################\n")
+                    logger.info("##################################################################")
                     
                 #############################################################################
                 ##  STEP 2: Preparing all calibration frames for further processing.       ##
@@ -358,12 +324,10 @@ def start(configfile):
                         bpmfile = 'gnirs$data/gnirsn_2012dec05_bpm.fits'
                     else:
                         logger.error("######################################################################")
-                        logger.error("######################################################################")
                         logger.error("#                                                                    #")
                         logger.error("#       ERROR in calibrate: unknown array ID. Exiting script.        #")
                         logger.error("#                                                                    #")
                         logger.error("######################################################################")
-                        logger.error("######################################################################\n")
                         raise SystemExit
                     
                     prepareCalibrations(QHflatsfilename, IRflatsfilename, arcsfilename, pinholesfilename, nsprepareInter, \
@@ -374,7 +338,7 @@ def start(configfile):
                     logger.info("#    STEP 2: Preparing all calibration frames (QHflats, IRflats    #")
                     logger.info("#            arcs, and pinholes) - COMPLETED                       #")
                     logger.info("#                                                                  #")
-                    logger.info("####################################################################\n")
+                    logger.info("####################################################################")
 
                 #############################################################################
                 ##  STEP 3: Create flat field images for QHflats and IR flats.             ##
@@ -395,7 +359,7 @@ def start(configfile):
                     logger.info("#      STEP 3: Create flat field (QHflat, IRflat, and the         #")
                     logger.info("#              final flat) - COMPLETED                            #")
                     logger.info("#                                                                 #")
-                    logger.info("###################################################################\n")
+                    logger.info("###################################################################")
 
                 ########################################################################################
                 ##  Step 4: Trace the spatial curvature and spectral distortion in the pinhole flat.  ##
@@ -415,12 +379,10 @@ def start(configfile):
                         pinholesnumber = 6
                     else:
                         logger.error("#######################################################################")
-                        logger.error("#######################################################################")
                         logger.error("#                                                                     #")
                         logger.error("#         ERROR in calibrate: unknown camera. Exiting script.         #")
                         logger.error("#                                                                     #")
                         logger.error("#######################################################################")
-                        logger.error("#######################################################################\n")
                         raise SystemExit
 
                     makeSdistortion(nssdistInter, sdistrefimage, pinhole_coordlist, pinholesnumber, databaseDir, \
@@ -432,7 +394,7 @@ def start(configfile):
                     logger.info("#             the spatial curvature and spectral distortion in     #") 
                     logger.info("#             the pinhole flat) - COMPLETED                        #")
                     logger.info("#                                                                  #")
-                    logger.info("####################################################################\n")
+                    logger.info("####################################################################")
 
                 ############################################################################
                 ##  STEP 5: Combine arc frames.                                           ##
@@ -451,12 +413,10 @@ def start(configfile):
                         waveCal_coordlist = 'gnirs$data/argon.dat'
                     else:
                         logger.error("########################################################################")
-                        logger.error("########################################################################")
                         logger.error("#                                                                      #")
                         logger.error("#         ERROR in calibrate: unknown grating. Exiting script.         #")
                         logger.error("#                                                                      #")
                         logger.error("########################################################################")
-                        logger.error("########################################################################\n")
                         raise SystemExit
 
                     makeWaveCal(arcsfilename, preparedPrefix, reducedPrefix, combinedarc, databaseDir, fitcoordsPrefix, \
@@ -469,16 +429,14 @@ def start(configfile):
                     logger.info("#           the wavelength solution, and create the wavelength     #")
                     logger.info("#           referenced arc image) - COMPLETED                      #")
                     logger.info("#                                                                  #")
-                    logger.info("####################################################################\n")
+                    logger.info("####################################################################")
 
                 else:
-                    logger.error("########################################################################")
                     logger.error("########################################################################")
                     logger.error("#                                                                      #")
                     logger.error("#  ERROR in calibrate: %d", valindex, " is not valid. Exiting script.  #")
                     logger.error("#                                                                      #")
                     logger.error("########################################################################")
-                    logger.error("########################################################################\n")
                     raise SystemExit
 
                 valindex += 1
@@ -486,19 +444,17 @@ def start(configfile):
             logger.info("###########################################################################")
             logger.info("#                                                                         #")
             logger.info("#             COMPLETE - Calibration reductions completed for             #")
-            logger.info("#  %s", calpath                                                             )
+            logger.info("#  %s", calpath)
             logger.info("#                                                                         #")
-            logger.info("###########################################################################\n")
+            logger.info("###########################################################################")
         
         else:
             logger.warning("######################################################################################")
-            logger.warning("######################################################################################")
             logger.warning("#                                                                                    #")
             logger.warning("#    GNIRS baseline calibration turned off. Not reducing baseline calibrations in    #")
-            logger.warning("#    %s", calpath                                                                      )
+            logger.warning("#    %s", calpath)
             logger.warning("#                                                                                    #")
             logger.warning("######################################################################################")
-            logger.warning("######################################################################################\n")
 
     # Return to directory script was begun from.
     iraf.chdir(path)
@@ -784,7 +740,7 @@ def makeWaveCal(arcsfilename, preparedPrefix, reducedPrefix, combinedarc, databa
             snoise='0.0', sigscale=0.1, pclip=-0.5, grow=0.0, nrejfile='', fl_vardq='yes', fl_inter=nscombineInter, 
             logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no', mode='al')
 
-    oldfiles_transformed = glob.glob('./*' + fitcoordsPrefix + nofits(combinedarc) + '*')
+    oldfiles_transformed = glob.glob('./*' + fitcoordsPrefix + utils.nofits(combinedarc) + '*')
     oldfiles_waveCal = glob.glob('./' + databaseDir + '/id' + waveCalibPrefix + transformPrefix + fitcoordsPrefix + '*')
     oldfiles_sdist = glob.glob('./' + databaseDir + '/*_sdist')
     oldfiles_lamp = glob.glob('./' + databaseDir + '/*_lamp')
@@ -845,7 +801,7 @@ def makeWaveCal(arcsfilename, preparedPrefix, reducedPrefix, combinedarc, databa
 
         try:
             iraf.imcopy(input=transformPrefix+fitcoordsPrefix+transformPrefix+fitcoordsPrefix+combinedarc+'[SCI,'+str(extension)+']['+str(columns[i])+',*]',
-                output=transformPrefix+fitcoordsPrefix+transformPrefix+fitcoordsPrefix+nofits(combinedarc)+'_order'+str(extension)+'.fits', 
+                output=transformPrefix+fitcoordsPrefix+transformPrefix+fitcoordsPrefix+utils.nofits(combinedarc)+'_order'+str(extension)+'.fits',
                 verbose='yes', mode='ql')
         except(TypeError,iraf.IrafError) as arcCalibration_error:
             logger.error(arcCalibration_error)
@@ -857,7 +813,7 @@ def makeWaveCal(arcsfilename, preparedPrefix, reducedPrefix, combinedarc, databa
             logger.error("script.\n")
             sys.exit(0)
     with open('./arcorders.list', 'a+') as f:
-        for filename in sorted(glob.glob('./'+transformPrefix+fitcoordsPrefix+transformPrefix+fitcoordsPrefix+nofits(combinedarc)+'_order*.fits')):
+        for filename in sorted(glob.glob('./'+transformPrefix+fitcoordsPrefix+transformPrefix+fitcoordsPrefix+utils.nofits(combinedarc)+'_order*.fits')):
             filename = filename[filename.rfind('/')+1:]
             if filename not in f.read().split('\n'):
                 f.write(filename + '\n')
@@ -905,9 +861,9 @@ def makeWaveCal(arcsfilename, preparedPrefix, reducedPrefix, combinedarc, databa
             logger.info("away from the expected value (actual %fum vs. expected ", waveEnd)
             logger.info("%fum+/-%fum.", nominal_wavelengths[extension][1], advertised_accuracy)
     logger.info("Starting and the ending wavelengths of the wavelength solution check complete.\n")
-            
-#---------------------------------------------------------------------------------------------------------------------#
 
+
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

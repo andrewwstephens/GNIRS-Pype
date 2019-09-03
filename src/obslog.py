@@ -219,9 +219,10 @@ def readtxt(obslog):
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
     # readtxt('rawData/20110516_GN-2011A-Q-126_obslog.txt')
     # writecsv('GN-2011A-Q-126-6', '20110516', rawpath='/home/astephens/github/GNIRS_PIPELINE/rawData')  # Science
     writecsv('GN-2011A-Q-126-13', '20110516', rawpath='/home/astephens/github/GNIRS_PIPELINE/rawData')  # Telluric
     # readcsv('obslog.csv')
     # download(progid='GN-2018A-FT-112', date='20180729')
+

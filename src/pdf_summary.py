@@ -34,7 +34,7 @@ def start(configfile):
             logger.debug('Skipping %s', path)
             continue
 
-        pdf = PdfPages(path + '/Final/data_sheet.pdf')
+        pdf = PdfPages(path + '/Final/summary.pdf')
 
         sci = imexam(path)
         tel = imexam(path + '/Telluric')
@@ -364,5 +364,5 @@ def plot_orders(filelist, path, output):
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

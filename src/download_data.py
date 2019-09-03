@@ -26,7 +26,7 @@ def start(configfile):
     config.read(configfile)
 
     rawdatadir = config.get('DownloadData', 'RawDataDir')
-    program = config.get('getData', 'Program')
+    program = config.get('DownloadData', 'Program')
     logger.debug('rawdata: %s', rawdatadir)
     logger.debug('program: %s', program)
 
@@ -61,5 +61,5 @@ def start(configfile):
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

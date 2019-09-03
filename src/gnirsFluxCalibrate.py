@@ -516,5 +516,5 @@ def fluxcalib_units_in_headers(image, abs_fluxcal):
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

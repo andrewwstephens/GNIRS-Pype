@@ -7,6 +7,7 @@ import log
 import matplotlib.pyplot as plt
 import os
 from pyraf import iraf
+import utils
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -167,14 +168,14 @@ def start(configfile):
             raise SystemExit
 
         # Define output filenames with prefixes added at different stages of script but without the '.fits':
-        telluric_hLineCorrectedSpectrum = nofits(telpath + '/' + hLinePrefix + \
+        telluric_hLineCorrectedSpectrum = utils.nofits(telpath + '/' + hLinePrefix + \
                 os.path.basename(tel_src_extracted_spectrum))
-        telluric_fitContinuum = nofits(telpath + '/' + fitTelContinuumPrefix + \
+        telluric_fitContinuum = utils.nofits(telpath + '/' + fitTelContinuumPrefix + \
             os.path.basename(telluric_hLineCorrectedSpectrum))
-        telluric_dividedContinuum = nofits(telpath + '/' + dividedTelContinuumPrefix + \
+        telluric_dividedContinuum = utils.nofits(telpath + '/' + dividedTelContinuumPrefix + \
             os.path.basename(telluric_hLineCorrectedSpectrum))
-        science_dividedTelluricLines = nofits(telluricPrefix + os.path.basename(sci_src_extracted_spectrum))
-        science_correctedTelluric = nofits(dividedTelContinuumPrefix + os.path.basename(science_dividedTelluricLines))
+        science_dividedTelluricLines = utils.nofits(telluricPrefix + os.path.basename(sci_src_extracted_spectrum))
+        science_correctedTelluric = utils.nofits(dividedTelContinuumPrefix + os.path.basename(science_dividedTelluricLines))
 
         #########################################################################
         #                                                                       #
@@ -712,5 +713,5 @@ def lineFitManual(spectrum, grating):
 #---------------------------------------------------------------------------------------------------------------------#
 
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

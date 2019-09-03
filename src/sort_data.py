@@ -26,7 +26,7 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make config file options case-sensitive
     config.read(configfile)
-    rawpath = config.get('getData', 'RawDataDir')
+    rawpath = config.get('DownloadData', 'RawDataDir')
 
     info = gnirsHeaders.info(rawpath)
 
@@ -137,5 +137,5 @@ def start(configfile):
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

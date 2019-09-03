@@ -2,7 +2,6 @@
 
 import ConfigParser
 import gnirsHeaders
-import gnirs_unc
 import log
 import os
 from pyraf import iraf
@@ -193,7 +192,7 @@ def start(configfile):
             for s in sci_spectra:
                 iraf.copy(input=s, output=finalPrefix+s, verbose='yes')
 
-        # Construct lists of files to go into odcombine and the gnirs_unc.joinorders_noresampling
+        # Construct lists of files to go into odcombine and the joinorders_noresampling
         # For each extraction, combine the orders into a single spectrum and write out fits and text files
 
         # NOTE:  You may simply use iraf.odcombine to combine the orders, but odcombine resamples to a linear 
@@ -231,7 +230,7 @@ def start(configfile):
                 output=orderResampledSrc,
                 overwrite=overwrite)
 
-            gnirs_unc.joinorders_noresampling(
+            utils.joinorders_noresampling(
                 inlist=utils.make_list(prefix + utils.nofits(combinedsrc), orders=orders),
                 merged_spec=orderResampledSrc,
                 outspec=finalpath+finalSpectrum,
@@ -256,7 +255,7 @@ def start(configfile):
                     output=orderResampledSrc,
                     overwrite=overwrite)
 
-                gnirs_unc.joinorders_noresampling(
+                utils.joinorders_noresampling(
                     inlist=utils.make_list(prefix + utils.nofits(combinedsrc), orders=orders),
                     merged_spec=orderResampledSrc,
                     outspec=finalpath+finalSpectrum_fullslit,
@@ -287,7 +286,7 @@ def start(configfile):
                     output=orderResampledSky,
                     overwrite=overwrite)
 
-                gnirs_unc.joinorders_noresampling(
+                utils.joinorders_noresampling(
                     inlist=utils.make_list(prefix + utils.nofits(combinedsrc), orders=orders),
                     merged_spec=orderResampledSky,
                     outspec=finalpath+finalSky,
@@ -425,5 +424,5 @@ def odcombine(inlist, output, overwrite=False):
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

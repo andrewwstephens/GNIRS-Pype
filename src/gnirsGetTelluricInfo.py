@@ -4,6 +4,7 @@ import os, glob, log, ConfigParser, gnirsHeaders
 from astroquery.simbad import Simbad
 from astropy import units as u
 import astropy.coordinates as coord
+import utils
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -113,7 +114,7 @@ def start(configfile):
             raise SystemExit
 
         tel_dividedContinuum = sorted(glob.glob(stdpath + '/' + dividedTelContinuumPrefix + hLinePrefix + \
-            extractRegularPrefix + nofits(combinedsrc) + '_order*_MEF.fits'))
+            extractRegularPrefix + utils.nofits(combinedsrc) + '_order*_MEF.fits'))
         if len(tel_dividedContinuum) > 0:
             logger.info("Required continuum divided telluric source spectra available.")
             tel_header_info = gnirsHeaders.info(tel_dividedContinuum[0])
@@ -385,5 +386,5 @@ def start(configfile):
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs.cfg')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
+    start('gnirs-pype.cfg')

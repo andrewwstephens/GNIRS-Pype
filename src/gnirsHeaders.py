@@ -94,7 +94,8 @@ def info(files_or_directory):
 
 
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
     info("rawData")  # Directory
     # info('N20110516S0151.fits')  # single file
     # info(['N20110516S0155.fits', 'N20110516S0156.fits', 'N20110516S0157.fits', 'N20110516S0159.fits'])  # List
+

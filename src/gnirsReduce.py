@@ -14,7 +14,7 @@ def start(kind, configfile):
     """
     This module contains all the functions needed to perform the full reduction of SCIENCE or TELLURIC data.
 
-    Parameters are loaded from gnirs.cfg configuration file. This script will automatically detect if it is being run
+    Parameters are loaded from gnirs-pype.cfg configuration file. This script will automatically detect if it is being run
     on telluric data or science data. There are 5 steps.
 
     INPUT FILES:
@@ -32,7 +32,7 @@ def start(kind, configfile):
 
     Args:
         - kind (string): Either 'Science' or 'Telluric'
-        - configfile: gnirs.cfg configuration file.
+        - configfile: gnirs-pype.cfg configuration file.
                 - Paths to the Science (str), reduction truth value (boolean)
                   E.g. 'target/date/config/{Sci,Tel}_ObsID/{Calibrations,Intermediate}', True
                 - Paths to the Tellurics (str), reduction truth value (boolean)
@@ -41,7 +41,7 @@ def start(kind, configfile):
                 - overwrite (boolean): Overwrite old files? Default: False
                 # And gnirsReduce specific settings
     """
-    logger = log.getLogger('gnirsReduce.start')
+    logger = log.getLogger('gnirsReduce')
 
     # TODO(nat): Right now the pipeline will crash if you decide to skip, say, doing a bad pixel correction. This is 
     # because each step adds a prefix to the frame name, and most following steps depend on that prefix being there.
@@ -60,7 +60,7 @@ def start(kind, configfile):
     logger.info('#                                                  #')
     logger.info('#  Start the GNIRS Science and Telluric Reduction  #')
     logger.info('#                                                  #')
-    logger.info('####################################################\n')
+    logger.info('####################################################')
 
     # Set up/prepare IRAF.
     iraf.gemini()
@@ -83,38 +83,36 @@ def start(kind, configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
-    # Read general config.
-    manualMode = config.getboolean('defaults','manualMode')
-    overwrite = config.getboolean('defaults','overwrite')
-    if kind == 'Science':  ## scienceReduction specific config
+
+    if kind == 'Science':  # scienceReduction specific config
         observationSection = 'ScienceDirectories'
         start = config.getint('scienceReduction','Start')
         stop = config.getint('scienceReduction','Stop')
         cleanir = config.getboolean('scienceReduction','cleanir')
         radiationCorrectionMethod = config.get('scienceReduction','radiationCorrectionMethod')
         radiationThreshold = config.getfloat('scienceReduction','radiationThreshold')
-        nsprepareInter = config.getboolean('interactive','nsprepareInter')
-        calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
-    elif kind == 'Telluric':  ## telluricReduction specific config
+
+    elif kind == 'Telluric':  # telluricReduction specific config
         observationSection = 'TelluricDirectories'
         start = config.getint('telluricReduction','Start')
         stop = config.getint('telluricReduction','Stop')
         cleanir = config.getboolean('telluricReduction','cleanir')
         radiationCorrectionMethod = config.get('telluricReduction','radiationCorrectionMethod')
         radiationThreshold = config.getfloat('telluricReduction','radiationThreshold')
-        nsprepareInter = config.getboolean('interactive','nsprepareInter')
-        calculateSpectrumSNR = config.getboolean('gnirsPipeline','calculateSpectrumSNR')
+
     else:
-        logger.error("###########################################################################")
         logger.error("###########################################################################")
         logger.error("#                                                                         #")
         logger.error("#     ERROR in reduce: invalid kind of reduction. Please enter either     #")
         logger.error("#                      <Science> or <Telluric>. Exiting script.           #")
         logger.error("#                                                                         #")
         logger.error("###########################################################################")
-        logger.error("###########################################################################\n")
-        raise SystemExit  
-        ## TODO(Viraja): can ask for a raw input on the command line to avoid a system exit
+        raise SystemExit
+
+    nsprepareInter = config.getboolean('interactive', 'nsprepareInter')
+    calculateSNR = config.getboolean('gnirsPipeline', 'calculateSNR')
+    overwrite = config.getboolean('defaults', 'overwrite')
+    manualMode = config.getboolean('defaults', 'manualMode')
 
     ###########################################################################
     ##                                                                       ##
@@ -151,17 +149,17 @@ def start(kind, configfile):
         allobslist = open(allobsfilename, "r").readlines()
         allobslist = [filename.strip() for filename in allobslist]
         rawHeader = fits.open(allobslist[0])[0].header
-        if calculateSpectrumSNR:
+        if calculateSNR:
             # Check if there is a list of sky images in obspath
             skylistfilename = 'sky.list'
             if os.path.exists(skylistfilename):
                 skylist = open(skylistfilename, "r").readlines()
                 skylist = [filename.strip() for filename in skylist]
             else:
-                logger.warning("Parameter 'calculateSpectrumSNR' is 'True', but a list of sky images not ")
-                logger.warning("available in %s . Setting the 'calculateSpectrumSNR' parameter for the ", obspath)
+                logger.warning("Parameter 'calculateSNR' is 'True', but a list of sky images not ")
+                logger.warning("available in %s . Setting the 'calculateSNR' parameter for the ", obspath)
                 logger.warning("the current set of observations to 'False'.\n")
-                calculateSpectrumSNR = False
+                calculateSNR = False
         nodAlistfilename = 'nodA.list'
         nodAlist = open(nodAlistfilename, "r").readlines()
         nodAlist = [filename.strip() for filename in nodAlist]
@@ -386,14 +384,14 @@ def start(kind, configfile):
                 if manualMode:
                     a = raw_input("About to enter step 4: flat fielding and sky subtraction.")
 
-                # If the parameter 'calculateSpectrumSNR' is set to 'yes' in the configuration file, the script
+                # If the parameter 'calculateSNR' is set to 'yes' in the configuration file, the script
                 # will reduce all observations without sky subtraction (by setting the parameter 'fl_sky' in
                 # nsreduce to 'no') in which case the parameter 'outprefix' in nsreduce will be 'k'; else, all
                 # observations will be reduced with sky subtraction and the output prefix will be 'r'.
                 skySubtraction = 'yes'
                 reduce_outputPrefix = 'r'  ## output prefix assigned to the reduced observations
                 reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiationThreshold, overwrite)
-                if calculateSpectrumSNR:
+                if calculateSNR:
                     logger.info("Reducing observations without sky subtraction to generate an SNR spectrum later ")
                     logger.info("by the pipeline.\n")
                     skySubtraction = 'no'
@@ -418,7 +416,7 @@ def start(kind, configfile):
                 reduce_outputPrefix = 'r'
                 SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfileslength,
                     wavecallampfileslength, combinedarc, overwrite)
-                if calculateSpectrumSNR:
+                if calculateSNR:
                     logger.info("Applying spatial distortion correction and spectral transformation to the ")
                     logger.info("science frames reduced without sky subtraction.\n")
                     reduce_outputPrefix = 'k'
@@ -653,7 +651,7 @@ def radiationCorrectionDQplane(obslist, inlist, minimage, overwrite):
 # ----------------------------------------------------------------------------------------------------------------------
 def reduceObservations(skySubtraction, outprefix, masterflat, radiationThreshold, overwrite):
     """
-    Flat field and sky subtract observations with nsreduce. If 'calculateSpectrumSNR' is set, observations will be
+    Flat field and sky subtract observations with nsreduce. If 'calculateSNR' is set, observations will be
     reduced without sky subtraction too and prefix 'k' will be added before the input filenames; otherwise, sky 
     subtraction will be performed and the prefix will be 'r'.
 
@@ -771,6 +769,6 @@ def SdistCorrection_SpectralTransform(databasepath, outprefix, obslist, sdistfil
 #---------------------------------------------------------------------------------------------------------------------#
 
 if __name__ == '__main__':
-    log.configure('gnirs.log', filelevel='INFO', screenlevel='DEBUG')
+    log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
     a = raw_input('Enter <Science> for science reduction or <Telluric> for telluric reduction: ')
-    start(a, 'gnirs.cfg')
+    start(a, 'gnirs-pype.cfg')
