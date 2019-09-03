@@ -1,10 +1,6 @@
 # Based on STScI's JWST calibration pipeline.
 
 from __future__ import print_function
-
-import os
-import subprocess
-import sys
 from setuptools import setup, find_packages, Extension, Command
 from glob import glob
 
@@ -12,7 +8,6 @@ from glob import glob
 readme = open('README.rst', 'r')
 README_TEXT = readme.read()
 readme.close()
-
 
 NAME = 'gnirs-pype'
 SCRIPTS = glob('scripts/*')
@@ -40,9 +35,10 @@ setup(
         'Topic :: Scientific/Engineering :: Astronomy',
         'Topic :: Scientific/Engineering :: Physics',
     ],
-    keywords='Gemini GNIRS gnirs pipeline reduction data IRAF iraf PYRAF pyraf astronomy IR cross-dispersed longslit spectroscopy xd ',
+    keywords='Gemini GNIRS gnirs pipeline reduction data IRAF iraf PYRAF pyraf astronomy IR cross-dispersed longslit spectroscopy xd',
     python_requires='~=2.7',
     scripts=SCRIPTS, # TODO(nat): Update this to use entry_points instead of scripts for better cross-platform performance
     packages=find_packages(),
-    package_data=PACKAGE_DATA
+    package_data=PACKAGE_DATA,
+    install_requires=[]
 )
