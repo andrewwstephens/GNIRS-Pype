@@ -95,7 +95,7 @@ def start(configfile):
     # config required for extracting 1D spectra
     # Order of sections is important to later check for plausible peaks located for science targets by nsextract
     nsextractInter = config.getboolean('interactive', 'nsextractInter')
-    calculateSNR = config.getboolean('gnirsPipeline', 'calculateSNR')
+    calculateSNR = config.getboolean('gnirsPipeline', 'CalculateSNR')
     
     combinedsrc = config.get('runtimeFilenames','combinedsrc')
     combinedsky = config.get('runtimeFilenames','combinedsky')
