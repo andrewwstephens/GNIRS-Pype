@@ -67,7 +67,7 @@ def start(configfile):
     
     # config required for combining 2D spectra
     nscombineInter = config.getboolean('interactive', 'nscombineInter')
-    calculateSNR = config.getboolean('gnirsPipeline', 'calculateSNR')
+    calculateSNR = config.getboolean('gnirsPipeline', 'CalculateSNR')
 
     preparedPrefix = config.get('runtimeFilenames','preparedPrefix')
     reducedPrefix = config.get('runtimeFilenames','reducedPrefix')

@@ -43,10 +43,6 @@ def start(kind, configfile):
     """
     logger = log.getLogger('gnirsReduce')
 
-    # TODO(nat): Right now the pipeline will crash if you decide to skip, say, doing a bad pixel correction. This is 
-    # because each step adds a prefix to the frame name, and most following steps depend on that prefix being there.
-    # One way to fix this is if a step is to be skipped, iraf.copy() is called instead to copy the frame and add the 
-    # needed prefix. Messy but it might work for now.
 
     ###########################################################################
     ##                                                                       ##
@@ -110,7 +106,7 @@ def start(kind, configfile):
         raise SystemExit
 
     nsprepareInter = config.getboolean('interactive', 'nsprepareInter')
-    calculateSNR = config.getboolean('gnirsPipeline', 'calculateSNR')
+    calculateSNR = config.getboolean('gnirsPipeline', 'CalculateSNR')
     overwrite = config.getboolean('defaults', 'overwrite')
     manualMode = config.getboolean('defaults', 'manualMode')
 
@@ -766,8 +762,8 @@ def SdistCorrection_SpectralTransform(databasepath, outprefix, obslist, sdistfil
 
     return
 
-#---------------------------------------------------------------------------------------------------------------------#
 
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
     a = raw_input('Enter <Science> for science reduction or <Telluric> for telluric reduction: ')

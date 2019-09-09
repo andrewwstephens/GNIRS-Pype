@@ -25,7 +25,7 @@ def boxit(text, character, center=True):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def exists(inlist, overwrite):
+def exists(inlist, overwrite=False):
     """
     Check for the existence of the files in the input list.
     If overwrite == True then delete any existing files and return False
@@ -39,6 +39,7 @@ def exists(inlist, overwrite):
     :return: boolean
     """
     logger = log.getLogger('exists')
+    logger.debug('input: %s', inlist)
 
     exist = [os.path.exists(f) for f in inlist]
     logger.debug('Exist: %s', exist)
@@ -60,8 +61,6 @@ def exists(inlist, overwrite):
             return False
 
         else:
-            # We're stuck.  We don't have all the files required to skip this step,
-            # but we can't erase files and try again.  Give up and let the user figure it out.
             logger.error('Some (but not all) the files exist and overwrite = False')
             raise SystemExit
 
@@ -79,6 +78,42 @@ def get_orders(path):
         raise SystemExit("Unknown GNIRS configuration.  Cannot determine the XD orders.")
     logger.debug('orders: %s', orders)
     return orders
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def get_wavelengths(path):
+    logger = log.getLogger('get_wavelengths')
+    if 'LB_SXD' in path:
+        wavelengths = None
+        accuracy = None
+    elif 'LB_LXD' in path:
+        wavelengths = None
+        accuracy = None
+    elif 'SB_SXD' in path:
+        wavelengths = ([0,0], [18690,25310], [14020,18980], [11220,15180], [9350,12650], [8020,10840], [7020,9480])
+        accuracy = 5  # percent
+    else:
+        raise SystemExit("Unknown GNIRS configuration.  Cannot determine the nominal wavelenghts.")
+    logger.debug('wavelengths: %s', wavelengths)
+    logger.debug('accuracy: %s', accuracy)
+    return wavelengths, accuracy
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def files_in(filelist):
+    """
+    Return a list of all the files in the list of supplied file list names.
+    :param filelist: list of file-lists, e.g. ['pinholes.list', 'arcs.list']
+    :return: list of all the filts, e.g. ['N20190102S0123', 'N20190102S0124', ...]
+    """
+    logger = log.getLogger('files_in')
+    logger.debug('Input: %s', filelist)
+    allfiles = []
+    for fl in filelist:
+        with open(fl, 'r') as f:
+            allfiles.extend(f.read().splitlines())
+    logger.debug('Output: %s', allfiles)
+    return allfiles
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -118,6 +153,20 @@ def make_list(prefix, orders=None, suffix='_MEF[1]', regions=None):
 # ----------------------------------------------------------------------------------------------------------------------
 def nofits(filename):
     return filename.replace('.fits', '')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def pause(active, message=None):
+    # This is a replacement for the original "Manual Mode."
+    # If active == True then print the optional message and wait for the user to hit <enter>, else do nothing.
+    if active:
+        if message:
+            print message
+        answer = raw_input('Continue? [y]/n ')
+        if 'n' in answer.lower():
+            raise SystemExit
+
+    return
 
 
 # ----------------------------------------------------------------------------------------------------------------------

@@ -17,7 +17,7 @@ def start(configfile):
       1. No order scaling currently done on full-slit or stepwise extractions.
       2. offsets=manual will only allow user to scale orders in regular extraction (no full-slit or stepwise)
     """
-    logger = log.getLogger('gnirsCombineOrdersXD.start')
+    logger = log.getLogger('combine_orders')
 
     ########################################################################
     #                                                                      #
@@ -52,7 +52,7 @@ def start(configfile):
 
     manualMode = config.getboolean('defaults', 'manualMode')
     overwrite = config.getboolean('defaults', 'overwrite')
-    calculate_snr = config.getboolean('gnirsPipeline', 'Calculate_SNR')
+    calculate_snr = config.getboolean('gnirsPipeline', 'CalculateSNR')
     extractFullSlit = config.getboolean('extractSpectra1D', 'extractFullSlit')
     extractStepwise = config.getboolean('extractSpectra1D', 'extractStepwise')
     extractStepSize = config.getfloat('extractSpectra1D', 'extractStepSize')
@@ -72,12 +72,11 @@ def start(configfile):
     orderResampledSrc = config.get('runtimeFilenames', 'orderResampledSrc')
     orderResampledSky = config.get('runtimeFilenames', 'orderResampledSky')
 
-    # combineOrdersXD specific config
-    redshift = config.get('combineOrdersXD', 'redshift')  # import this as string for check later
-    shiftToRestframe = config.getboolean('combineOrdersXD', 'shiftToRestframe')
-    offsetCorrectionMethod = config.get('combineOrdersXD', 'offsetCorrectionMethod')
+    redshift = config.get('CombineOrders', 'redshift')  # import this as string for check later
+    shiftToRestframe = config.getboolean('CombineOrders', 'shiftToRestframe')
+    offsetCorrectionMethod = config.get('CombineOrders', 'offsetCorrectionMethod')
     orderScalingRegions = config.items('orderScalingRegions')
-    orderResampling = config.getboolean('combineOrdersXD', 'orderResampling')
+    orderResampling = config.getboolean('CombineOrders', 'orderResampling')
 
     #########################################################################
     #                                                                       #

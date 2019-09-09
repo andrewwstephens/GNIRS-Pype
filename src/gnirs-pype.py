@@ -8,7 +8,7 @@ import sort_data
 import make_lists
 import link_cals
 import check_data
-import gnirsBaselineCalibration
+import baseline_cals
 import gnirsReduce
 import gnirsCombineSpectra2D
 import extract_spectra
@@ -19,7 +19,7 @@ import combine_orders
 import noise_spectrum
 import pdf_summary
 
-__version__ = "2019.09.02"
+__version__ = "2019.09.08"
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ def start(args):
 
     # STEP 4: Reduce baseline calibrations
     if config.getboolean('gnirsPipeline', 'calibrationReduction'):
-        gnirsBaselineCalibration.start(args.config)
+        baseline_cals.start(args.config)
 
     # STEP 5: Reduce observations (telluric and/or science)
     if config.getboolean('gnirsPipeline', 'scienceReduction'):
@@ -91,11 +91,11 @@ def start(args):
         gnirsFluxCalibrate.start(args.config)
 
     # STEP 10: Combine XD Orders
-    if config.getboolean('gnirsPipeline', 'combineOrders'):
+    if config.getboolean('gnirsPipeline', 'CombineOrders'):
         combine_orders.start(args.config)
     
     # STEP 11: Calculate noise and S/N spectrum
-    if config.getboolean('gnirsPipeline', 'calculateSNR'):
+    if config.getboolean('gnirsPipeline', 'CalculateSNR'):
         noise_spectrum.start(args.config)
 
     # STEP 12: Write a PDF summary

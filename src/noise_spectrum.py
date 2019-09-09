@@ -363,7 +363,7 @@ def start(configfile):
 
                 obj = re.sub('[^a-zA-Z0-9]', '', fits.getheader(sdir + '/Intermediate/vsrc_comb.fits')['OBJECT'])
 
-                if config.getboolean('combineOrdersXD', 'shiftToRestframe'):
+                if config.getboolean('CombineOrders', 'shiftToRestframe'):
                     refspec = sdir + '/Final/' + obj + '_rest.fits'
                 else:
                     refspec = sdir + '/Final/' + obj + '.fits'
