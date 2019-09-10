@@ -66,6 +66,25 @@ def exists(inlist, overwrite=False):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+def requires(filelist):
+    # Check that all the required files exist, and throw an error if any are missing.
+
+    logger = log.getLogger('requires')
+    logger.debug('Files: %s', filelist)
+
+    exist = [os.path.exists(f) for f in filelist]
+    logger.debug('exist: %s', exist)
+
+    if not all(exist):
+        logger.error('Some files required for the next step are missing.')
+        for f, e in filelist, exist:
+            if not e:
+                logger.error('Cannot find %s', f)
+        raise SystemExit
+    return
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 def get_orders(path):
     logger = log.getLogger('get_orders')
     if 'LB_SXD' in path:

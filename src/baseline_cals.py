@@ -299,11 +299,7 @@ def prepareCalibrations(QHflats, IRflats, arcs, pinholes, interactive, preparedP
     logger = log.getLogger('prepareCalibrations')
 
     infiles = utils.files_in([QHflats, IRflats, arcs, pinholes])
-    logger.debug('Input Files: %s', infiles)
-    if not utils.exists(infiles):
-        logger.error('Could not find all the required input files')
-        raise SystemExit
-
+    utils.requires(infiles)
     outfiles = [preparedPrefix + f for f in infiles] + [reducedPrefix + preparedPrefix + f for f in infiles]
     if utils.exists(outfiles, overwrite):
         logger.info('All calibrations already prepared.')
@@ -369,11 +365,7 @@ def makeFlat(preparedPrefix, reducedPrefix, QHflatsfilename, IRflatsfilename, QH
     logger = log.getLogger('makeFlat')
 
     infiles = ['n%s' % f for f in utils.files_in([QHflatsfilename, IRflatsfilename])]
-    logger.debug('Input Files: %s', infiles)
-    if not utils.exists(infiles):
-        logger.error('Could not find all the required input files')
-        raise SystemExit
-
+    utils.requires(infiles)
     outfiles = [QHflat, QHflat_bpm, IRflat, IRflat_bpm, masterflat]
     if utils.exists(outfiles, overwrite):
         logger.info('Flat fields and BPMs exist.  Skipping this step.')
@@ -430,10 +422,7 @@ def makeSdistortion(interactive, sdistrefimage, pinhole_coordlist, pinholenumber
     logger = log.getLogger('makeSdistortion')
 
     infiles = ['rn' + sdistrefimage]
-    logger.debug('Input Files: %s', infiles)
-    if not utils.exists(infiles):
-        logger.error('Could not find all the required input files')
-        raise SystemExit
+    utils.requires(infiles)
 
     # FIXME: The number of files should not be hard-coded:
     outfiles = ['database/id' + reducedPrefix + preparedPrefix + utils.nofits(sdistrefimage) + '_SCI_%d_' % i for i in range(1,7)]
@@ -477,10 +466,7 @@ def combine_arcs(preparedPrefix, reducedPrefix, combinedarc, interactive, overwr
     logger = log.getLogger('combine_arcs')
 
     infiles = ['rn%s' % f for f in utils.files_in(['arcs.list'])]
-    logger.debug('Input Files: %s', infiles)
-    if not utils.exists(infiles):
-        logger.error('Could not find all the required input files')
-        raise SystemExit
+    utils.requires(infiles)
 
     if utils.exists([combinedarc], overwrite):
         logger.info('Combined arc exists.  Skipping combining arcs.')
@@ -513,10 +499,7 @@ def makeWaveCal(preparedPrefix, reducedPrefix, combinedarc, fitcoordsPrefix, tra
     logger = log.getLogger('makeWaveCal')
 
     infiles = [combinedarc]
-    logger.debug('Input Files: %s', infiles)
-    if not utils.exists(infiles):
-        logger.error('Could not find all the required input files')
-        raise SystemExit
+    utils.requires(infiles)
 
     # FIXME: The number of files should not be hard-coded:
     outfiles = ['farc_comb.fits', 'tfarc_comb.fits', 'wtfarc_comb.fits', 'ftfarc_comb.fits', 'tftfarc_comb.fits'] + \
@@ -586,10 +569,7 @@ def check_wavelengths(combinedarc, fitcoordsPrefix, transformPrefix, orders, nom
     prefix = transformPrefix + fitcoordsPrefix + transformPrefix + fitcoordsPrefix
 
     infiles = [prefix + combinedarc]
-    logger.debug('Input Files: %s', infiles)
-    if not utils.exists(infiles):
-        logger.error('Could not find all the required input files')
-        raise SystemExit
+    utils.requires(infiles)
 
     outfiles = [prefix + utils.nofits(combinedarc) + '_order%d.fits' % i for i in range(1, 7)] + \
                ['arc_wavelength_test.fits']
