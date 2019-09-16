@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from astropy.io import fits
 import log
 import os
 
@@ -25,6 +26,31 @@ def boxit(text, character, center=True):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+def clean(filelist, outputPrefix, overwrite):
+    """
+    Run cleanir to remove any pattern noise.
+    :param filelist: name of input file list
+    :param outputPrefix:
+    :param overwrite:
+    :return:
+    """
+    logger = log.getLogger('clean')
+
+    infiles = files_in(filelist)
+    requires(infiles)
+
+    outfiles = ['c' + f for f in infiles]
+    if exists(outfiles, overwrite):
+        logger.info('All files already cleaned')
+        return
+
+    logger.error('CLEANIR NOT IMPLEMENTED')  # FIXME
+    # cleanir.py inlist
+
+    return
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 def exists(inlist, overwrite=False):
     """
     Check for the existence of the files in the input list.
@@ -39,10 +65,10 @@ def exists(inlist, overwrite=False):
     :return: boolean
     """
     logger = log.getLogger('exists')
-    logger.debug('input: %s', inlist)
+    logger.debug('Files: %s', inlist)
 
     exist = [os.path.exists(f) for f in inlist]
-    logger.debug('Exist: %s', exist)
+    logger.debug('Exists: %s', exist)
 
     if overwrite:
         for i in range(len(inlist)):
@@ -67,8 +93,11 @@ def exists(inlist, overwrite=False):
 
 # ----------------------------------------------------------------------------------------------------------------------
 def requires(filelist):
-    # Check that all the required files exist, and throw an error if any are missing.
-
+    """
+    Check that all the required files exist, and throw an error if any are missing.
+    :param filelist: list of file names
+    :return:
+    """
     logger = log.getLogger('requires')
     logger.debug('Files: %s', filelist)
 
@@ -82,6 +111,27 @@ def requires(filelist):
                 logger.error('Cannot find %s', f)
         raise SystemExit
     return
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def get_bpm(filename):
+    """
+    Find the most appropriate bad pixel mask. For data taken before the summer 2012 lens replacement use
+    gnirs$data/gnirsn_2011apr07_bpm.fits.  After summer 2012 use gnirs$data/gnirsn_2012dec05_bpm.fits'.
+    Use keyword 'ARRAYID' in the raw file header to check which camera was used for observations:
+    """
+    logger = log.getLogger('get_bpm')
+    arrayid = fits.getheader(filename)['ARRAYID']
+    logger.debug('ARRAYID: %s', arrayid)
+    if arrayid == 'SN7638228.1':
+        bpm = 'gnirs$data/gnirsn_2011apr07_bpm.fits'
+    elif arrayid == 'SN7638228.1.2':
+        bpm = 'gnirs$data/gnirsn_2012dec05_bpm.fits'
+    else:
+        logger.error('Unknown array ID.')
+        raise SystemExit
+    logger.info('BPM: %s', bpm)
+    return bpm
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -126,12 +176,12 @@ def files_in(filelist):
     :return: list of all the filts, e.g. ['N20190102S0123', 'N20190102S0124', ...]
     """
     logger = log.getLogger('files_in')
-    logger.debug('Input: %s', filelist)
+    logger.debug('Filelist: %s', filelist)
     allfiles = []
     for fl in filelist:
         with open(fl, 'r') as f:
             allfiles.extend(f.read().splitlines())
-    logger.debug('Output: %s', allfiles)
+    logger.debug('Files: %s', allfiles)
     return allfiles
 
 

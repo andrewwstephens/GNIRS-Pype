@@ -8,14 +8,14 @@ import datetime
 import dateutil.parser
 from astropy.io import fits
 from pyraf import iraf
+import utils
 
 
 def start(kind, configfile):
     """
     This module contains all the functions needed to perform the full reduction of SCIENCE or TELLURIC data.
 
-    Parameters are loaded from gnirs-pype.cfg configuration file. This script will automatically detect if it is being run
-    on telluric data or science data. There are 5 steps.
+    Parameters are loaded from gnirs-pype.cfg configuration file.
 
     INPUT FILES:
         - Configuration file
@@ -43,27 +43,16 @@ def start(kind, configfile):
     """
     logger = log.getLogger('gnirsReduce')
 
-
-    ###########################################################################
-    ##                                                                       ##
-    ##                  BEGIN - GENERAL REDUCTION SETUP                      ##
-    ##                                                                       ##
-    ###########################################################################
-
     path = os.getcwd()  # Store current working directory for later use.
 
-    logger.info('####################################################')
-    logger.info('#                                                  #')
-    logger.info('#  Start the GNIRS Science and Telluric Reduction  #')
-    logger.info('#                                                  #')
-    logger.info('####################################################')
+    logger.info(' --------------------------------------------- ')
+    logger.info('| Starting the Science and Telluric Reduction |')
+    logger.info(' --------------------------------------------- ')
 
     # Set up/prepare IRAF.
     iraf.gemini()
     iraf.gemtools()
     iraf.gnirs()
-
-    # Reset to default parameters the used IRAF tasks.
     iraf.unlearn(iraf.gemini, iraf.gemtools, iraf.gnirs, iraf.imcopy)
 
     # Prepare the IRAF package for GNIRS.
@@ -82,39 +71,28 @@ def start(kind, configfile):
 
     if kind == 'Science':  # scienceReduction specific config
         observationSection = 'ScienceDirectories'
-        start = config.getint('scienceReduction','Start')
-        stop = config.getint('scienceReduction','Stop')
+        startstep = config.getint('scienceReduction','Start')
+        stopstep = config.getint('scienceReduction','Stop')
         cleanir = config.getboolean('scienceReduction','cleanir')
         radiationCorrectionMethod = config.get('scienceReduction','radiationCorrectionMethod')
         radiationThreshold = config.getfloat('scienceReduction','radiationThreshold')
 
     elif kind == 'Telluric':  # telluricReduction specific config
         observationSection = 'TelluricDirectories'
-        start = config.getint('telluricReduction','Start')
-        stop = config.getint('telluricReduction','Stop')
+        startstep = config.getint('telluricReduction','Start')
+        stopstep = config.getint('telluricReduction','Stop')
         cleanir = config.getboolean('telluricReduction','cleanir')
         radiationCorrectionMethod = config.get('telluricReduction','radiationCorrectionMethod')
         radiationThreshold = config.getfloat('telluricReduction','radiationThreshold')
 
     else:
-        logger.error("###########################################################################")
-        logger.error("#                                                                         #")
-        logger.error("#     ERROR in reduce: invalid kind of reduction. Please enter either     #")
-        logger.error("#                      <Science> or <Telluric>. Exiting script.           #")
-        logger.error("#                                                                         #")
-        logger.error("###########################################################################")
+        logger.error('Invalid kind of reduction: %s. Please enter either Science or Telluric.', kind)
         raise SystemExit
 
     nsprepareInter = config.getboolean('interactive', 'nsprepareInter')
     calculateSNR = config.getboolean('gnirsPipeline', 'CalculateSNR')
     overwrite = config.getboolean('defaults', 'overwrite')
     manualMode = config.getboolean('defaults', 'manualMode')
-
-    ###########################################################################
-    ##                                                                       ##
-    ##                 COMPLETE - GENERAL REDUCTION SETUP                    ##
-    ##                                                                       ##
-    ###########################################################################
 
     # gnirsReduce will reduce observations in each science or telluric directory only if the reduction truth value for
     # that directory is True; else, it will skip the reductions (of science or telluric frames) in that dorectory. If 
@@ -128,23 +106,12 @@ def start(kind, configfile):
             logger.debug('Skipping %s', obspath)
             continue
 
-        ###########################################################################
-        ##                                                                       ##
-        ##                  BEGIN - OBSERVATION SPECIFIC SETUP                   ##
-        ##                                                                       ##
-        ###########################################################################
-
         iraf.chdir(obspath + '/Intermediate')
-        logger.info("Working on reductions in %s\n", obspath)
+        logger.info("Working in %s", obspath)
 
         calpath = '../Calibrations'
-        logger.info("Path to calibrations: %s\n", calpath)
+        logger.info("Path to calibrations: %s", calpath)
 
-        # TODO(Viraja)?:  Define a function to extract the lists by specifying their filenames
-        allobsfilename = 'all.list'
-        allobslist = open(allobsfilename, "r").readlines()
-        allobslist = [filename.strip() for filename in allobslist]
-        rawHeader = fits.open(allobslist[0])[0].header
         if calculateSNR:
             # Check if there is a list of sky images in obspath
             skylistfilename = 'sky.list'
@@ -156,18 +123,13 @@ def start(kind, configfile):
                 logger.warning("available in %s . Setting the 'calculateSNR' parameter for the ", obspath)
                 logger.warning("the current set of observations to 'False'.\n")
                 calculateSNR = False
-        nodAlistfilename = 'nodA.list'
-        nodAlist = open(nodAlistfilename, "r").readlines()
-        nodAlist = [filename.strip() for filename in nodAlist]
-        nodBlistfilename = 'nodB.list'
-        nodBlist = open(nodBlistfilename, "r").readlines()
-        nodBlist = [filename.strip() for filename in nodBlist]
+
 
         logger.debug("Checking if required calibrations available in %s\n", calpath)
 
         # Check for the reference image to calculate MDF
         QHflatslist = open(calpath+'/QHflats.list', "r").readlines()
-        mdfshiftimage = calpath+'/n'+QHflatslist[0].strip()
+        mdfshiftimage = calpath + '/n' + QHflatslist[0].strip()
         if os.path.exists(mdfshiftimage):
             logger.info("Reference image to calculate MDF information available.")
             calCheck_flag = True   # calCheck_flag defined here
@@ -228,232 +190,108 @@ def start(kind, configfile):
 
         combinedarc = 'arc_comb.fits'  ## The combined arc filename used in the calibrations directory path
 
-        ###########################################################################
-        ##                                                                       ##
-        ##                 COMPLETE - OBSERVATION SPECIFIC SETUP                 ##
-        ##                BEGIN DATA REDUCTION FOR AN OBSERVATION                ##
-        ##                                                                       ##
-        ###########################################################################
+        if startstep > stopstep or startstep < 1 or stopstep > 5:
+            logger.error('Invalid start/stop values')
+            raise SystemExit
 
-        # Check start and stop values for reduction steps. Ask user for a correction if input is not valid.
-        valindex = start
-        while valindex > stop or valindex < 1 or stop > 5:
-            logger.warning("#####################################################################")
-            logger.warning("#####################################################################")
-            logger.warning("#                                                                   #")
-            logger.warning("#     WARNING in reduce: invalid start/stop values of observation   #")
-            logger.warning("#                        reduction steps.                           #")
-            logger.warning("#                                                                   #")
-            logger.warning("#####################################################################")
-            logger.warning("#####################################################################\n")
-
-            valindex = int(raw_input("Please enter a valid start value (1 to 5, default 1): "))
-            stop = int(raw_input("Please enter a valid stop value (1 to 5, default 5): "))
-
-        while valindex <= stop:
-
-            #############################################################################
-            ##  STEP 1: Clean raw observations.                                        ##
-            ##  Output: Cleaned science or telluric frames.                            ##
-            #############################################################################
+        for valindex in range(startstep, stopstep + 1):
+            logger.debug('valindex = %d', valindex)
 
             if valindex == 1:
-                if manualMode:
-                    a = raw_input("About to enter step 1: clean raw observations.")
+                logger.info(" -------------------------------- ")
+                logger.info("| STEP 1: Clean raw observations |")
+                logger.info(" -------------------------------- ")
+
+                utils.pause(manualMode)
 
                 if cleanir:
-                    # cleanir(allobslist)
-                    pass  ## this step is not modified to work with this pipeline as of July 2019
+                    utils.clean('all.list', 'c', overwrite)
                 else:
-                    logger.info("######################################################################")
-                    logger.info("######################################################################")
-                    logger.info("#                                                                    #")
-                    logger.info("#       WARNING in reduce: raw observations not cleaned.             #")
-                    logger.info("#                                                                    #")
-                    logger.info("######################################################################")
-                    logger.info("######################################################################\n")
-
-                logger.info("##################################################################")
-                logger.info("#                                                                #")
-                logger.info("#       STEP 1: Clean raw observations - COMPLETED               #")
-                logger.info("#                                                                #")
-                logger.info("##################################################################\n")
-
-            ###########################################################################
-            ##    STEP 2: Prepare observations (science or telluric frames)          ##
-            ###########################################################################
+                    logger.warning("Observations not cleaned.")
 
             elif valindex == 2:
-                if manualMode:
-                    a = raw_input("About to enter step 2: locate the spectrum.")
+                logger.info(" ------------------------------- ")
+                logger.info("| STEP 2: Prepare observations |")
+                logger.info(" ------------------------------- ")
 
-                # Use the most appropriate bad pixel mask. For data taken Before the summer 2012 lens replacement,
-                # use 'gnirs$data/gnirsn_2011apr07_bpm.fits'; after summer 2012, use
-                # 'gnirs$data/gnirsn_2012dec05_bpm.fits'. Use keyword 'ARRAYID' in the raw file header to check
-                # which camera was used for observations, and accordingly set parameter 'bpm' for the bpmfile to be
-                # used from the gnirs$database.
-                arrayid = rawHeader['ARRAYID'].strip()
-                if arrayid == 'SN7638228.1':
-                    bpmfile = 'gnirs$data/gnirsn_2011apr07_bpm.fits'
-                elif arrayid == 'SN7638228.1.2':
-                    bpmfile = 'gnirs$data/gnirsn_2012dec05_bpm.fits'
-                else:
-                    logger.error("######################################################################")
-                    logger.error("######################################################################")
-                    logger.error("#                                                                    #")
-                    logger.error("#        ERROR in reduce: unknown array ID. Exiting script.          #")
-                    logger.error("#                                                                    #")
-                    logger.error("######################################################################")
-                    logger.error("######################################################################\n")
-                    raise SystemExit
+                utils.pause(manualMode)
 
-                prepareObservations(nsprepareInter, mdfshiftimage, bpmfile, overwrite)
-
-                logger.info("##############################################################################")
-                logger.info("#                                                                            #")
-                logger.info("#       STEP 2: Locate the Spectrum (prepare observations) - COMPLETED       #")
-                logger.info("#                                                                            #")
-                logger.info("##############################################################################\n")
-
-            ###########################################################################
-            ##  STEP 3: Prepare bad pixel masks and do radiation event correction    ##
-            ###########################################################################
+                prepareObservations(nsprepareInter, mdfshiftimage, overwrite)
 
             elif valindex == 3:
-                if manualMode:
-                    a = raw_input("About to enter step 3: radiation event correction.")
+                logger.info(" ------------------------------------------------------------- ")
+                logger.info("| STEP 3: Create bad pixel masks and correct radiation events |")
+                logger.info(" ------------------------------------------------------------- ")
 
-                preparedHeader = fits.open('n'+allobslist[0])[0].header
-                date = dateutil.parser.parse(preparedHeader['DATE-OBS'].strip() + ' ' + preparedHeader['TIME-OBS'])
-                rdnoise = preparedHeader['RDNOISE']
-                gain = preparedHeader['GAIN']
+                utils.pause(manualMode)
 
-                min_nodA = 'min_nodA.fits'
-                min_nodB = 'min_nodB.fits'
-                minimagelist = [min_nodA, min_nodB]
-                nodlist = [nodAlist, nodBlist]
+                if radiationCorrectionMethod not in ['fixpix', 'dqplane']:
+                    logger.warning("Invalid/no radiation event correction method specified.")
+                    header = fits.open('n' + utils.files_in(['all.list'])[0])[0].header
+                    date = dateutil.parser.parse(header['DATE-OBS'].strip() + ' ' + header['TIME-OBS'])
+                    if date < datetime.datetime(year=2012, month=8, day=1, hour=0, minute=0, second=0):
+                        logger.info("Defaulting to the 'fixpix' method.")
+                        radiationCorrectionMethod = 'fixpix'
+                    else:
+                        logger.info("Observations after August 2012 do not have radiation events; skipping correction.")
+                        radiationCorrectionMethod = None
 
                 if radiationCorrectionMethod == 'fixpix':
-                    createMinimumImage(nodAlistfilename, nodAlist, min_nodA, overwrite)
-                    createMinimumImage(nodBlistfilename, nodBlist, min_nodB, overwrite)
-                    radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, overwrite)
+
+                    createMinimumImage('nodA.list', 'min_nodA.fits', overwrite)
+                    createMinimumImage('nodB.list', 'min_nodB.fits', overwrite)
+                    radiationCorrectionFixpix(radiationThreshold, overwrite)
 
                 elif radiationCorrectionMethod == 'dqplane':
-                    createMinimumImage(nodAlistfilename, nodAlist, min_nodA, overwrite)
-                    radiationCorrectionDQplane(allobslist, nodAlist, min_nodA, overwrite)
-                    createMinimumImage(nodBlistfilename, nodBlist, min_nodB, overwrite)
-                    radiationCorrectionDQplane(allobslist, nodBlist, min_nodB, overwrite)
 
-                else:
-                    logger.warning("########################################################################")
-                    logger.warning("########################################################################")
-                    logger.warning("#                                                                      #")
-                    logger.warning("#   WARNING in reduce: invalid/no radiation event correction method    #")
-                    logger.warning("#                      method found. Checking the observation date.    #")
-                    logger.warning("#                                                                      #")
-                    logger.warning("########################################################################")
-                    logger.warning("########################################################################\n")
-
-                    if date < datetime.datetime(year=2012, month=8, day=1, hour=0, minute=0, second=0):
-                        logger.info("Observation date is " + str(date) + ". Performing the radiation event ")
-                        logger.info("correction using the 'fixpix' method.\n")
-                        radiationCorrectionMethod = 'fixpix'
-                        createMinimumImage(nodAlistfilename, nodAlist, min_nodA, overwrite)
-                        createMinimumImage(nodBlistfilename, nodBlist, min_nodB, overwrite)
-                        radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, overwrite)
-                    else:
-                        logger.info("Observation date is " + str(date) + ". GNIRS data from 2012B not affected ")
-                        logger.info("by radiation events. Skipping radiation event correction.\n")
-                        pass
-
-                logger.info("##############################################################################")
-                logger.info("#                                                                            #")
-                logger.info("#  STEP 3: Radiation event correction - COMPLETED                            #")
-                logger.info("#                                                                            #")
-                logger.info("##############################################################################\n")
-
-            ##############################################################################
-            ##  STEP 4: Flat field and subtract sky background (science or telluric)    ##
-            ##############################################################################
+                    createMinimumImage('nodA.list', 'min_nodA.fits', overwrite)
+                    createMinimumImage('nodB.list', 'min_nodB.fits', overwrite)
+                    radiationCorrectionDQplane('nodA.list', 'min_nodA.fits', overwrite)
+                    radiationCorrectionDQplane('nodB.list', 'min_nodB.fits', overwrite)
 
             elif valindex == 4:
-                if manualMode:
-                    a = raw_input("About to enter step 4: flat fielding and sky subtraction.")
+                logger.info(" ------------------------------------- ")
+                logger.info("| STEP 4: Flat field and sky subtract |")
+                logger.info(" ------------------------------------- ")
 
-                # If the parameter 'calculateSNR' is set to 'yes' in the configuration file, the script
-                # will reduce all observations without sky subtraction (by setting the parameter 'fl_sky' in
-                # nsreduce to 'no') in which case the parameter 'outprefix' in nsreduce will be 'k'; else, all
-                # observations will be reduced with sky subtraction and the output prefix will be 'r'.
-                skySubtraction = 'yes'
-                reduce_outputPrefix = 'r'  ## output prefix assigned to the reduced observations
-                reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiationThreshold, overwrite)
+                utils.pause(manualMode)
+
+                # All observations are reduced WITH sky subtraction using an ouput file prefix of 'r'.
+                # If the parameter 'calculateSNR' is set to 'yes' in the configuration file, the observations are
+                # also reduced WITHOUT sky subtraction (by setting the parameter 'fl_sky' in nsreduce to 'no')
+                # using the output file prefix of 'k'
+
+                reduceObservations(masterflat, radiationThreshold, overwrite, skysub=True)
+
                 if calculateSNR:
-                    logger.info("Reducing observations without sky subtraction to generate an SNR spectrum later ")
-                    logger.info("by the pipeline.\n")
-                    skySubtraction = 'no'
-                    reduce_outputPrefix = 'k'
-                    reduceObservations(skySubtraction, reduce_outputPrefix, masterflat, radiationThreshold,
-                        overwrite)
-
-                logger.info("##############################################################################")
-                logger.info("#                                                                            #")
-                logger.info("#  STEP 4: Flat fielding and sky subtraction - COMPLETED                     #")
-                logger.info("#                                                                            #")
-                logger.info("##############################################################################\n")
-
-            #################################################################################
-            ##  STEP 5: Apply spatial distortion correction and spectral transformation    ##
-            #################################################################################
+                    logger.info("Reducing observations without sky subtraction to generate an SNR spectrum later.")
+                    reduceObservations(masterflat, radiationThreshold, overwrite, skysub=False)
 
             elif valindex == 5:
-                if manualMode:
-                    a = raw_input("About to enter step 5: spatial distortion correction and spectral transformation.")
+                logger.info(" ------------------------------------------------------------------------- ")
+                logger.info("| STEP 5: Apply spatial distortion correction and spectral transformation |")
+                logger.info(" ------------------------------------------------------------------------- ")
 
-                reduce_outputPrefix = 'r'
-                SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist, sdistfileslength,
-                    wavecallampfileslength, combinedarc, overwrite)
+                utils.pause(manualMode)
+
+                SdistCorrection_SpectralTransform(databasepath,  sdistfileslength, wavecallampfileslength,
+                                                  combinedarc, overwrite, prefix='r')
                 if calculateSNR:
-                    logger.info("Applying spatial distortion correction and spectral transformation to the ")
-                    logger.info("science frames reduced without sky subtraction.\n")
-                    reduce_outputPrefix = 'k'
-                    SdistCorrection_SpectralTransform(databasepath, reduce_outputPrefix, allobslist,
-                        sdistfileslength, wavecallampfileslength, combinedarc, overwrite)
+                    logger.info("Processing science frames reduced without sky subtraction.")
+                    SdistCorrection_SpectralTransform(databasepath, sdistfileslength, wavecallampfileslength,
+                                                      combinedarc, overwrite, prefix='k')
 
-                logger.info("##################################################################################")
-                logger.info("#                                                                                #")
-                logger.info("# STEP 5: spatial distortion correction and spectral transformation - COMPLETED  #")
-                logger.info("#                                                                                #")
-                logger.info("##################################################################################\n")
-
-            else:
-                logger.error("###########################################################################")
-                logger.error("###########################################################################")
-                logger.error("#                                                                         #")
-                logger.error("#        ERROR in reduce: %d is not valid. Exiting script.", valindex)
-                logger.error("#                                                                         #")
-                logger.error("###########################################################################")
-                logger.error("###########################################################################")
-                raise SystemExit
-
-            valindex += 1
-
-        logger.info("##############################################################################")
-        logger.info("#                                                                            #")
-        logger.info("#  COMPLETE - Reductions completed for                                       #")
-        logger.info("#  %s", obspath)
-        logger.info("#                                                                            #")
-        logger.info("##############################################################################\n")
+        logger.info(" -------------------------- ")
+        logger.info("| Reduction step complete. |")
+        logger.info(" -------------------------- ")
 
     iraf.chdir(path)  # Return to directory script was begun from.
 
     return
 
 
-##################################################################################################################
-#                                                     ROUTINES                                                   #
-##################################################################################################################
-
-def prepareObservations(interactive, mdfshiftimage, bpmfile, overwrite):
+# ----------------------------------------------------------------------------------------------------------------------
+def prepareObservations(interactive, mdfshiftimage, overwrite):
     """
     Prepare raw observations (science or telluric) using nsprepare. Output prefix "n" is added to raw filenames.
 
@@ -465,28 +303,22 @@ def prepareObservations(interactive, mdfshiftimage, bpmfile, overwrite):
 
     :param interactive:
     :param mdfshiftimage:
-    :param bpmfile:
     :param overwrite:
     :return:
     """
+    logger = log.getLogger('prepareObservations')
 
-    logger = log.getLogger('gnirsReduce.prepareObservations')
+    infiles = utils.files_in(['all.list'])
+    utils.requires(infiles)
+    outfiles = ['n' + f for f in infiles]
+    if utils.exists(outfiles, overwrite):
+        logger.info('All files already prepared.')
+        return
 
-    # Update frames with mdf offset value and generate variance and data quality extensions. This code structure checks 
-    # if iraf output files already exist. If output files exist and overwrite is specified, iraf output is overwritten.
-
-    oldfiles = glob.glob('./nN*.fits')
-    if len(oldfiles) > 0:
-        if overwrite:
-            logger.warning('Removing old files: %s', oldfiles)
-            for f in oldfiles:
-                os.remove(f)
-        else:
-            logger.warning("Output exists and -overwrite not set - skipping nsprepare for all observations.\n")
-            return
+    bpm = utils.get_bpm(infiles[0])
 
     iraf.nsprepare(
-        inimages='@all.list', rawpath='', outimages='', outprefix='n', bpm=bpmfile,
+        inimages='@all.list', rawpath='', outimages='', outprefix='n', bpm=bpm,
         logfile=logger.root.handlers[0].baseFilename, fl_vardq='yes', fl_cravg='no', crradius=0.0,
         fl_dark_mdf='no', fl_correct='no', fl_saturated='yes', fl_nonlinear='yes', fl_checkwcs='yes',
         fl_forcewcs='yes', arraytable='gnirs$data/array.fits', configtable='gnirs$data/config.fits',
@@ -497,37 +329,33 @@ def prepareObservations(interactive, mdfshiftimage, bpmfile, overwrite):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def createMinimumImage(inlistfilename, inlist, minimage, overwrite):
+def createMinimumImage(filelist, minimage, overwrite):
     """
     Combine images using GEMCOMBINE to create a 'minimum' image using the "minmax" combining algorithm.
     In this pipeline, the function is used to combine observations at different nod positions positions, separately,
     to create 'minimum' images at each position.
 
-    :param inlistfilename:
-    :param inlist:
+    :param filelist:
     :param minimage:
     :param overwrite:
     :return:
     """
+    logger = log.getLogger('createMinimumImage')
 
-    logger = log.getLogger('gnirsReduce.createMinimumImage')
+    infiles = ['n' + f for f in utils.files_in([filelist])]
+    utils.requires(infiles)
 
-    if os.path.exists(minimage):
-        if overwrite:
-            logger.warning("Removing old %s", minimage)
-            os.remove(minimage)
-        else:
-            logger.warning("Output exists and overwrite flag is not set")
-            logger.warning('Skipping creating a mimimum image for the input list %s.', inlistfilename)
-            return
+    outfiles = [minimage]
+    if utils.exists(outfiles, overwrite):
+        logger.info('Minimum image already exists.')
+        return
 
-    logger.info("Creating a relatively clean 'minimum' image of observations in the input list ")
-    logger.info("%s.\n", inlistfilename)
+    logger.info("Creating a 'minimum' image...")
     iraf.gemcombine(
-        input='n//@'+inlistfilename, output=minimage, title="", combine="median", reject="minmax",
+        input=','.join(infiles), output=minimage, title="", combine="median", reject="minmax",
         offsets="none", masktype="goodvalue", maskvalue=0., scale="none", zero="none", weight="none",
         statsec="[*,*]", expname="EXPTIME", lthreshold='INDEF', hthreshold='INDEF', nlow=0,
-        nhigh=len(inlist)-1, nkeep=1, mclip='yes', lsigma=3., hsigma=3., key_ron="RDNOISE", key_gain="GAIN",
+        nhigh=len(infiles)-1, nkeep=1, mclip='yes', lsigma=3., hsigma=3., key_ron="RDNOISE", key_gain="GAIN",
         ron=0.0, gain=1.0, snoise="0.0", sigscale=0.1, pclip=-0.5, grow=0.0, bpmfile="", nrejfile="",
         sci_ext="SCI", var_ext="VAR", dq_ext="DQ", fl_vardq='yes',
         logfile=logger.root.handlers[0].baseFilename, fl_dqprop='no', verbose='yes')
@@ -536,7 +364,7 @@ def createMinimumImage(inlistfilename, inlist, minimage, overwrite):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise, gain, overwrite):
+def radiationCorrectionFixpix(radiationThreshold, overwrite):
     """
     Prepare bad pixel masks for all observations (science or telluric) using a radiation threshold value and 
     correct the bad pixels by interpolation method.
@@ -545,38 +373,54 @@ def radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise
     on a skyline. Column interpolation may be better for events landing on the peak of target spectra, but effects from
     bad interpolation over skylines seem to do worse.
     """
-    logger = log.getLogger('gnirsReduce.createMinimumImage')
+    logger = log.getLogger('radiationCorrectionFixpix')
 
-    oldfiles_masks = glob.glob('./mask*.pl')
-    oldfiles_gmasks = glob.glob('./gmask*.pl')
-    oldfiles_radiationcleaned = glob.glob('./lnN*.fits')
-    oldfiles_combinedmasks = glob.glob('./bgmask*.pl')
-    oldfiles = oldfiles_masks + oldfiles_gmasks + oldfiles_radiationcleaned + oldfiles_combinedmasks
+    nodAlistfilename = 'nodA.list'
+    nodAlist = utils.files_in([nodAlistfilename])
+    nodBlistfilename = 'nodB.list'
+    nodBlist = utils.files_in([nodBlistfilename])
+    nodlist = [nodAlist, nodBlist]
 
-    if len(oldfiles) > 0:
-        if overwrite:
-            logger.warning('Removing old mask*, gmask*.pl, lnN*.fits, and bgmask*.pl files.')
-            for f in oldfiles:
-                os.remove(f)
-        else:
-            logger.warning("Output exists and -overwrite not set - skipping radiation correction by 'fixpix' method ")
-            logger.warning("for all observations.")
-            return
+    min_nodA = 'min_nodA.fits'
+    min_nodB = 'min_nodB.fits'
+    minimagelist = [min_nodA, min_nodB]
+
+    files = nodAlist + nodBlist
+    infiles = ['n' + f for f in files] + minimagelist
+    utils.requires(infiles)
+
+    outfiles = ['mask' + f.replace('.fits', '.pl') for f in files] + \
+               ['gmask' + f.replace('.fits', '.pl') for f in files] + \
+               ['bgmask' + f.replace('.fits', '.pl') for f in files] + \
+               ['ln' + f for f in files]
+
+    if utils.exists(outfiles, overwrite):
+        logger.info('Radiation corrected files exist.  Skipping this step.')
+        return
+
+    header = fits.open(infiles[0])[0].header
+    rdnoise = header['RDNOISE']
+    gain = header['GAIN']
+    logger.debug('RDNOISE: %s', rdnoise)
+    logger.debug('GAIN: %s', gain)
 
     logger.info("Creating initial masks for all observations.")
     for i in range(len(nodlist)):
         for image in nodlist[i]:
-            iraf.imexpr("(a-b)>"+str(radiationThreshold)+"*sqrt("+str(rdnoise)+"**2+2*b/"+str(gain)+") ? 1 : 0",
-                output='mask'+image[:-5]+'.pl', a='n'+image+'[SCI]', b=minimagelist[i]+'[SCI]', dims="auto",
-                intype="int", outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0.,
+            iraf.imexpr(
+                "(a-b)>" + str(radiationThreshold) + "*sqrt(" + str(rdnoise) + "**2+2*b/" + str(gain) + ") ? 1 : 0",
+                output='mask' + image[:-5] + '.pl',
+                a='n' + image + '[SCI]',
+                b=minimagelist[i] + '[SCI]',
+                dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0, btype="nearest", bpixval=0.,
                 rangecheck='yes', verbose='yes', exprdb="none")
 
-    with open('./masks.list', 'a+') as f:
-        for filename in sorted(glob.glob('./mask*.pl')):
-            filename = filename[filename.rfind('/')+1:]
-            if filename not in f.read().split('\n'):
-                f.write(filename + '\n')
+    logger.debug('Creating list of masks...')
+    with open('masks.list', 'w') as masklist:
+        for f in files:
+            masklist.write('mask%s\n' % f.replace('.fits', '.pl'))
 
+    logger.debug('Growing masks...')
     iraf.crgrow(input='@masks.list', output='g//@masks.list', radius=1.5, inval="INDEF", outval="INDEF")
 
     logger.info("Adding bad pixels from the [DQ] plane generated by nsprepare to the masks so that they can be ")
@@ -584,68 +428,73 @@ def radiationCorrectionFixpix(nodlist, minimagelist, radiationThreshold, rdnoise
 
     for i in range(len(nodlist)):
         for image in nodlist[i]:
-            iraf.copy(input='n'+image, output='ln'+image, verbose='yes')
+            iraf.copy(input='n' + image, output='ln' + image, verbose='yes')
 
             iraf.imexpr(
-                expr="a||b", output='bgmask'+image[:-5]+'.pl', a='gmask'+image[:-5]+'.pl',
-                b=minimagelist[i]+'[DQ]', dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0,
+                expr="a||b",
+                output='bgmask' + image[:-5] + '.pl',
+                a='gmask'+image[:-5] + '.pl',
+                b=minimagelist[i] + '[DQ]',
+                dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0,
                 btype="nearest", bpixval=0., rangecheck='yes', verbose='yes', exprdb="none")
 
-            iraf.proto.fixpix(images='ln'+image+'[SCI,1]', masks='bgmask'+image[:-5]+'.pl', linterp=1,
+            iraf.proto.fixpix(
+                images='ln' + image + '[SCI,1]', masks='bgmask' + image[:-5] + '.pl', linterp=1,
                 cinterp="INDEF", verbose='yes', pixels='no')
 
     return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def radiationCorrectionDQplane(obslist, inlist, minimage, overwrite):
+def radiationCorrectionDQplane(inlistfile, minimage, overwrite):
     """
     Prepare bad pixel masks for all observations (science or telluric) using the data quality plane of the prepared 
     observations and correct the bad pixels by replacing the corresponding pixels from 'minimum' images.
     """
-    logger = log.getLogger('gnirsReduce.radiationCorrectionDQplane')
+    logger = log.getLogger('radiationCorrectionDQplane')
 
-    oldfiles_masks = glob.glob('./mask*')
-    oldfiles_gmasks = glob.glob('./gmask*')
-    oldfiles_radiationclean = glob.glob('./lnN*.fits')
-    oldfiles = oldfiles_masks + oldfiles_gmasks + oldfiles_radiationclean
+    files = utils.files_in([inlistfile])
+    infiles = ['n' + f for f in files]
+    utils.requires(infiles)
 
-    if len(oldfiles) > 0:
-        if overwrite:
-            logger.warning('Removing old mask*, gmask*.pl, and lnN*.fits files.')
-            for f in oldfiles:
-                os.remove(f)
-        else:
-            logger.warning("Output files exist and -overwrite not set - skipping radiation correction by 'dqplane' ")
-            logger.warning("method for all observations.\n")
-            return
+    outfiles = ['mask' + f.replace('.fits', '.pl') for f in files] + \
+               ['gmask' + f.replace('.fits', '.pl') for f in files] + \
+               ['ln' + f for f in files]
+
+    if utils.exists(outfiles, overwrite):
+        logger.info('Radiation corrected files exist.  Skipping this step.')
+        return
 
     logger.info("Copying the [DQ] planes generated by nsprepare as the initial masks for all observations.")
-    for obs in obslist:
-        iraf.imcopy(input='n'+obs+'[DQ,1]', output='mask'+obs[:-5]+'.pl', verbose='yes')
+    for f in files:
+        iraf.imcopy(input='n%s[DQ,1]' % f, output='mask%s' % f.replace('.fits', '.pl'), verbose='yes')
 
-    with open('./masks.list', 'a+') as f:
-        for filename in sorted(glob.glob('./mask*.pl')):
-            filename = filename[filename.rfind('/')+1:]
-            if filename not in f.read().split('\n'):
-                f.write(filename + '\n')
+    logger.debug('Creating list of masks...')
+    with open('masks.list', 'w') as masklist:
+        for f in files:
+            masklist.write('mask%s\n' % f.replace('.fits', '.pl'))
 
+    logger.debug('Growing masks...')
     iraf.crgrow(input='@masks.list', output='g//@masks.list', radius=1.5, inval="INDEF", outval="INDEF")
 
     logger.info("Replacing the pixels identified as bad pixels by the final masks with pixels from the ")
     logger.info("'minimum' images.\n")
-    for image in inlist:
-        iraf.copy(input='n'+image, output='ln'+image, verbose='yes')
+    for image in files:
+        iraf.copy(input='n' + image, output='ln' + image, verbose='yes')
         iraf.imexpr(
-            expr="c>1 ? b : a", output='ln'+image+'[SCI,overwrite]', a='n'+image+'[SCI]', b=minimage+'[SCI]',
-            c='gmask'+image[:-5]+'.pl', dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0,
+            expr="c>1 ? b : a",
+            output='ln'+image+'[SCI,overwrite]',
+            a='n' + image + '[SCI]',
+            b=minimage + '[SCI]',
+            c='gmask'+image[:-5]+'.pl',
+            dims="auto", intype="int", outtype="auto", refim="auto", bwidth=0,
             btype="nearest", bpixval=0., rangecheck='yes', verbose='yes', exprdb="none")
 
     return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def reduceObservations(skySubtraction, outprefix, masterflat, radiationThreshold, overwrite):
+def reduceObservations(flat, radiationThreshold, overwrite, skysub=True):
     """
     Flat field and sky subtract observations with nsreduce. If 'calculateSNR' is set, observations will be
     reduced without sky subtraction too and prefix 'k' will be added before the input filenames; otherwise, sky 
@@ -654,96 +503,98 @@ def reduceObservations(skySubtraction, outprefix, masterflat, radiationThreshold
     NSREDUCE is used for basic reduction of raw data - it provides a single, unified interface to several tasks and 
     also allows the subtraction of dark frames (not done for GNIRS data) and dividing by the flat.
 
-    :param skySubtraction:
     :param outprefix:
     :param masterflat:
     :param radiationThreshold:
     :param overwrite:
+    :param skysub:
     :return:
     """
-    logger = log.getLogger('gnirsReduce.reduceObservations')
+    logger = log.getLogger('reduceObservations')
 
-    oldfiles = glob.glob('./' + outprefix + 'lnN*.fits')
-    if len(oldfiles) > 0:
-        if overwrite:
-            logger.warning('Removing old files: %s', oldfiles)
-            for f in oldfiles:
-                os.remove(f)
-        else:
-            logger.warning("Output files exist and overwrite flag not set.")
-            logger.warning('Skipping nsreduce for all observations.')
-            return
+    if skysub:
+        outprefix = 'r'
+    else:
+        outprefix = 'k'
+
+    files = utils.files_in(['all.list'])
+    infiles = ['ln' + f for f in files]
+    utils.requires(infiles)
+
+    outfiles = [outprefix + f for f in infiles]
+    if utils.exists(outfiles, overwrite):
+        logger.info('Reduced files exist.  Skipping this step.')
+        return
 
     iraf.nsreduce(
         inimages='ln//@all.list', outimages='', outprefix=outprefix, fl_cut='yes', section="",
         fl_corner='yes', fl_process_cut='yes', fl_nsappwave='no', nsappwavedb='gnirs$data/nsappwave.fits',
-        crval="INDEF", cdelt="INDEF", fl_dark='no', darkimage="", fl_save_dark='no', fl_sky=skySubtraction,
+        crval="INDEF", cdelt="INDEF", fl_dark='no', darkimage="", fl_save_dark='no', fl_sky=skysub,
         skyimages="", skysection="", combtype="median", rejtype="avsigclip", masktype="goodvalue", maskvalue=0.,
         scale="none", zero="median", weight="none", statsec="[*,*]", lthreshold="INDEF", hthreshold="INDEF",
         nlow=1, nhigh=1, nkeep=0, mclip='yes', lsigma=3., hsigma=3., snoise="0.0", sigscale=0.1, pclip=-0.5,
-        grow=0.0, skyrange='INDEF', nodsize=3., fl_flat='yes', flatimage=masterflat, flatmin=0.0, fl_vardq='yes',
+        grow=0.0, skyrange='INDEF', nodsize=3., fl_flat='yes', flatimage=flat, flatmin=0.0, fl_vardq='yes',
         logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', force='no')
 
-    # Record radiation threshold value in reduced file headers
-    iraf.hedit(images=outprefix+'ln//@all.list', fields='RTHRESH', value=radiationThreshold, add='yes',
-        addonly='no', delete='no', verify='no', show='no', update='yes')
+    logger.debug('Recording the radiation threshold value in reduced file headers...')
+    iraf.hedit(
+        images=outprefix + 'ln//@all.list',
+        fields='RTHRESH',
+        value=radiationThreshold,
+        add='yes', addonly='no', delete='no', verify='no', show='no', update='yes')
 
     return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def SdistCorrection_SpectralTransform(databasepath, outprefix, obslist, sdistfileslength,
-                                      wavecallampfileslength, combinedarc, overwrite):
+def SdistCorrection_SpectralTransform(databasepath, sdistfileslength, wavecallampfileslength,
+                                      combinedarc, overwrite, prefix='r'):
     """
     Apply spatial distortion correction and spectral transformation. 
 
     In general, we would run nsfitcoords on all reduced science or telluric frames with and without sky subtraction (if 
     creating an error spectrum) to straighten the spectra and then de-tilt. nsfitcoords simply writes database info, 
-    which depends only on pinholes and arcs (the *_sdist and *_lamp files that were written to the databse while 
-    reducing baseline calibrations), not on on-sky data. So, here we access the nsfitcoords solution from the 
+    which depends only on pinholes and arcs (the *_sdist and *_lamp files that were written to the database while
+    reducing baseline calibrations), not on on-sky data. So here we access the nsfitcoords solution from the
     calibrations folder and append the relevant header keywords, which will tell nstransform the database files it 
     should use, without actually calling nsfitcoords. This routine also uses the output files in the database that were
     created by the nswavelength task.
     """
+    logger = log.getLogger('SdistCorrection_SpectralTransform')
 
-    logger = log.getLogger('gnirsReduce.SdistCorrection_SpectralTransform')
+    # TODO: check that the database files exist in Calibrations/database/
 
-    oldfiles_fitcoords = glob.glob('./f'+outprefix+'lnN*')
-    oldfiles_sdisttrans = glob.glob('./tf'+outprefix+'lnN*')
-    oldfiles_spectrans = glob.glob('./ttf'+outprefix+'lnN*')
-    oldfiles = oldfiles_fitcoords + oldfiles_sdisttrans + oldfiles_spectrans
+    files = utils.files_in(['all.list'])
+    infiles = [prefix + 'ln' + f for f in files]
+    utils.requires(infiles)
 
-    if len(oldfiles) > 0:
-        if overwrite:
-            logger.warning("Removing old f%slnN*.fits, tf%slnN*.fits, ttf%slnN*.fits files.", outprefix,
-                outprefix, outprefix)
-            for f in oldfiles:
-                os.remove(f)
-        else:
-            logger.warning("Output files exist and -overwrite not set - skipping spatial distortion correction and ")
-            logger.warning("spectral transformation for all observations.")
-            return
+    outfiles = ['f' + f for f in infiles] + ['tf' + f for f in infiles] + ['ttf' + f for f in infiles]
+    if utils.exists(outfiles, overwrite):
+        logger.info('Reduced files exist.  Skipping this step.')
+        return
 
     logger.info("Editing the primary header AND science extensions.")
-    for obs in obslist:
+    for obs in files:
 
         # First, make copies of the reduced observations with new filenames and edit header to add the
         # nsfitcoords stamp.
-        iraf.copy(input=outprefix+'ln'+obs, output='f'+outprefix+'ln'+obs, verbose='yes', mode="ql")
+        iraf.copy(
+            input=prefix + 'ln' + obs, output='f' + prefix + 'ln' + obs, verbose='yes', mode="ql")
 
         iraf.hedit(
-            images='f'+outprefix+'ln'+obs+'[0]', fields="NSFITCOO", value="copied from arc",
+            images='f' + prefix + 'ln' + obs + '[0]', fields="NSFITCOO", value="copied from arc",
             add='yes', addonly='no', delete='no', verify='no', show='no', update='yes', mode='al')
 
         # Second, add sdist info and transform the files to make the orders vertical.
         for i in range(sdistfileslength):
             iraf.hedit(
-                images='f'+outprefix+'ln'+obs+'[SCI,'+str(i+1)+']', field="FCFIT2",
-                value='f'+combinedarc[:-5]+'_SCI_'+str(i+1)+'_sdist', add='yes', addonly='no', delete='no',
-                verify='no', show='no', update='yes', mode='al')
+                images='f' + prefix + 'ln' + obs + '[SCI,' + str(i+1) + ']',
+                field="FCFIT2",
+                value='f' + combinedarc[:-5] + '_SCI_' + str(i+1) + '_sdist',
+                add='yes', addonly='no', delete='no', verify='no', show='no', update='yes', mode='al')
 
         iraf.nstransform(
-            inimages='f'+outprefix+'ln'+obs, outspectra='', outprefix='t', dispaxis=1,
+            inimages='f' + prefix + 'ln' + obs, outspectra='', outprefix='t', dispaxis=1,
             database=databasepath, fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0,
             logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
 
@@ -751,12 +602,13 @@ def SdistCorrection_SpectralTransform(databasepath, outprefix, obslist, sdistfil
         # detector rows).
         for i in range(wavecallampfileslength):
             iraf.hedit(
-                images='tf'+outprefix+'ln'+obs+'[SCI,'+str(i+1)+']', field="FCFIT1",
-                value='ftf'+combinedarc[:-5]+'_SCI_'+str(i+1)+'_lamp', add='yes', addonly='no', delete='no',
-                verify='no', show='no', update='yes', mode='al')
+                images='tf' + prefix + 'ln' + obs + '[SCI,' + str(i+1) + ']',
+                field="FCFIT1",
+                value='ftf' + combinedarc[:-5] + '_SCI_' + str(i+1) + '_lamp',
+                add='yes', addonly='no', delete='no', verify='no', show='no', update='yes', mode='al')
 
         iraf.nstransform(
-            inimages='tf'+outprefix+'ln'+obs, outspectra='', outprefix='t', dispaxis=1,
+            inimages='tf'+prefix+'ln'+obs, outspectra='', outprefix='t', dispaxis=1,
             database=databasepath, fl_stripe='no', interptype='poly3', xlog='no', ylog='no', pixscale=1.0,
             logfile=logger.root.handlers[0].baseFilename, verbose='yes', debug='no', mode='al')
 
@@ -766,5 +618,5 @@ def SdistCorrection_SpectralTransform(databasepath, outprefix, obslist, sdistfil
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
-    a = raw_input('Enter <Science> for science reduction or <Telluric> for telluric reduction: ')
-    start(a, 'gnirs-pype.cfg')
+    kind = raw_input('Enter <Science> for science reduction or <Telluric> for telluric reduction: ')
+    start(kind, 'gnirs-pype.cfg')

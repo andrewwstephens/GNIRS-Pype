@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from astropy.io import fits
 import ConfigParser
 import glob
 import log
@@ -139,23 +138,23 @@ def start(configfile):
                     utils.pause(manualMode)
 
                     if config.getboolean('calibrationReduction','cleanir_QHflats'):
-                        clean('QHflats.list', cleanirPrefix, overwrite)
+                        utils.clean('QHflats.list', cleanirPrefix, overwrite)
                     else:
                         logger.warning('QH Flats not cleaned')
 
                     if config.getboolean('calibrationReduction','cleanir_IRflats'):
-                        clean('IRflats.list', cleanirPrefix, overwrite)
+                        utils.clean('IRflats.list', cleanirPrefix, overwrite)
                     else:
                         logger.warning('IR Flats not cleaned')
 
                     if config.getboolean('calibrationReduction','cleanir_arcs'):
-                        clean('arcs.list', cleanirPrefix, overwrite)
+                        utils.clean('arcs.list', cleanirPrefix, overwrite)
                         pass
                     else:
                         logger.warning('Arcs not cleaned')
 
                     if config.getboolean('calibrationReduction','cleanir_pinholes'):
-                        clean('pinholes.list', cleanirPrefix, overwrite)
+                        utils.clean('pinholes.list', cleanirPrefix, overwrite)
                         pass
                     else:
                         logger.warning('Pinholes not cleaned')
@@ -238,37 +237,12 @@ def start(configfile):
                     check_wavelengths(combinedarc, fitcoordsPrefix, transformPrefix, orders, nominal_wavelengths,
                                       advertised_accuracy, overwrite)
 
-            logger.info(" ------------------------------------------- ")
+            logger.info(" -------------------------------------- ")
             logger.info("| Baseline Calibrations step complete. |")
-            logger.info(" ------------------------------------------- ")
+            logger.info(" -------------------------------------- ")
 
     iraf.chdir(path)  # Return to where we began
         
-    return
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-def clean(inlist, outputPrefix, overwrite):
-    """
-    Run cleanir to remove any pattern noise.
-    :param inlist: (string) name of input file list
-    :param outputPrefix:
-    :param overwrite:
-    :return:
-    """
-    logger = log.getLogger('clean')
-
-    infiles = utils.files_in(inlist)
-    outfiles = ['c' + f for f in infiles]
-    logger.debug('outfiles: %s', outfiles)
-
-    if utils.exists(outfiles, overwrite):
-        logger.info('All files already cleaned')
-        return
-
-    logger.error('CLEANIR NOT IMPLEMENTED')  # FIXME
-    # cleanir.py inlist
-
     return
 
 
@@ -305,19 +279,7 @@ def prepareCalibrations(QHflats, IRflats, arcs, pinholes, interactive, preparedP
         logger.info('All calibrations already prepared.')
         return
 
-    # Use the most appropriate bad pixel mask. For data taken Before the summer 2012 lens replacement, use
-    # gnirs$data/gnirsn_2011apr07_bpm.fits, and after summer 2012, use gnirs$data/gnirsn_2012dec05_bpm.fits'.
-    # Use keyword 'ARRAYID' in the raw file header to check which camera was used for observations:
-    arrayid = fits.getheader(infiles[0])['ARRAYID']
-    logger.debug('ARRAYID: %s', arrayid)
-    if arrayid == 'SN7638228.1':
-        bpm = 'gnirs$data/gnirsn_2011apr07_bpm.fits'
-    elif arrayid == 'SN7638228.1.2':
-        bpm = 'gnirs$data/gnirsn_2012dec05_bpm.fits'
-    else:
-        logger.error('Unknown array ID.')
-        raise SystemExit
-    logger.info('BPM: %s', bpm)
+    bpm = utils.get_bpm(infiles[0])
 
     # Update all calibration frames with mdf offset value and generate variance and data quality extensions.
     iraf.nsprepare(
@@ -612,7 +574,7 @@ def check_wavelengths(combinedarc, fitcoordsPrefix, transformPrefix, orders, nom
     # Take the nominal starting and ending wavelengths from the OT, and check if the ones from the wavelength 
     # calibration are the same to within the advertised tolerance.
 
-    logger.info("Checking if the starting and the ending wavelengths of the wavelength solution are reasonable.")
+    logger.info("Checking that the wavelength solutions are reasonable.")
     logger.debug('Advertised accuracy: %s', advertised_accuracy)
     for i in range(len(orders)):
         extension = i+1
@@ -642,7 +604,7 @@ def check_wavelengths(combinedarc, fitcoordsPrefix, transformPrefix, orders, nom
             logger.warning('%d:  Expected: %.2f - %.2f   Actual: %.2f - %.2f nm', extension, waveStart, waveEnd,
                            nominal_wavelengths[extension][0], nominal_wavelengths[extension][1])
 
-    logger.info("Starting and the ending wavelengths of the wavelength solution check complete.")
+    logger.info("Wavelength solutions check complete.")
     return
 
 
