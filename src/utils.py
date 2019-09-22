@@ -5,7 +5,7 @@ import os
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def boxit(text, character, center=True):
+def boxit(text, character='-', center=True):
     lines = text.split('\n')
     max_length = max([len(line) for line in lines])
     border = character * (max_length + 4)
@@ -102,11 +102,11 @@ def requires(filelist):
     logger.debug('Files: %s', filelist)
 
     exist = [os.path.exists(f) for f in filelist]
-    logger.debug('exist: %s', exist)
+    logger.debug('Exist: %s', exist)
 
     if not all(exist):
         logger.error('Some files required for the next step are missing.')
-        for f, e in filelist, exist:
+        for f, e in zip(filelist, exist):
             if not e:
                 logger.error('Cannot find %s', f)
         raise SystemExit

@@ -9,7 +9,7 @@ import make_lists
 import link_cals
 import check_data
 import baseline_cals
-import gnirsReduce
+import reduce
 import gnirsCombineSpectra2D
 import extract_spectra
 import gnirsTelluric
@@ -19,7 +19,7 @@ import combine_orders
 import noise_spectrum
 import pdf_summary
 
-__version__ = "2019.09.15"
+__version__ = "2019.09.22"
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -69,9 +69,9 @@ def start(args):
 
     # STEP 5: Reduce observations (telluric and/or science)
     if config.getboolean('gnirsPipeline', 'scienceReduction'):
-        gnirsReduce.start('Science', args.config)
+        reduce.start('Science', args.config)
     if config.getboolean('gnirsPipeline', 'telluricReduction'):
-        gnirsReduce.start('Telluric', args.config)
+        reduce.start('Telluric', args.config)
 
     # STEP 6: Combine 2D spectra
     if config.getboolean('gnirsPipeline', 'combineSpectra2D'):
