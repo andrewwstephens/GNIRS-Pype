@@ -65,10 +65,11 @@ def exists(inlist, overwrite=False):
     :return: boolean
     """
     logger = log.getLogger('exists')
-    logger.debug('Files: %s', inlist)
+    logger.debug('inlist: %s', inlist)
+    logger.debug('overwrite: %s', overwrite)
 
     exist = [os.path.exists(f) for f in inlist]
-    logger.debug('Exists: %s', exist)
+    logger.debug('exists: %s', exist)
 
     if overwrite:
         for i in range(len(inlist)):
@@ -137,6 +138,7 @@ def get_bpm(filename):
 # ----------------------------------------------------------------------------------------------------------------------
 def get_orders(path):
     logger = log.getLogger('get_orders')
+
     if 'LB_SXD' in path:
         orders = [3, 4, 5]
     elif 'LB_LXD' in path:
@@ -144,7 +146,9 @@ def get_orders(path):
     elif 'SB_SXD' in path:
         orders = [3, 4, 5, 6, 7, 8]
     else:
-        raise SystemExit("Unknown GNIRS configuration.  Cannot determine the XD orders.")
+        logger.error('Unknown GNIRS configuration.  Cannot determine the XD orders.')
+        raise SystemExit
+
     logger.debug('orders: %s', orders)
     return orders
 
@@ -152,6 +156,7 @@ def get_orders(path):
 # ----------------------------------------------------------------------------------------------------------------------
 def get_wavelengths(path):
     logger = log.getLogger('get_wavelengths')
+
     if 'LB_SXD' in path:
         wavelengths = None
         accuracy = None
@@ -162,7 +167,9 @@ def get_wavelengths(path):
         wavelengths = ([0,0], [18690,25310], [14020,18980], [11220,15180], [9350,12650], [8020,10840], [7020,9480])
         accuracy = 5  # percent
     else:
-        raise SystemExit("Unknown GNIRS configuration.  Cannot determine the nominal wavelenghts.")
+        logger.error("Unknown GNIRS configuration.  Cannot determine the nominal wavelenghts.")
+        raise SystemExit
+
     logger.debug('wavelengths: %s', wavelengths)
     logger.debug('accuracy: %s', accuracy)
     return wavelengths, accuracy
