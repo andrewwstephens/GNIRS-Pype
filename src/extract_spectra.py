@@ -174,34 +174,26 @@ def start(configfile):
 
                         utils.pause(True, 'Next is the peak matching!')
 
-
-
-
                         logger.info("Comparing the science and Telluric extraction locations...")
+                        reextract, predicted = compare_peaks(obspath, telpath, scipeaks, telpeaks, toleranceOffset)
 
-                        stuff = compare_peaks(obspath, telpath, scipeaks, telpeaks, toleranceOffset)
-
-
-
-
-
-                        logger.info("Completed matching the peaks found by nsextract.")
-
-                        # Re-extract combined science 2D source spectrum if needed
-                        if sciReExtract:
-                            logger.info("Re-extracting one or more science spectra.")
+                        if any(reextract):
+                            logger.warning("Re-extracting...")
                             newtelapfilePrefix = 're'
                             useApall = 'yes'
                             apertureTracingColumns = 20
+
                             reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMatched,
-                                sci_combinedsrc, tel_combinedsrc, newtelapfilePrefix, orders, nsextractInter, extractRegularPrefix,
-                                databaseDir, useApall, subtractBkg, apertureTracingColumns, extractApertureRadius)
+                                sci_combinedsrc, tel_combinedsrc, newtelapfilePrefix, orders, nsextractInter,
+                                extractRegularPrefix, useApall, subtractBkg, apertureTracingColumns,
+                                extractApertureRadius)
+
                             logger.info("Completed re-extracting one or more science spectra.")
-                        else:
-                            logger.info("Not re-extracting any science spectra.")
-                            pass
 
 
+
+
+            utils.pause(True, '* You should probably stop here *')
 
 
 
@@ -308,7 +300,7 @@ def get_peaks(databasepath):
             for line in f:
                 # The peak location is the number in the second column of the line beginning with 'center'
                 if 'center' in line:
-                    p = line.split()[1]
+                    p = float(line.split()[1])
                     break
             peaks.append(p)
             if p is None:
@@ -336,99 +328,56 @@ def compare_peaks(scipath, telpath, scipeaks, telpeaks, tolerance):
     telinfo = obslog.readcsv(telpath + '/obslog.csv')
 
     sciA = utils.files_in([scipath + '/nodA.list'])
-    sciB = utils.files_in([scipath + '/nodB.list'])
-
     telA = utils.files_in([telpath + '/nodA.list'])
-    telB = utils.files_in([telpath + '/nodB.list'])
 
     # Assuming that both the science and Telluric were acquired in the center of the slit, the extraction locations
     # should be the same minus any difference in the Q-offset.
+    # Here I assume that I only need to compare the "A" offset (B might be a sky):
 
-    logger.debug('The telluric used offsets of: %s', telinfo[telA[0]]['Q'])
-    logger.debug('The science used offsets of: %s', sciinfo[sciA[0]]['Q'])
+    logger.debug('Science "A" offset: %s arcsec', sciinfo[sciA[0]]['Q'])
+    logger.debug('Telluric "A" offset: %s arcsec', telinfo[telA[0]]['Q'])
 
-    for f in sciA:
-        logger.debug('sciA: %s', sciinfo[f]['Q'])
-
-    for f in sciB:
-        logger.debug('sciB: %s', sciinfo[f]['Q'])
-
-    for f in telA:
-        logger.debug('telA: %s', telinfo[f]['Q'])
-
-    for f in telB:
-        logger.debug('telB: %s', telinfo[f]['Q'])
-
-    # The PIXSCALE should be in the obslog, but it's not yet, so:
+    # TODO:  The PIXSCALE should be in the obslog, but it's not, so for now:
     pixscale = 0.15
 
-    # So what do we get for the science positions:
+    offset = (float(sciinfo[sciA[0]]['Q']) - float(telinfo[telA[0]]['Q'])) / pixscale
+    logger.debug('offset: %s pix', offset)
 
-    delta = (float(sciinfo[sciA[0]]['Q']) - float(telinfo[telA[0]]['Q']) ) / pixscale
-    logger.debug('delta: %s pix', delta)
+    logger.debug('Extraction locations (pixels):')
 
-    logger.debug('Predicted science extraction locations:')
+    shifts = []
+    predicted = []
+    reextract = []
     for s,t in zip(scipeaks, telpeaks):
-        logger.debug('telluric: %s  science: %s  predicted sci: %s', t, s, float(t) + delta)
+        predicted.append(t + offset)
+        shifts.append(t + offset - s)
+        reextract.append(abs(shifts[-1]) > tolerance)
+        logger.debug('Telluric: %6.2f  Predicted sci: %6.2f  Actual sci: %6.2f', t, t + offset, s)
 
+    logger.debug('predicted: %s', predicted)
+    logger.debug('shifts: %s', shifts)
+    logger.debug('reextract: %s', reextract)
 
-    utils.pause(True, '* You should probably stop here *')
+    if any(reextract):
+        logger.warning('Some orders are not where they are expected to be.')
 
-
-
-    # Find absolute Q offsets of the combined science and telluric images from their respective last acquisition images
-    sciacqHeader = fits.open(sciacq)[0].header
-    scisrccombHeader = fits.open(scisrccomb)[0].header
-    scisrccombQoffset = abs(sciacqHeader['QOFFSET'] - scisrccombHeader['QOFFSET'])
-
-    telacqHeader = fits.open(telacq)[0].header
-    telsrccombHeader = fits.open(telsrccomb)[0].header
-    telsrccombQoffset = abs(telacqHeader['QOFFSET'] - telsrccombHeader['QOFFSET'])
-
-    pixelscale = scisrccombHeader['PIXSCALE']
-    pixeldifference = (scisrccombQoffset - telsrccombQoffset)/pixelscale  # units: [pixels]
+    # I'm not sure if I should do the tolerance checking here, or pass back the list of shifts,
+    # or a list of booleans, or do the comparison in the main program...
 
     # nsextract should find the spectrum within a 'tolerance' pixels of expected location. This depends on how well the
     # observer centred the target along the slit. Here, we use 5 pixels as a reasonable tolerance level. A more robust
     # way would be to use some measure of whether the peak found by nsextract was real, e.g. counts + FWHM. However, 
     # this information is not recorded in database.
 
-    # Is reExtract overwritten with each new order?
-
-    matched = []
-    for i in range(len(scipeaks)):
-        expectedPeak = float(telpeaks[i]) + pixeldifference
-        if scipeaks[i] == 'Peak not found':
-            logger.warning("nsextract did not extract anything for extension %d", i)
-            logger.warning("Will re-extract forcing the aperture to be at the expected location %.4g", expectedPeak)
-            matched.append(False)
-            reExtract = True
-        else:    
-            locatedPeak = float(scipeaks[i])
-            if abs(locatedPeak - expectedPeak) < tolerance:
-                logger.info("nsextract detected the spectrum close to the expected location for In extension %d,  ", i)
-                logger.info("(located = %s vs. expected = %s", locatedPeak, expectedPeak)
-                matched.append(True)
-                reExtract = False
-            else:
-                logger.warning("nsextract extracted an unexpected peak location in extension %d", i)
-                logger.warning("(located = %s vs. expected = ", locatedPeak, expectedPeak)
-                logger.warning("Will re-extract forcing the aperture to be at the expected location.'")
-                matched.append(False)
-                reExtract = True
-
-    # Is reExtract = not all(peaksMatched)?
-
-    return matched
+    return reextract, predicted
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 def reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMatched, sci_combinedsrc,
-    tel_combinedsrc, newtelapfilePrefix, orders, nsextractInter, extractRegularPrefix, databaseDir, useApall, subtractBkg,
+    tel_combinedsrc, newtelapfilePrefix, orders, nsextractInter, extractRegularPrefix, useApall, subtractBkg,
     apertureTracingColumns, extractApertureRadius):
-    """
-    """
-    logger = log.getLogger('gnirsReduce.reExtractSpectra1D')
+
+    logger = log.getLogger('reExtract')
 
     logger.info("Creating new aperture files in database.")
     for i in range(len(orders)):
@@ -437,11 +386,13 @@ def reExtractSpectra1D(scidatabasepath, teldatabasepath, telpath, scitelPeaksMat
         # There is some trouble replacing only the database files for the extracted spectra that were not well centred.
         # So, simply replacing all science database files but using the ones for which nsextract located the peaks at 
         # the right positions.
-        oldsciapfile = scidatabasepath+'/ap'+sci_combinedsrc[:-5]+'_SCI_'+str(extension)+'_'
+
+        oldsciapfile = scidatabasepath + '/ap' + sci_combinedsrc[:-5] + '_SCI_' + str(extension) + '_'
         if os.path.exists(oldsciapfile):
             os.remove(oldsciapfile)
         oldtelapfile = open(teldatabasepath+'ap'+tel_combinedsrc+'_SCI_'+str(extension)+'_', 'r')
         newtelapfile = open(teldatabasepath+'ap'+newtelapfilePrefix+tel_combinedsrc+'_SCI_'+str(extension)+'_', 'w')
+
         if not peaks_flag[i]:
             # TODO(Viraja):  Check if there is a better way to replace the peak values then how it is done below.
             replacetelapfile  = oldtelapfile.read().replace(telpeaks[i], str(float(telpeaks[i])+pixeldifference)+' ').replace(tel_combinedsrc, newtelapfilePrefix+tel_combinedsrc)
