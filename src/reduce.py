@@ -107,7 +107,7 @@ def start(kind, configfile):
             continue
 
         iraf.chdir(obspath + '/Intermediate')
-        logger.info("Working in %s", obspath)
+        logger.info("%s", obspath)
 
         calpath = '../Calibrations'
         logger.info("Path to calibrations: %s", calpath)
@@ -281,9 +281,9 @@ def start(kind, configfile):
                     SdistCorrection_SpectralTransform(databasepath, sdistfileslength, wavecallampfileslength,
                                                       combinedarc, overwrite, prefix='k')
 
-        logger.info(" -------------------------- ")
-        logger.info("| Reduction step complete. |")
-        logger.info(" -------------------------- ")
+        logger.info(" ---------------------------------------------- ")
+        logger.info("| Reduction step complete for this observation |")
+        logger.info(" ---------------------------------------------- ")
 
     iraf.chdir(path)  # Return to directory script was begun from.
 
@@ -307,6 +307,7 @@ def prepareObservations(interactive, mdfshiftimage, overwrite):
     :return:
     """
     logger = log.getLogger('prepareObservations')
+    logger.debug('Starting...')
 
     infiles = utils.files_in(['all.list'])
     utils.requires(infiles)
@@ -341,6 +342,7 @@ def createMinimumImage(filelist, minimage, overwrite):
     :return:
     """
     logger = log.getLogger('createMinimumImage')
+    logger.debug('Starting...')
 
     infiles = ['n' + f for f in utils.files_in([filelist])]
     utils.requires(infiles)
@@ -374,6 +376,7 @@ def radiationCorrectionFixpix(radiationThreshold, overwrite):
     bad interpolation over skylines seem to do worse.
     """
     logger = log.getLogger('radiationCorrectionFixpix')
+    logger.debug('Starting...')
 
     nodAlistfilename = 'nodA.list'
     nodAlist = utils.files_in([nodAlistfilename])
@@ -452,6 +455,7 @@ def radiationCorrectionDQplane(inlistfile, minimage, overwrite):
     observations and correct the bad pixels by replacing the corresponding pixels from 'minimum' images.
     """
     logger = log.getLogger('radiationCorrectionDQplane')
+    logger.debug('Starting...')
 
     files = utils.files_in([inlistfile])
     infiles = ['n' + f for f in files]
@@ -511,6 +515,7 @@ def reduceObservations(flat, radiationThreshold, overwrite, skysub=True):
     :return:
     """
     logger = log.getLogger('reduceObservations')
+    logger.debug('Starting...')
 
     if skysub:
         outprefix = 'r'
@@ -561,6 +566,7 @@ def SdistCorrection_SpectralTransform(databasepath, sdistfileslength, wavecallam
     created by the nswavelength task.
     """
     logger = log.getLogger('SdistCorrection_SpectralTransform')
+    logger.debug('Starting...')
 
     # TODO: check that the database files exist in Calibrations/database/
 
