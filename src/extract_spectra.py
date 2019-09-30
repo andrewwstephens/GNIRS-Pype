@@ -104,9 +104,9 @@ def start(configfile):
                 logger.debug('Skipping extraction of 1D spectra in %s', obspath)
                 continue
 
-            logger.info(' ----------------------------------------- ')
-            logger.info('| Starting extraction of GNIRS 1D spectra |')
-            logger.info(' ----------------------------------------- ')
+            logger.info(' ----------------------- ')
+            logger.info('| Extracting 1D spectra |')
+            logger.info(' ----------------------- ')
 
             obspath += '/Intermediate'
             logger.info("%s\n", obspath)

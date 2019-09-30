@@ -51,6 +51,21 @@ def clean(filelist, outputPrefix, overwrite):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+def dictify(itemlist, fmt='str'):
+    # Convert a ConfigParser items list [(item1,value1),(item2,value2),...] to a dictionary {item1:value1,...}
+    logger = log.getLogger('dictify')
+    logger.debug('itemlist: %s', itemlist)
+    d = {}
+    for key, value in itemlist:
+        if fmt == 'int':
+            d[int(key)] = value
+        else:
+            d[key] = value
+    logger.debug('dict: %s', d)
+    return d
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 def exists(inlist, overwrite=False):
     """
     Check for the existence of the files in the input list.
