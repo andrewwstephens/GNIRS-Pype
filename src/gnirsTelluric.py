@@ -124,7 +124,7 @@ def start(configfile):
                 utils.pause(manualMode)
 
                 hLineRemoval(tel_spec, telluric_hLineCorrected, hLineInter, orders, hLineMethod, hLineRegions,
-                             vega_spec, tempInter, telpath + '/telluric_hLineInfo.txt', overwrite)
+                             vega_spec, tempInter, telpath + '/telluric_hLineInfo', overwrite)
 
             elif valindex == 2:
                 logger.info(" -------------------------------- ")
@@ -178,7 +178,7 @@ def start(configfile):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def hLineRemoval(infile, outroot, hLineInter, orders, hLineMethod, hLineRegions, vega, tempInter, infofile, overwrite):
+def hLineRemoval(infile, outroot, hLineInter, orders, hLineMethod, hLineRegions, vegafile, plot, inforoot, overwrite):
     """
     Remove hydrogen absorption lines from the extracted 1D Telluric spectrum.  Output filename prefix is 'h'.
     Reads:   Extracted 1D telluric spectrum.
@@ -192,6 +192,10 @@ def hLineRemoval(infile, outroot, hLineInter, orders, hLineMethod, hLineRegions,
         logger.info('Telluric standard already has the hydrogen lines removed.  Skipping this step.')
         return
 
+
+    # Would it make more sense to move the loop over orders into each of the functions?
+    # That would pretty much eliminate the need for this function (hlineremoval).
+
     airmass = fits.getheader(infile)['AIRMASS']
 
     for i in range(len(orders)):
@@ -199,58 +203,68 @@ def hLineRemoval(infile, outroot, hLineInter, orders, hLineMethod, hLineRegions,
         extension = i+1
 
         inspec = infile + '[SCI,' + str(extension) + ']'
-        outspec = outroot + '_order' + str(orders[i]) + '.fits'
-        vegaspec = vega + '[' + str(extension) + ']'
+        outspec = outroot + '_order%d.fits' % orders[i]
+        vegaspec = vegafile + '[' + str(extension) + ']'
+        infofile = inforoot + '_order%d.dat' % orders[i]
 
-        logger.debug('Adding the AIRMASS keyword to this extension...')
+        logger.debug('Adding the AIRMASS keyword...')
         iraf.hedit(images=inspec, fields='AIRMASS', value=airmass, add='yes', addonly='no', delete='no',
                    verify='no', show='no', update='yes')
 
-
-
-
-
-
-        if not hLineMethod:
-            logger.warning("Parameter 'hLineMethod' in the configuration file is %s.", hLineMethod)
-            logger.warning("Skipping H line removal for order %d of the telluric 1D source spectra.", orders[i])
+        if hLineMethod == 'None':
+            logger.warning("Skipping H line removal for order %d.", orders[i])
             logger.info("Copying files to have the right names for later use in the pipeline.")
             iraf.imcopy(input=inspec, output=outspec, verbose='yes')
+
+        elif 'vega' in hLineMethod.lower():  # 'vega' or 'Vega_Tweak' or 'Tweak-Vega'
+
+            logger.info("Removing H lines from order %d...", orders[i])
+            vega(inspec, vegaspec, outspec, hLineInter, hLineRegions[orders[i]], infofile, overwrite)
+
+
+
+
+
+
+        # if 'tweak' in hLineMethod.lower():  # Vega-Tweak or LineFit-Tweak
+
+
+
+
+
+        # TODO(Viraja):  Update the functions for the rest of the H line removal options (commented out below).
+        # NOTE: Untested because interactive scripted iraf tasks are broken... Once ready, add them to the
+        # part of the script where the output did not already exists and the task had to be run to generate
+        # files for the first time.
+
+        elif hLineMethod == 'lineFitAuto':
+            logger.error('Auto line fitting not yet implemented')
+            # lineFitAuto(combined_extracted_1d_spectra, grating)
+
+        elif hLineMethod == 'lineFitManual':
+            logger.error('Manual line fitting not yet implemented')
+            # lineFitManual(combined_extracted_1d_spectra+'[sci,1]', grating)
+
+        elif hLineMethod == 'vega_tweak':
+            logger.error('Vega tweak not yet implemented')
+            # First, do H line removal using the 'vega' method automatically, and then give user a chance
+            # to interact with the spectrum
+            # vega(combined_extracted_1d_spectra, path, hLineInter, telluric_shift_scale_record, overwrite)
+            # lineFitManual("final_tel_no_hLines_no_norm", grating)
+
+        elif hLineMethod == 'lineFit_tweak':
+            logger.error('Line fit tweaking not yet implemented')
+            # First, do H line removal using the 'lineFitAuto' method automatically, then give user a
+            # chance to interact with the spectrum
+            # lineFitAuto(combined_extracted_1d_spectra,grating)
+            # lineFitManual("final_tel_no_hLines_no_norm", grating)
+
         else:
-            logger.info("Removing H lines from order %d of the telluric 1D source spectra.", orders[i])
-            if hLineMethod == 'vega':
-                vega(inspec, vega, outspec, hLineInter, airmass, hLineRegions[orders[i]], infofile, overwrite)
+            logger.error("Unrecognized H line removal method: %s", hLineMethod)
+            raise SystemExit
 
-            # TODO(Viraja):  Update the functions for the rest of the H line removal options (commented out below).
-            # NOTE: Untested because interactive scripted iraf tasks are broken... Once ready, add them to the 
-            # part of the script where the output did not already exists and the task had to be run to generate
-            # files for the first time.
 
-            elif hLineMethod == 'lineFitAuto':
-                logger.error('Auto line fitting not yet implemented')
-                # lineFitAuto(combined_extracted_1d_spectra, grating)
 
-            elif hLineMethod == 'lineFitManual':
-                logger.error('Manual line fitting not yet implemented')
-                # lineFitManual(combined_extracted_1d_spectra+'[sci,1]', grating)
-
-            elif hLineMethod == 'vega_tweak':
-                logger.error('Vega tweak not yet implemented')
-                # First, do H line removal using the 'vega' method automatically, and then give user a chance  
-                # to interact with the spectrum
-                # vega(combined_extracted_1d_spectra, path, hLineInter, telluric_shift_scale_record, overwrite)
-                # lineFitManual("final_tel_no_hLines_no_norm", grating)
-
-            elif hLineMethod == 'lineFit_tweak':
-                logger.error('Line fit tweaking not yet implemented')
-                # First, do H line removal using the 'lineFitAuto' method automatically, then give user a 
-                # chance to interact with the spectrum
-                # lineFitAuto(combined_extracted_1d_spectra,grating)
-                # lineFitManual("final_tel_no_hLines_no_norm", grating)
-            
-            else:
-                logger.error("Unrecognized H line removal method encountered in the configuration file.")
-                raise SystemExit
 
         # Create a MEF setting the original primary header as extension [0]
         # iraf.wmef(input=telluric_hLineRemovalOutput_SEF, output=telluric_hLineRemovalOutput_MEF, extnames='',
@@ -261,7 +275,7 @@ def hLineRemoval(infile, outroot, hLineInter, orders, hLineMethod, hLineRegions,
         # this has to be done, it would require adding another science extension to the MEF created in the previous 
         # step using iraf.wmef task BEFORE starting the H line correction in this loop.
 
-        if tempInter:
+        if plot:
             # Plot the telluric 1D source spectrum with and without H line correction
             uncorrected = fits.open(inspec).data
             corrected = fits.open(outspec).data
@@ -273,38 +287,46 @@ def hLineRemoval(infile, outroot, hLineInter, orders, hLineMethod, hLineRegions,
 
     return
 
+
 # ----------------------------------------------------------------------------------------------------------------------
-def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, airmass, sample, tel_hline_infofile,
-    overwrite):
-    """
-    Use IRAF TELLURIC task to remove H absorption lines from the telluric 1D source spectrum using the 'vega' method, 
-    then divide normalization introduced by TELLURIC with IMARITH.
-    """
+def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, interactive, sample, infofile, overwrite):
+    # Use IRAF TELLURIC to remove H absorption lines by scaling and shifting a Vega spectrum.
     logger = log.getLogger('vega')
+    logger.debug('inputtelspectrum: %s', inputtelspectrum)
+    logger.debug('inputcalspectrum: %s', inputcalspectrum)
+    logger.debug('sample: %s', sample)
+    logger.debug('infofile: %s', infofile)
 
-    # For each order, this will be done interactively if parameter 'hLineInter' in the configuration file is 'yes'
-    telluric_hLineInfo = iraf.telluric(input=inputtelspectrum, output=outputtelspectrum, cal=inputcalspectrum,
-        ignoreaps='yes', xcorr='yes', tweakrms='yes', interactive=hLineInter, sample=sample, threshold=0.1,
-        lag=3, shift=0., dshift=0.05, scale=1., dscale=0.05, offset=0, smooth=1, cursor='', airmass=airmass,
-        answer='yes', mode='al', Stdout=1)
+    if utils.exists([outputtelspectrum, infofile], overwrite):
+        logger.warning('Corrected spectrum already exists.  Skipping this step.')
+        return
 
-    # Record shift and scale info for future reference in the script
-    # NOTE: If function "hLineremoval" is ran more than once, the function call to "vega" will automatically overwrite 
-    # the existing tel_hline_infofile.
-    tel_hline_info = open(tel_hline_infofile,'w')
-    tel_hline_info.write(str(telluric_hLineInfo)+'\n')
-    tel_hline_info.close()
-    
-    # This loop identifies telluric output containing warning about pixels outside calibration limits (different 
-    # formatting)  Viraja:  This comment is from HlinesXD.py in XDGNIRS. I am not sure what the "different formatting"
-    # means.
-    if 'limits' in telluric_hLineInfo[-1].split()[-1]:
-        normalization = telluric_hLineInfo[-2].split()[-1]
+    results = iraf.telluric(
+        input=inputtelspectrum,
+        output=outputtelspectrum,
+        cal=inputcalspectrum,
+        ignoreaps='yes', xcorr='yes', tweakrms='yes', interactive=interactive, sample=sample, threshold=0.1, lag=3,
+        shift=0., dshift=0.05, scale=1., dscale=0.05, offset=0, smooth=1, cursor='', answer='yes', mode='al', Stdout=1)
+
+    logger.debug('Results: %s', results)
+
+    # What is this used for?
+    # Record shift and scale results for future reference in the script
+    # NOTE: If function "hLineremoval" is run more than once, the function call to "vega" will overwrite the old file.
+    with open(infofile, 'w') as f:
+        f.write(str(results) + '\n')
+
+    # Parse the Telluric output.  The normalization is usually last [-1], unless there is a warning about pixels
+    # outside limits at the end, then the normlization is second to last [-2]:
+    if 'limits' in results[-1].split()[-1]:
+        normalization = results[-2].split()[-1]
     else:
-        normalization = telluric_hLineInfo[-1].split()[-1]
+        normalization = results[-1].split()[-1]
+    logger.info('Normalization: %s', normalization)
     
-    # Divide normalization introduced by iraf.telluric
-    iraf.imarith(operand1=outputtelspectrum, operand2=normalization, op='/', result=outputtelspectrum, title='',
+    logger.debug('Undoing the normalization introduced by iraf.telluric...')
+    iraf.imarith(
+        operand1=outputtelspectrum, operand2=normalization, op='/', result=outputtelspectrum, title='',
         divzero=0.0, hparams='', pixtype='', calctype='', verbose='yes', noact='no', mode='al')
 
     '''
@@ -323,6 +345,8 @@ def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, hLineInter, airm
         operand1 = 1
         # Viraja:  Why is operand1 set to 1? I would imagine it is set to itself as the divisor is 0.
     '''
+
+    return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
