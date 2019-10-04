@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+
 from astropy.io import fits
 import log
+from matplotlib import pyplot
 import os
 
 
@@ -257,6 +259,46 @@ def pause(active, message=None):
         if 'n' in answer.lower():
             raise SystemExit
 
+    return
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def plot(points1=None, points2=None, line1=None, line2=None, label1=None, label2=None, title=None):
+    # Plot up to two spectra given the filenames with the option of specifying the extension in IRAF format
+    logger = log.getLogger('plot')
+    pyplot.figure()
+
+    def read(filename):
+        if '[' in filename:  # filename.fits[SCI,N]
+            i1 = filename.find('[')
+            i2 = filename.find(',')
+            extname = filename[i1+1:i2]
+            extver = int(filename[i2+1:filename.rfind(']')])
+            return fits.getdata(filename[:i1], extname=extname, extver=extver)
+        else:
+            return fits.getdata(filename)
+
+    if points1:
+        logger.debug('Plotting %s', points1)
+        pyplot.plot(read(points1), linestyle='', marker='o', label=label1 if label1 else points1)
+
+    if points2:
+        logger.debug('Plotting %s', points2)
+        pyplot.plot(read(points2), linestyle='', marker='o', label=label2 if label2 else points2)
+
+    if line1:
+        logger.debug('Plotting %s', line1)
+        pyplot.plot(read(line1), linestyle='-', marker='', label=label1 if label1 else line1)
+
+    if line2:
+        logger.debug('Plotting %s', line2)
+        pyplot.plot(read(line2), linestyle='-', marker='', label=label2 if label2 else line2)
+
+    pyplot.legend(loc='best', numpoints=1, fancybox=True)
+    pyplot.grid(linewidth=0.25)
+    if title:
+        pyplot.title(title)
+    pyplot.show()
     return
 
 

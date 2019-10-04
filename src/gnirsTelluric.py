@@ -9,6 +9,10 @@ import os
 from pyraf import iraf
 import utils
 
+# TODO: Think about whether this module should be split into two (like it is for XDGNIRS):
+# part 1 iterates through all the Telluric paths and does steps 1,2,3
+# part 2 iterates through the science paths and does steps 4,5
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 def start(configfile):
@@ -96,7 +100,7 @@ def start(configfile):
         logger.info("Runtime data path: %s", runtimedata)
 
         sci_spec = scipath + '/' + extractRegularPrefix + combinedsrc
-        tel_spec = telpath + '/' + extractRegularPrefix + combinedsrc
+        tel_spec = extractRegularPrefix + combinedsrc
         vega_spec = runtimedata + 'vega_ext.fits'
         utils.requires([sci_spec, tel_spec, vega_spec])
 
@@ -106,10 +110,9 @@ def start(configfile):
 
         orders = utils.get_orders(scipath)
 
-        # Define output filenames with prefixes added at different stages of script but without the '.fits':
-        telluric_hLineCorrected = utils.nofits(telpath + '/' + hLinePrefix + os.path.basename(tel_spec))
-        telluric_fitContinuum = utils.nofits(telpath + '/' + fitTelContinuumPrefix + os.path.basename(telluric_hLineCorrected))
-        telluric_dividedContinuum = utils.nofits(telpath + '/' + dividedTelContinuumPrefix + os.path.basename(telluric_hLineCorrected))
+        tel_h_corrected = utils.nofits(telpath + '/' + hLinePrefix + os.path.basename(tel_spec))
+        telluric_fitContinuum = utils.nofits(telpath + '/' + fitTelContinuumPrefix + os.path.basename(tel_h_corrected))
+        telluric_dividedContinuum = utils.nofits(telpath + '/' + dividedTelContinuumPrefix + os.path.basename(tel_h_corrected))
         science_dividedTelluricLines = utils.nofits(telluricPrefix + os.path.basename(sci_spec))
         science_correctedTelluric = utils.nofits(dividedTelContinuumPrefix + os.path.basename(science_dividedTelluricLines))
 
@@ -123,8 +126,32 @@ def start(configfile):
                 # Output: H line corrected Telluric 1D spectrum
                 utils.pause(manualMode)
 
-                hLineRemoval(tel_spec, telluric_hLineCorrected, hLineInter, orders, hLineMethod, hLineRegions,
-                             vega_spec, tempInter, telpath + '/telluric_hLineInfo', overwrite)
+                if utils.exists([tel_h_corrected + '_order%d.fits' % o for o in orders], overwrite):
+                    logger.info('Telluric standard already had the hydrogen lines removed.  Skipping this step.')
+                    continue
+
+                if hLineMethod == 'None':
+                    logger.warning('Skipping H line removal')
+                    logger.warning('Copying files to have the right names for later use in the pipeline.')
+                    for i in range(1, len(orders)+1):
+                        iraf.imcopy(input=tel_spec + '[SCI,' + str(i) + ']',
+                                    output=tel_h_corrected + '_order%d.fits' % orders[i], verbose='yes')
+
+                elif 'vega' in hLineMethod.lower():
+                    hcor_vega(tel_spec, vega_spec, tel_h_corrected, hLineRegions, orders, hLineInter)
+
+                elif 'lorentz' in hLineMethod.lower():
+                    hcor_lorentz(tel_spec, tel_h_corrected, orders, runtimedata)
+
+                elif 'manual' in hLineMethod.lower():
+                    hcor_manual(tel_spec, tel_h_corrected, orders)
+
+                else:
+                    logger.error("Unrecognized H line removal method: %s", hLineMethod)
+                    raise SystemExit
+
+                if 'tweak' in hLineMethod.lower():  # Vega-Tweak or Lorentz-Tweak
+                    hcor_manual(tel_h_corrected, orders)
 
             elif valindex == 2:
                 logger.info(" -------------------------------- ")
@@ -133,7 +160,7 @@ def start(configfile):
                 # Output: 1D Fit to the telluric continuum
                 utils.pause(manualMode)
 
-                fitTelluricContinuum(telluric_hLineCorrected, telluric_fitContinuum, continuumInter, orders,
+                fitTelluricContinuum(tel_h_corrected, telluric_fitContinuum, continuumInter, orders,
                                      continuumRegions, telluricFitOrders, tempInter, overwrite)
 
             elif valindex == 3:
@@ -143,7 +170,7 @@ def start(configfile):
                 # Output: Continuum-divided, H line removed telluric 1D source spectra
                 utils.pause(manualMode)
 
-                divideTelluricContinuum(telluric_hLineCorrected, telluric_fitContinuum,
+                divideTelluricContinuum(tel_h_corrected, telluric_fitContinuum,
                                         telluric_dividedContinuum, orders, overwrite)
 
             elif valindex == 4:
@@ -178,175 +205,155 @@ def start(configfile):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def hLineRemoval(infile, outroot, hLineInter, orders, hLineMethod, hLineRegions, vegafile, plot, inforoot, overwrite):
-    """
-    Remove hydrogen absorption lines from the extracted 1D Telluric spectrum.  Output filename prefix is 'h'.
-    Reads:   Extracted 1D telluric spectrum.
-    Writes:  H line corrected 1D telluric source spectrum.
-    """
-    logger = log.getLogger('hLineRemoval')
+def hcor_vega(infile, calfile, outfile, regions, order, interactive):
+    # Use IRAF TELLURIC to remove H absorption lines by scaling and shifting a Vega spectrum.
 
-    utils.requires([infile])
-
-    if utils.exists([outroot + '_order%d.fits' % i for i in range(1, len(orders) + 1)], overwrite):
-        logger.info('Telluric standard already has the hydrogen lines removed.  Skipping this step.')
-        return
-
-
-    # Would it make more sense to move the loop over orders into each of the functions?
-    # That would pretty much eliminate the need for this function (hlineremoval).
-
+    logger = log.getLogger('hcor_vega')
+    logger.debug('--------------------------------------------------')
+    logger.debug('infile: %s', infile)
+    logger.debug('calfile: %s', calfile)
+    logger.debug('outfile: %s', outfile)
+    logger.debug('regions: %s', regions)
+    logger.debug('interactive: %s', interactive)
     airmass = fits.getheader(infile)['AIRMASS']
+    info = open('../Telluric/Intermediate/telluric_hlines.txt', 'w')  # What is this for ?
 
-    for i in range(len(orders)):
-        logger.debug('Processing order %d...', orders[i])
+    for i in range(len(order)):
         extension = i+1
-
         inspec = infile + '[SCI,' + str(extension) + ']'
-        outspec = outroot + '_order%d.fits' % orders[i]
-        vegaspec = vegafile + '[' + str(extension) + ']'
-        infofile = inforoot + '_order%d.dat' % orders[i]
+        calspec = calfile + '[' + str(extension) + ']'
+        outspec = outfile + '_order%d.fits' % order[i]
+        sample = regions[order[i]]
+        logger.debug('-------------------------')
+        logger.debug('inspec: %s', inspec)
+        logger.debug('outspec: %s', outspec)
 
-        logger.debug('Adding the AIRMASS keyword...')
         iraf.hedit(images=inspec, fields='AIRMASS', value=airmass, add='yes', addonly='no', delete='no',
                    verify='no', show='no', update='yes')
 
-        if hLineMethod == 'None':
-            logger.warning("Skipping H line removal for order %d.", orders[i])
-            logger.info("Copying files to have the right names for later use in the pipeline.")
-            iraf.imcopy(input=inspec, output=outspec, verbose='yes')
+        results = iraf.telluric(
+            input=inspec, output=outspec, cal=calspec, sample=sample, ignoreaps='yes', xcorr='yes', tweakrms='yes',
+            interactive=interactive, threshold=0.1, lag=3, shift=0., dshift=0.05, scale=1., dscale=0.05, offset=0,
+            smooth=1, cursor='', answer='yes', mode='al', Stdout=1)
 
-        elif 'vega' in hLineMethod.lower():  # 'vega' or 'Vega_Tweak' or 'Tweak-Vega'
+        logger.debug('iraf.telluric screen output: %s', results)
+        info.write(str(results) + '\n')  # Record shift and scale results for future reference in the script
 
-            logger.info("Removing H lines from order %d...", orders[i])
-            vega(inspec, vegaspec, outspec, hLineInter, hLineRegions[orders[i]], infofile, overwrite)
-
-
-
-
-
-
-        # if 'tweak' in hLineMethod.lower():  # Vega-Tweak or LineFit-Tweak
-
-
-
-
-
-        # TODO(Viraja):  Update the functions for the rest of the H line removal options (commented out below).
-        # NOTE: Untested because interactive scripted iraf tasks are broken... Once ready, add them to the
-        # part of the script where the output did not already exists and the task had to be run to generate
-        # files for the first time.
-
-        elif hLineMethod == 'lineFitAuto':
-            logger.error('Auto line fitting not yet implemented')
-            # lineFitAuto(combined_extracted_1d_spectra, grating)
-
-        elif hLineMethod == 'lineFitManual':
-            logger.error('Manual line fitting not yet implemented')
-            # lineFitManual(combined_extracted_1d_spectra+'[sci,1]', grating)
-
-        elif hLineMethod == 'vega_tweak':
-            logger.error('Vega tweak not yet implemented')
-            # First, do H line removal using the 'vega' method automatically, and then give user a chance
-            # to interact with the spectrum
-            # vega(combined_extracted_1d_spectra, path, hLineInter, telluric_shift_scale_record, overwrite)
-            # lineFitManual("final_tel_no_hLines_no_norm", grating)
-
-        elif hLineMethod == 'lineFit_tweak':
-            logger.error('Line fit tweaking not yet implemented')
-            # First, do H line removal using the 'lineFitAuto' method automatically, then give user a
-            # chance to interact with the spectrum
-            # lineFitAuto(combined_extracted_1d_spectra,grating)
-            # lineFitManual("final_tel_no_hLines_no_norm", grating)
-
+        if 'limits' in results[-1].split()[-1]:      # if there is a warning about pixels ouside limits
+            normalization = results[-2].split()[-1]  # the normalization value is second to last
         else:
-            logger.error("Unrecognized H line removal method: %s", hLineMethod)
-            raise SystemExit
+            normalization = results[-1].split()[-1]  # otherwise the normalization value is last
+        logger.info('Normalization: %s', normalization)
 
+        logger.debug('Undoing the normalization introduced by iraf.telluric...')
+        iraf.imarith(
+            operand1=outspec, operand2=normalization, op='/', result=outspec, title='',
+            divzero=0.0, hparams='', pixtype='', calctype='', verbose='yes', noact='no', mode='al')
 
+        utils.plot(line1=inspec, line2=outspec, label1='in', label2='out')
 
+    info.close()
 
-        # Create a MEF setting the original primary header as extension [0]
-        # iraf.wmef(input=telluric_hLineRemovalOutput_SEF, output=telluric_hLineRemovalOutput_MEF, extnames='',
-        #    phu=tel_src_extracted_spectrum, verbose='yes', mode='al')
-        
-        # TODO(Viraja):  Temporarily, pause to display and take a look at the telluric 1D source spectra before and 
-        # after H line correction. I am not sure if this can be more useful than just looking at the spectra. If 
-        # this has to be done, it would require adding another science extension to the MEF created in the previous 
-        # step using iraf.wmef task BEFORE starting the H line correction in this loop.
-
-        if plot:
-            # Plot the telluric 1D source spectrum with and without H line correction
-            uncorrected = fits.open(inspec).data
-            corrected = fits.open(outspec).data
-            plt.title('Telluric 1D Spectrum Before and After H-Line Removal')
-            plt.plot(uncorrected, 'k', label='Telluric w/o H-line correction')
-            plt.plot(corrected, 'r', label='Telluric w/ H-line correction')
-            plt.legend(loc='best')
-            plt.show()
+    # Comment from nifsTelluric.py: There are subtle bugs in iraf mean imarith does not work. So we use an
+    # astropy/numpy solution.  See NIFTY code for the workaround if necessary.
 
     return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def vega(inputtelspectrum, inputcalspectrum, outputtelspectrum, interactive, sample, infofile, overwrite):
-    # Use IRAF TELLURIC to remove H absorption lines by scaling and shifting a Vega spectrum.
-    logger = log.getLogger('vega')
-    logger.debug('inputtelspectrum: %s', inputtelspectrum)
-    logger.debug('inputcalspectrum: %s', inputcalspectrum)
-    logger.debug('sample: %s', sample)
-    logger.debug('infofile: %s', infofile)
+def hcor_lorentz(infile, outfile, order, cursordir):
+    # Automatially fit Lorentz profiles to all the hydrogen lines pre-defined in lorentz_?.cur files.
+    logger = log.getLogger('hcor_lorentz')
+    logger.debug('--------------------------------------------------')
 
-    if utils.exists([outputtelspectrum, infofile], overwrite):
-        logger.warning('Corrected spectrum already exists.  Skipping this step.')
-        return
+    for i in range(len(order)):
+        ext = i+1
+        inspec = infile + '[SCI,' + str(ext) + ']'
+        outspec = outfile + '_order%d.fits' % order[i]
+        cursor1 = cursordir + 'lorentz_order%d.cur' % order[i]
+        cursor2 = '../Telluric/Intermediate/lorentz_fitting_input_order%d' % order[i]
+        stdout = '../Telluric/Intermediate/lorentz_fitting_output_order%d' % order[i]
+        logger.debug('-------------------------')
+        logger.debug('inspec: %s', inspec)
+        logger.debug('outspec: %s', outspec)
+        logger.debug('cursor1: %s', cursor1)
 
-    results = iraf.telluric(
-        input=inputtelspectrum,
-        output=outputtelspectrum,
-        cal=inputcalspectrum,
-        ignoreaps='yes', xcorr='yes', tweakrms='yes', interactive=interactive, sample=sample, threshold=0.1, lag=3,
-        shift=0., dshift=0.05, scale=1., dscale=0.05, offset=0, smooth=1, cursor='', answer='yes', mode='al', Stdout=1)
+        utils.requires([cursor1])
+        utils.exists([stdout, cursor2], overwrite=True)
 
-    logger.debug('Results: %s', results)
+        # Input the hydrogen line wavelengths and output pixel positions:  (is there another way to do this?)
+        specpos = iraf.bplot(images=inspec, cursor=cursor1, Stdout=1, StdoutG='/dev/null')
+        specpos = str(specpos).split("'x,y,z(x):")
+        logger.debug('specpos: %s', specpos)
 
-    # What is this used for?
-    # Record shift and scale results for future reference in the script
-    # NOTE: If function "hLineremoval" is run more than once, the function call to "vega" will overwrite the old file.
-    with open(infofile, 'w') as f:
-        f.write(str(results) + '\n')
+        # Write a new cursor file with line x,y info and bplot commands to fit Lorentz profiles:
+        write_line_positions(cursor2, specpos)
 
-    # Parse the Telluric output.  The normalization is usually last [-1], unless there is a warning about pixels
-    # outside limits at the end, then the normlization is second to last [-2]:
-    if 'limits' in results[-1].split()[-1]:
-        normalization = results[-2].split()[-1]
-    else:
-        normalization = results[-1].split()[-1]
-    logger.info('Normalization: %s', normalization)
-    
-    logger.debug('Undoing the normalization introduced by iraf.telluric...')
-    iraf.imarith(
-        operand1=outputtelspectrum, operand2=normalization, op='/', result=outputtelspectrum, title='',
-        divzero=0.0, hparams='', pixtype='', calctype='', verbose='yes', noact='no', mode='al')
+        # Fit and subtract Lorentz profiles and write output to file for posterity:
+        iraf.bplot(images=inspec, cursor=cursor2, new_image=outspec, overwrite="yes",
+                   StdoutG='/dev/null', Stdout=stdout)
 
-    '''
-    # Comment from nifsTelluric.py -- There are subtle bugs in iraf mean imarith does not work. So we use an 
-    # astropy/numpy solution. Open the image and the scalar we will be dividing it by.
-    # Viraja:  I am not sure what "... subtle bugs in iraf mean imarith does not work" means. The comment is not clear.
-    # TODO(Viraja):  This commented section should be incorporated later in all relevant places of this script if the 
-    # imarith way of removing normalization adopted here from XDGNIRS is found to not work properly during further 
-    # testing.  As of August 2019, iraf.imarith seems to work fine.
-    operand1 = fits.open(outputtelspectrum)[0].data
-    operand2 = float(normalization)
-    # Create a new data array
-    if operand2 != 0:
-        operand1 = operand1 / operand2
-    else:
-        operand1 = 1
-        # Viraja:  Why is operand1 set to 1? I would imagine it is set to itself as the divisor is 0.
-    '''
+        utils.plot(line1=inspec, line2=outspec, label1='in', label2='out')
 
     return
+
+
+def write_line_positions(filename, var):
+    with open(filename, "w") as curfile:
+        for i in range(len(var)):
+            if i != 0:
+                var[i] = var[i].split()
+                var[i][2] = var[i][2].replace("',", "").replace("']", "")
+            if not i % 2 and i != 0:
+                # even number, means RHS of H line
+                # write x and y position to file, also "k" key
+                curfile.write(var[i][0]+" "+var[i][2]+" 1 k \n")
+                # LHS of line, write info + "l" key to file
+                curfile.write(var[i-1][0]+" "+var[i-1][2]+" 1 l \n")
+                # now repeat but writing the "-" key to subtract the fit
+                curfile.write(var[i][0]+" "+var[i][2]+" 1 - \n")
+                curfile.write(var[i-1][0]+" "+var[i-1][2]+" 1 - \n")
+        curfile.write("0 0 1 i\n")
+        curfile.write("0 0 1 q\n")
+    return
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def hcor_manual(spectrum):
+    # Enter splot so the user can manually remove the hydrogen lines by fitting and subtracting thier favorite profiles.
+    logger = log.getLogger('hcor_manual')
+
+    # ERROR:  This is not correct.  This looks like the NIFS version?  We need output files for each extension.
+
+    iraf.splot(
+        images=spectrum, new_image='final_tel_no_hLines_no_norm',
+        save_file='../PRODUCTS/lorentz_hLines.txt', overwrite='yes')
+
+    # it's easy to forget to use the 'i' key to actually write out the line-free spectrum, so check that it exists:
+    # with the 'tweak' options, the line-free spectrum will already exists, so this lets the user simply 'q' and move on w/o editing (too bad if they edit and forget to hit 'i'...)
+    while True:
+        try:
+            with open("final_tel_no_hLines_no_norm.fits") as f: pass
+            break
+        except IOError as e:
+            logger.error("It looks as if you didn't use the i key to write out the lineless spectrum.")
+            logger.error("We'll have to try again. --> Re-entering splot")
+            iraf.splot(
+                images=spectrum, new_image='final_tel_no_hLines_no_norm',
+                save_file='../PRODUCTS/lorentz_hLines.txt', overwrite='yes')
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -560,46 +567,8 @@ def reintroduceTelluricContinuum(science_dividedTelluricLines, telluric_fitConti
         iraf.wmef(input=science_reintroduceTelluricContinuumOutput_SEF, output=science_reintroduceTelluricContinuumOutput_MEF, extnames='',
             phu=science_dividedTelluricLines+'_order'+str(orders[i])+'_MEF', verbose='yes', mode='al')
 
-# ----------------------------------------------------------------------------------------------------------------------
-'''
-# TODO(nat): linefitAuto and linefitManual could be useful at some point.
-def lineFitAuto(spectrum, grating):
-    """
-    Automatically fit Lorentz profiles to lines defined in existing cur* files. Go to x position in cursor file and use 
-    space bar to find spectrum at each of those points.
-    """
-    logger = log.getLogger('lineFitAuto')
-
-    specpos = iraf.bplot(images=spectrum+'[SCI,1]', cursor='cur'+grating, Stdout=1, StdoutG='/dev/null')
-    specpose = str(specpos).split("'x,y,z(x):")
-    nextcur = 'nextcur'+grating+'.txt'
-    # Write line x,y info to file containing Lorentz fitting commands for bplot
-    write_line_positions(nextcur, specpos)
-    iraf.delete('final_tel_no_hLines_no_norm.fits',ver="no",go_ahead='yes',Stderr='/dev/null')
-    # Fit and subtract Lorentz profiles. Might as well write output to file.
-    iraf.bplot(images=spectrum+'[sci,1]',cursor='nextcur'+grating+'.txt', new_image='final_tel_no_hLines_no_norm', overwrite="yes",StdoutG='/dev/null',Stdout='Lorentz'+grating)
 
 # ----------------------------------------------------------------------------------------------------------------------
-
-def lineFitManual(spectrum, grating):
-    """ 
-    Enter splot so the user can fit and subtract lorentz (or, rather any) profiles.
-    """
-    logger = log.getLogger('lineFitManual')
-
-    iraf.splot(images=spectrum, new_image='final_tel_no_hLines_no_norm', save_file='../PRODUCTS/lorentz_hLines.txt', overwrite='yes')
-    # it's easy to forget to use the 'i' key to actually write out the line-free spectrum, so check that it exists:
-    # with the 'tweak' options, the line-free spectrum will already exists, so this lets the user simply 'q' and move on w/o editing (too bad if they edit and forget to hit 'i'...)
-    while True:
-        try:
-            with open("final_tel_no_hLines_no_norm.fits") as f: pass
-            break
-        except IOError as e:
-            logger.info("It looks as if you didn't use the i key to write out the lineless spectrum. We'll have to try again. --> Re-entering splot")
-            iraf.splot(images=spectrum, new_image='final_tel_no_hLines_no_norm', save_file='../PRODUCTS/lorentz_hLines.txt', overwrite='yes')
-'''
-# ----------------------------------------------------------------------------------------------------------------------
-
 if __name__ == '__main__':
     log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
     start('gnirs-pype.cfg')
