@@ -104,8 +104,6 @@ def start(configfile):
         vega_spec = runtimedata + 'vega_ext.fits'
         utils.requires([sci_spec, tel_spec, vega_spec])
 
-        sci_airmass = fits.getheader(sci_spec)['AIRMASS']
-
         # TODO: support step-wise extraction
 
         orders = utils.get_orders(scipath)
@@ -151,7 +149,7 @@ def start(configfile):
                     raise SystemExit
 
                 if 'tweak' in hLineMethod.lower():  # Vega-Tweak or Lorentz-Tweak
-                    hcor_manual(tel_h_corrected, orders)
+                    hcor_manual(tel_h_corrected, tel_h_corrected, orders, tweak=True)
 
             elif valindex == 2:
                 logger.info(" -------------------------------- ")
@@ -215,6 +213,7 @@ def hcor_vega(infile, calfile, outfile, regions, order, interactive):
     logger.debug('outfile: %s', outfile)
     logger.debug('regions: %s', regions)
     logger.debug('interactive: %s', interactive)
+    utils.requires([infile, calfile])
     airmass = fits.getheader(infile)['AIRMASS']
     info = open('../Telluric/Intermediate/telluric_hlines.txt', 'w')  # What is this for ?
 
@@ -243,14 +242,15 @@ def hcor_vega(infile, calfile, outfile, regions, order, interactive):
             normalization = results[-2].split()[-1]  # the normalization value is second to last
         else:
             normalization = results[-1].split()[-1]  # otherwise the normalization value is last
-        logger.info('Normalization: %s', normalization)
+        logger.debug('Normalization: %s', normalization)
 
         logger.debug('Undoing the normalization introduced by iraf.telluric...')
         iraf.imarith(
             operand1=outspec, operand2=normalization, op='/', result=outspec, title='',
             divzero=0.0, hparams='', pixtype='', calctype='', verbose='yes', noact='no', mode='al')
 
-        utils.plot(line1=inspec, line2=outspec, label1='in', label2='out')
+        utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
+                   title='Telluric before and after H-line removal')
 
     info.close()
 
@@ -262,9 +262,10 @@ def hcor_vega(infile, calfile, outfile, regions, order, interactive):
 
 # ----------------------------------------------------------------------------------------------------------------------
 def hcor_lorentz(infile, outfile, order, cursordir):
-    # Automatially fit Lorentz profiles to all the hydrogen lines pre-defined in lorentz_?.cur files.
+    # Automatially fit Lorentz profiles to the hydrogen lines pre-defined in lorentz_orderN.cur files.
     logger = log.getLogger('hcor_lorentz')
     logger.debug('--------------------------------------------------')
+    utils.requires([infile])
 
     for i in range(len(order)):
         ext = i+1
@@ -293,7 +294,8 @@ def hcor_lorentz(infile, outfile, order, cursordir):
         iraf.bplot(images=inspec, cursor=cursor2, new_image=outspec, overwrite="yes",
                    StdoutG='/dev/null', Stdout=stdout)
 
-        utils.plot(line1=inspec, line2=outspec, label1='in', label2='out')
+        utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
+                   title='Telluric before and after H-line removal')
 
     return
 
@@ -319,41 +321,44 @@ def write_line_positions(filename, var):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def hcor_manual(spectrum):
-    # Enter splot so the user can manually remove the hydrogen lines by fitting and subtracting thier favorite profiles.
+def hcor_manual(infile, outfile, order, tweak=False):
+    # Run IRAF splot so the user can manually remove hydrogen lines by fitting and subtracting thier favorite profiles.
     logger = log.getLogger('hcor_manual')
+    logger.debug('--------------------------------------------------')
 
-    # ERROR:  This is not correct.  This looks like the NIFS version?  We need output files for each extension.
+    if not tweak:
+        utils.requires([infile])
 
-    iraf.splot(
-        images=spectrum, new_image='final_tel_no_hLines_no_norm',
-        save_file='../PRODUCTS/lorentz_hLines.txt', overwrite='yes')
+    logger.info('Running IRAF splot so that you can fit and remove hydrogen lines.')
+    logger.info('Type "?" to get help.')
+    logger.info('Type "i" to save your line-free spectrum')
 
-    # it's easy to forget to use the 'i' key to actually write out the line-free spectrum, so check that it exists:
-    # with the 'tweak' options, the line-free spectrum will already exists, so this lets the user simply 'q' and move on w/o editing (too bad if they edit and forget to hit 'i'...)
-    while True:
-        try:
-            with open("final_tel_no_hLines_no_norm.fits") as f: pass
-            break
-        except IOError as e:
-            logger.error("It looks as if you didn't use the i key to write out the lineless spectrum.")
-            logger.error("We'll have to try again. --> Re-entering splot")
-            iraf.splot(
-                images=spectrum, new_image='final_tel_no_hLines_no_norm',
-                save_file='../PRODUCTS/lorentz_hLines.txt', overwrite='yes')
+    for i in range(len(order)):
+        ext = i+1
+        if tweak:  # the input files will be simple FITS
+            inspec = infile + '_order%d.fits' % order[i]
+        else:      # the input files will be MEFs
+            inspec = infile + '[SCI,' + str(ext) + ']'
+        outspec = outfile + '_order%d.fits' % order[i]
+        stdout = '../Telluric/Intermediate/manual_fitting_output_order%d' % order[i]
+        logger.debug('-------------------------')
+        logger.debug('inspec: %s', inspec)
+        logger.debug('outspec: %s', outspec)
+        utils.exists([stdout], overwrite=True)
+        iraf.splot(images=inspec, new_image=outspec, save_file=stdout, overwrite='yes')
 
+        # It's easy to forget to use the 'i' key to save the line-free spectrum, so check that it exists:
+        # With the 'tweak' options, the line-free spectrum will already exist, so the user can simply type 'q'
+        # and move on without editing.  Too bad if they edit and forget to hit 'i'  :-(
 
-
-
-
-
-
-
-
-
-
-
-
+        while True:
+            if os.path.exists(outspec):
+                break
+            else:
+                logger.error('Cannot find the output file.')
+                logger.error('You may have fogotten to type "i" to save the spectrum')
+                logger.error('Re-running splot...')
+                iraf.splot(images=inspec, new_image=outspec, save_file=stdout, overwrite='yes')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
