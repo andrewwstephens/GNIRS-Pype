@@ -12,7 +12,7 @@ import baseline_cals
 import reduce
 import gnirsCombineSpectra2D
 import extract_spectra
-import gnirsTelluric
+import telluric_correct
 import gnirsGetTelluricInfo
 import gnirsFluxCalibrate
 import combine_orders
@@ -83,7 +83,7 @@ def start(args):
 
     # STEP 8: Perform telluric correction
     if config.getboolean('gnirsPipeline', 'telluricCorrection'):
-        gnirsTelluric.start(args.config)
+        telluric_correct.start(args.config)
 
     # STEP 9: Perform flux calibration
     if config.getboolean('gnirsPipeline', 'fluxCalibration'):
