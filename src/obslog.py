@@ -12,7 +12,6 @@ This library provides methods to:
 We may want to provide some stand-alone obslog handling functionality.
 """
 import csv
-import dateutil.parser
 import gnirsHeaders
 import log
 import os

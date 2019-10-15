@@ -10,9 +10,9 @@ import link_cals
 import check_data
 import baseline_cals
 import reduce
-import gnirsCombineSpectra2D
+import combine_2d_spectra
 import extract_spectra
-import gnirsTelluric
+import telluric_correct
 import gnirsGetTelluricInfo
 import gnirsFluxCalibrate
 import combine_orders
@@ -75,7 +75,7 @@ def start(args):
 
     # STEP 6: Combine 2D spectra
     if config.getboolean('gnirsPipeline', 'combineSpectra2D'):
-        gnirsCombineSpectra2D.start(args.config)
+        combine_2d_spectra.start(args.config)
 
     # STEP 7: Extract spectra
     if config.getboolean('gnirsPipeline', 'extractSpectra'):
@@ -83,7 +83,7 @@ def start(args):
 
     # STEP 8: Perform telluric correction
     if config.getboolean('gnirsPipeline', 'telluricCorrection'):
-        gnirsTelluric.start(args.config)
+        telluric_correct.start(args.config)
 
     # STEP 9: Perform flux calibration
     if config.getboolean('gnirsPipeline', 'fluxCalibration'):
@@ -102,12 +102,12 @@ def start(args):
     if config.getboolean('gnirsPipeline', 'PDFSummary'):
         pdf_summary.start(args.config)
 
-    logger.info(' -------------------------------------------------')
+    logger.info(' ------------------------------------------------- ')
     logger.info('|            DATA REDUCTION COMPLETE              |')
     logger.info('|          Good luck with your science!           |')
     logger.info('| See http://gnirs-pype.readthedocs.io/en/latest/ |')
     logger.info('|       for docs, tutorials and examples.         |')
-    logger.info(' -------------------------------------------------')
+    logger.info(' ------------------------------------------------- ')
 
     return
 
