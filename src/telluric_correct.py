@@ -2,9 +2,7 @@
 
 from astropy.io import fits
 import ConfigParser
-import glob
 import log
-import matplotlib.pyplot as plt
 import os
 from pyraf import iraf
 import utils

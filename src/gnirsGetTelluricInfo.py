@@ -17,12 +17,6 @@ def start(configfile):
        Spectral types, Temperatures, and Magnitudes for each flux calibrator
     The flux calibrator will either be in a 'Standard' directory or else we will use the Telluric standard.
     If the required parameters are not present try to query them from SIMBAD.
-
-    Reads:
-        Configuration file and or science extension [0] header of the order 0 continuum divided Telluric spectrum.
-    
-    Writes:
-        Telluric parameters (if not already available) to the configuration file.
     """
     logger = log.getLogger('check_flux_calibrators')
 
@@ -33,9 +27,6 @@ def start(configfile):
     manualMode = config.getboolean('defaults', 'manualMode')
     runtimedata = config.get('defaults', 'runtimeData')
     combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
-    extractRegularPrefix = config.get('runtimeFilenames', 'extractRegularPrefix')
-    hLinePrefix = config.get('runtimeFilenames', 'hLinePrefix')
-    dividedTelContinuumPrefix = config.get('runtimeFilenames', 'dividedTelContinuumPrefix')
     stellar_temperature_data_file = config.get('fluxCalibration', 'StellarTemperatureData')
 
     utils.requires([runtimedata + '/' + stellar_temperature_data_file])
@@ -79,8 +70,8 @@ def start(configfile):
             logger.info('Found section for the %s in the config file.', target)
             for option in param.keys():
                 if config.has_option(target, option) and config.get(target, option):
-                    logger.warning("Parameter %s for %s available and set in the configuration file.", option, target)
-                    logger.warning("Not updating parameter %s from the query to SIMBAD.", option)
+                    logger.warning("Parameter %s for %s is set in the config file.", option, target)
+                    logger.warning("Not updating parameter %s from the SIMBAD query.", option)
                 elif config.has_option(target, option) and not config.get(target, option):
                     logger.warning("Parameter %s for %s available but not set in the configuration file.", option, target)
                     logger.info("Setting an empty parameter %s for %s in the configuration file.", option, target)
@@ -105,6 +96,8 @@ def start(configfile):
         if param['RA'] is None or param['DEC'] is None:
             param['RA'] = olog[firstfile]['RA']
             param['DEC'] = olog[firstfile]['DEC']
+            config.set(target, 'RA', param['RA'])
+            config.set(target, 'DEC', param['DEC'])
             logger.debug('Coords: %s, %s', param['RA'], param['DEC'])
 
         # If no magnitudes are in the config file then query SIMBAD:
@@ -121,11 +114,12 @@ def start(configfile):
                 logger.info('Please manually provide the required parameters in the config file.')
                 raise SystemExit
 
-            logger.info('SIMBAD results: %s', simbad_table)
+            logger.debug('SIMBAD results: %s', simbad_table)
 
             if param['SpectralType'] is None:
                 try:
                     param['SpectralType'] = simbad_table['SP_TYPE'][0]
+                    config.set(target, 'SpectralType', param['SpectralType'])
                     logger.info('Spectral Type: %s', param['SpectralType'])
                 except:
                     logger.error('No spectral type information found in the SIMBAD results.')
@@ -139,6 +133,7 @@ def start(configfile):
                     field = line.split()
                     if field[0] in param['SpectralType']:
                         param['Temperature'] = float(field[1])
+                        config.set(target, 'Temperature', param['Temperature'])
                         logger.info('Temperature: %d K', param['Temperature'])
                         break
                 if param['Temperature'] is None:
@@ -146,104 +141,25 @@ def start(configfile):
                     logger.error("Please manually update the 'Temperature' in the config file.")
                     raise SystemExit
 
+            simbad_label = {'Jmag': 'FLUX_J', 'Hmag': 'FLUX_H', 'Kmag': 'FLUX_K'}
+            for mag in ['Jmag', 'Hmag', 'Kmag']:
+                if param[mag] is None:
+                    try:
+                        param[mag] = simbad_table[simbad_label[mag]][0]
+                        logger.info('%s = %s', mag, param[mag])
+                        config.set(target, mag, param[mag])
+                    except:
+                        logger.error('Could not find %s in the SIMBAD response.', mag)
+                        logger.error('Please manually update the config file.')
+                        raise SystemExit
 
-            utils.pause(True, 'This is as far as you should go')
-
-            
-
-
-            if findMagnitude_order3:
-                try:
-                    stdMagnitude_order3 = str(simbad_table['FLUX_K'][0])
-                except:
-                    logger.error("Cannot find a K magnitude for order 3 of the telluric in the table generated by the")
-                    logger.error("SIMBAD query.")
-                    logger.error("Please manually update the parameter 'stdMagnitudeK' in the configuration file.")
-                    logger.error("Exiting script.\n")
-                    raise SystemExit
-
-            if findMagnitude_order4:
-                try:
-                    stdMagnitude_order4 = str(simbad_table['FLUX_H'][0])
-                except:
-                    logger.error("Cannot find a H magnitude for order 4 of the telluric in the table generated by the")
-                    logger.error("SIMBAD query.")
-                    logger.error("Please manually update the parameter 'stdMagnitudeH' in the configuration file.")
-                    logger.error("Exiting script.\n")
-                    raise SystemExit
-
-            if findMagnitude_order5:
-                try:
-                    stdMagnitude_order5 = str(simbad_table['FLUX_J'][0])
-                except:
-                    logger.error("Cannot find a J magnitude for order 5 of the telluric in the table generated by the")
-                    logger.error("SIMBAD query.")
-                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                    logger.error("Exiting script.\n")
-                    raise SystemExit
-            
-            if findMagnitude_order6:
-                try:
-                    stdMagnitude_order6 = str(simbad_table['FLUX_J'][0])
-                except:
-                    logger.error("Cannot find a J magnitude for order 6 of the telluric in the table generated by the")
-                    logger.error("SIMBAD query.")
-                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                    logger.error("Exiting script.\n")
-                    raise SystemExit
-            
-            if findMagnitude_order7:
-                try:
-                    stdMagnitude_order7 = str(simbad_table['FLUX_J'][0])
-                except:
-                    logger.error("Cannot find a J magnitude for order 7 of the telluric in the table generated by the")
-                    logger.error("SIMBAD query.")
-                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                    logger.error("Exiting script.\n")
-                    raise SystemExit
-            
-            if findMagnitude_order8:
-                try:
-                    stdMagnitude_order8 = str(simbad_table['FLUX_J'][0])
-                except:
-                    logger.error("Cannot find a J magnitude for order 8 of the telluric in the table generated by the")
-                    logger.error("SIMBAD query.")
-                    logger.error("Please manually update the parameter 'stdMagnitudeJ' in the configuration file.")
-                    logger.error("Exiting script.\n")
-                    raise SystemExit
-
-        config.set(target, 'stdRA', stdRA)
-        config.set(target, 'stdDEC', stdDEC)
-        config.set(target, 'stdSpectralType', stdSpectralType)
-        config.set(target, 'stdTemperature', stdTemperature)
-        config.set(target, 'stdMagnitude_order3', stdMagnitude_order3)
-        config.set(target, 'stdMagnitude_order4', stdMagnitude_order4)
-        config.set(target, 'stdMagnitude_order5', stdMagnitude_order5)
-        config.set(target, 'stdMagnitude_order6', stdMagnitude_order6)
-        config.set(target, 'stdMagnitude_order7', stdMagnitude_order7)
-        config.set(target, 'stdMagnitude_order8', stdMagnitude_order8)
-        
-        with open('../../'+configfile, 'w') as f:
-            logger.info('Updating the configuration file with telluric parameters obtained from SIMBAD.')
+        logger.debug('Writing config file...')
+        with open(configfile, 'w') as f:
             config.write(f)
-        
-        logger.info("Updated the following section to the configuration file:")
-        logger.info("[%s]", target)
-        logger.info("stdRA = %s", stdRA)
-        logger.info("stdDEC = %s", stdDEC)
-        logger.info("stdSpectralType = %s", stdSpectralType)
-        logger.info("stdTemperature = %s", stdTemperature)
-        logger.info("stdMagnitude_order3 = %s", stdMagnitude_order3)
-        logger.info("stdMagnitude_order4 = %s", stdMagnitude_order4)
-        logger.info("stdMagnitude_order5 = %s", stdMagnitude_order5)
-        logger.info("stdMagnitude_order6 = %s", stdMagnitude_order6)
-        logger.info("stdMagnitude_order7 = %s", stdMagnitude_order7)
-        logger.info("stdMagnitude_order8 = %s\n", stdMagnitude_order8)
 
-        logger.info("##############################################################################")
-        logger.info("#  COMPLETE - Getting telluric info completed for                            #")
-        logger.info("#  %s", scipath)
-        logger.info("##############################################################################")
+        logger.info(" --------------------------------- ")
+        logger.info("| Flux calibrators check complete |")
+        logger.info(" --------------------------------- ")
 
     return
 
