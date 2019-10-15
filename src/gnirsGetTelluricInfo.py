@@ -70,16 +70,15 @@ def start(configfile):
             logger.info('Found section for the %s in the config file.', target)
             for option in param.keys():
                 if config.has_option(target, option) and config.get(target, option):
-                    logger.warning("Parameter %s for %s is set in the config file.", option, target)
-                    logger.warning("Not updating parameter %s from the SIMBAD query.", option)
+                    logger.warning("%s is already set in the config file.", option)
                 elif config.has_option(target, option) and not config.get(target, option):
-                    logger.warning("Parameter %s for %s available but not set in the configuration file.", option, target)
-                    logger.info("Setting an empty parameter %s for %s in the configuration file.", option, target)
+                    logger.warning("%s exists but is not set in the config file.", option)
+                    logger.debug("Setting %s to None", option)
                     config.set(target, option, None)
                 else:
-                    logger.info("Parameter %s for %s not available in the configuration file.", option, target)
-                    logger.info("Setting an empty parameter %s for %s in the configuration file.", option, target)
-                    config.set(target,option,None)
+                    logger.info("%s is not in the config file.", option)
+                    logger.debug("Setting %s to None", option)
+                    config.set(target, option, None)
         else:
             logger.info('Creating a new config file section for %s', target)
             config.add_section(target)
