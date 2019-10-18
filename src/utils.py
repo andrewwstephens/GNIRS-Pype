@@ -55,14 +55,19 @@ def clean(filelist, outputPrefix, overwrite):
 # ----------------------------------------------------------------------------------------------------------------------
 def dictify(itemlist, fmt='str'):
     # Convert a ConfigParser items list [(item1,value1),(item2,value2),...] to a dictionary {item1:value1,...}
+    # fmt specifies format of the KEY (not the value)
     logger = log.getLogger('dictify')
     logger.debug('itemlist: %s', itemlist)
     d = {}
     for key, value in itemlist:
+        try:
+            v = float(value)
+        except:
+            v = value
         if fmt == 'int':
-            d[int(key)] = value
+            d[int(key)] = v
         else:
-            d[key] = value
+            d[key] = v
     logger.debug('dict: %s', d)
     return d
 

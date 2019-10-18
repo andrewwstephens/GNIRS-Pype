@@ -39,7 +39,7 @@ def info(files_or_directory):
 
     data = {}
     for filename in files:
-#        logger.debug('%s', filename)
+        # logger.debug('%s', filename)
         f = filename[filename.rfind('/')+1:]  # filename base to be used as output dictionary key
         data[f] = {}
 

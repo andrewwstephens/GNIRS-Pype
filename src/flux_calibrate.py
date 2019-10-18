@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
+from astropy.io import fits
 import ConfigParser
 import glob
-import gnirsHeaders
 import log
 from pyraf import iraf
+import obslog
 import os
 import utils
 
@@ -14,16 +15,9 @@ def start(configfile):
     """
     Do a flux calibration.
     """
-    logger = log.getLogger('gnirsFluxCalibrate.start')
+    logger = log.getLogger('flux_calibrate')
 
-    # Store current working directory for later use.
-    path = os.getcwd()
-
-    logger.info('#################################################')
-    logger.info('#                                               #')
-    logger.info('#         Start GNIRS Flux Calibration          #')
-    logger.info('#                                               #')
-    logger.info('#################################################\n')
+    path = os.getcwd()  # Store current working directory for later use.
 
     # Set up/prepare IRAF.
     iraf.gemini()
@@ -50,18 +44,14 @@ def start(configfile):
     config = ConfigParser.RawConfigParser()
     config.optionxform = str  # make options case-sensitive
     config.read(configfile)
-    
-    # Read general config
-    manualMode = config.getboolean('defaults','manualMode')
-    overwrite = config.getboolean('defaults','overwrite')
-    
-    # config required for flux calibration
-    extractFullSlit = config.getboolean('extractSpectra1D','extractFullSlit')
-    extractStepwise = config.getboolean('extractSpectra1D','extractStepwise')
-    extractStepSize = config.getfloat('extractSpectra1D','extractStepSize')
 
+    manualMode = config.getboolean('defaults', 'manualMode')
+    overwrite = config.getboolean('defaults', 'overwrite')
+    extractFullSlit = config.getboolean('extractSpectra1D', 'extractFullSlit')
+    extractStepwise = config.getboolean('extractSpectra1D', 'extractStepwise')
+    extractStepSize = config.getfloat('extractSpectra1D', 'extractStepSize')
     combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
-#    combinedsky = config.get('runtimeFilenames', 'combinedsky')  # Viraja:  Not sure if this is required; surprising though
+    combinedsky = config.get('runtimeFilenames', 'combinedsky')  # Viraja:  Not sure if this is required; surprising though
     extractRegularPrefix = config.get('runtimeFilenames', 'extractRegularPrefix')
     extractFullSlitPrefix = config.get('runtimeFilenames', 'extractFullSlitPrefix')
     extractStepwisePrefix = config.get('runtimeFilenames', 'extractStepwisePrefix')
@@ -69,11 +59,9 @@ def start(configfile):
     dividedTelContinuumPrefix = config.get('runtimeFilenames', 'dividedTelContinuumPrefix')
     telluricPrefix = config.get('runtimeFilenames', 'telluricPrefix')
     bb_unscaled = config.get('runtimeFilenames', 'bb_unscaled')
-    bb_scaled = config.get('runtimeFilenames','bb_scaled')
+    bb_scaled = config.get('runtimeFilenames', 'bb_scaled')
     fluxCalibPrefix = config.get('runtimeFilenames', 'fluxCalibPrefix')
-    
-    # Read fluxCalibration specific config
-    fluxCalibrationMethod = config.get('fluxCalibration','fluxCalibrationMethod')
+    fluxCalibrationMethod = config.get('fluxCalibration', 'fluxCalibrationMethod')
 
 
     for scipath in config.options("ScienceDirectories"):
@@ -82,168 +70,73 @@ def start(configfile):
             logger.info('Skipping flux calibaration in %s', scipath)
             continue
 
-        #########################################################################
-        #                                                                       #
-        #                  BEGIN - OBSERVATION SPECIFIC SETUP                   #
-        #                                                                       #
-        #########################################################################
+        logger.info(' ------------------ ')
+        logger.info('| Flux Calibration |')
+        logger.info(' ------------------ ')
 
         scipath += '/Intermediate'
-        logger.info("Moving to science directory: %s\n", scipath)
-        os.chdir(scipath)
         iraf.chdir(scipath)
-
-        # Get symbolic paths to the std and tel directories in the sci directory and the runtime data directory
-        # Relative path/link expected to be at the top level of every sci directory
-        stdpath = '../Standard/Intermediate' 
-        telpath = '../Telluric/Intermediate'
-
-        if os.path.exists(stdpath):
-            logger.info("Standard directory: %s", stdpath)
-            if fluxCalibrationMethod == 'fluxcalibrator':
-                logger.info("Using 'fluxcalibrator' method for flux calibration in %s\n", scipath)
-            elif fluxCalibrationMethod == 'telluricapproximate':
-                logger.warning("Standard directory for flux calibrator available, but flux calibration method set to")
-                logger.warning("'telluricapproximate'. This may affect your science.")
-                fluxCalibrationMethod = raw_input("Confirm <fluxcalibrator> or <telluricapproximate> for flux calibration:")
-            else:
-                logger.error("#######################################################################################")
-                logger.error("#                                                                                     #")
-                logger.error("#   ERROR in get flux calibration: unknown flux calibration method. Exiting script.   #")
-                logger.error("#                                                                                     #")
-                logger.error("#######################################################################################")
-                raise SystemExit
-        elif os.path.exists(telpath):
-            logger.info("Standard directory does not exist.")
-            if fluxCalibrationMethod == 'fluxcalibrator':
-                logger.error("Standard directory for flux calibrator not available in %s and flux", scipath)
-                logger.error("calibration method set to 'fluxcalibrator'. Expects 'telluricapproximate'.")
-                fluxCalibrationMethod = raw_input("Confirm <fluxcalibrator> or <telluricapproximate> for flux calibration:")
-            elif fluxCalibrationMethod == 'telluricapproximate':
-                logger.info("Moving on to use the telluric as the standard to derive the approximate flux calibration.\n")
-                stdpath = telpath
-                logger.info("Telluric (used as standard) directory: %s\n", stdpath)
-            else:
-                logger.error("#######################################################################################")
-                logger.error("#                                                                                     #")
-                logger.error("#   ERROR in get flux calibration: unknown flux calibration method. Exiting script.   #")
-                logger.error("#                                                                                     #")
-                logger.error("#######################################################################################")
-                raise SystemExit
-        else:
-            logger.warning("Parameter 'fluxCalibration' is set to 'yes', but no standard and telluric data available.")
-            logger.warning("Skipping flux calibration in %s\n", scipath)
-            continue
-
-        # Check if required sci and std source spectra available in their respective paths
-        logger.info("Checking if required science and standard source spectra available in %s", scipath)
-        logger.info("and %s, respectively.", stdpath)
-
-        sci_telluricCorrected = sorted(glob.glob(scipath + '/' + dividedTelContinuumPrefix + telluricPrefix + \
-            extractRegularPrefix + utils.nofits(combinedsrc) + '_order*_MEF.fits'))
-        if len(sci_telluricCorrected) > 0:
-            logger.info("Required telluric corrected science source spectra available.")
-            sci_header_info = gnirsHeaders.info(sci_telluricCorrected[0])
-        else:
-            logger.warning("Required telluric corrected science source spectra not available.")
-            logger.warning("Please run gnirsTelluric.py to create the telluric corected spectra or provide them")
-            logger.warning("manually in %s.", scipath)
-            logger.warning("Exiting script.\n")
-            raise SystemExit
+        logger.info('%s', scipath)
 
         if fluxCalibrationMethod == 'fluxcalibrator':
-            # Get all telluric corrected standard source spectra files
-            # The following codes lines are assuming that the standard spectra are reduced and telluric corrected in 
-            # the same way as the science and are in a directory with a symbolic link to the top level processed data 
-            # directory (similar to the telluric symbolic link in the science directory)
-            '''
-            std_telluricCorrected = sorted(glob.glob(stdpath + '/' + dividedTelContinuumPrefix + telluricPrefix + \
-                extractRegularPrefix + utils.nofits(combinedsrc) + '_order*_MEF.fits'))
-            if len(std_telluricCorrected) > 0:
-                logger.info("Required telluric corrected standard source spectra available.")
-                std_header_info = gnirsHeaders.info(std_telluricCorrected[0])  
-            else:
-                logger.warning("Required telluric corrected standard source spectra not available.")
-                logger.warning("Please run gnirsTelluric.py to create the telluric corected spectra or provide them")
-                logger.warning("manually in %s.", stdpath)
-                logger.warning("Exiting script.\n")
+            stdpath = '../Standard/Intermediate'
+            if not os.path.exists(stdpath):
+                logger.error('fluxCalibrationMethod is fluxcalibrator but could not find Standard star directory')
                 raise SystemExit
-            '''
-            pass
-        
-        if fluxCalibrationMethod == 'telluricapproximate':
-            tel_dividedContinuum = sorted(glob.glob(telpath + '/' + dividedTelContinuumPrefix + hLinePrefix + \
-                extractRegularPrefix + utils.nofits(combinedsrc) + '_order*_MEF.fits'))
-            if len(tel_dividedContinuum) > 0:
-                logger.info("Required continuum divided telluric source spectra available.")
-                tel_header_info = gnirsHeaders.info(tel_dividedContinuum[0])
-            else:
-                logger.warning("Required continuum divided telluric spectra not available.")
-                logger.warning("Please run gnirsTelluric.py to create the continuum divided spectra or provide them")
-                logger.warning("manually in %s.", scipath)
-                logger.warning("Exiting script.\n")
+        elif fluxCalibrationMethod == 'telluricapproximate':
+            stdpath = '../Telluric/Intermediate'
+            if not os.path.exists(stdpath):
+                logger.error('fluxCalibrationMethod is telluricapproximate but could not find Telluric directory')
                 raise SystemExit
+        else:
+            logger.error('Uknown fluxCalibrationMethod')
+            raise SystemExit
+        logger.debug('stdpath: %s', stdpath)
+
+        orders = utils.get_orders(scipath)
+        sciroot = scipath + '/' + dividedTelContinuumPrefix + telluricPrefix + extractRegularPrefix + utils.nofits(combinedsrc)
+        stdroot = stdpath + '/' + dividedTelContinuumPrefix + hLinePrefix + extractRegularPrefix + utils.nofits(combinedsrc)
+        scifiles = ['%s_order%d.fits' % (sciroot, o) for o in orders]
+        stdfiles = ['%s_order%d.fits' % (stdroot, o) for o in orders]
+        utils.requires(scifiles + stdfiles)
+
+        olog = obslog.readcsv(stdpath + '/obslog.csv')
+        firstfile = olog.keys()[0]
+        logger.debug('firstfile: %s', firstfile)
+        target = olog[firstfile]['OBJECT']
+        logger.debug('Target: %s', target)
+        standard = utils.dictify(config.items(target))
 
         # TODO:  if extractionStepwise:
 
-        logger.info("Required telluric corrected science and standard source spectra check complete.\n")
-        
-        stdName = tel_header_info[os.path.basename(tel_dividedContinuum[0])]['OBJECT']
 
-        # Record the right number of order expected according to the GNIRS XD configuration.
-        if 'LB_SXD' in scipath:
-            orders = [3, 4, 5]
-            stdMagnitudes = [config.get(stdName,'stdMagnitude_order3'), config.get(stdName,'stdMagnitude_order4'), \
-                config.get(stdName,'stdMagnitude_order5')]
-        elif 'LB_LXD' in scipath:
-            orders = [3, 4, 5, 6, 7, 8]
-            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), \
-                config.getfloat(stdName,'stdMagnitude_order4'), config.getfloat(stdName,'stdMagnitude_order5'), \
-                config.getfloat(stdName,'stdMagnitude_order6'), config.getfloat(stdName,'stdMagnitude_order7'), \
-                config.getfloat(stdName,'stdMagnitude_order8')]
-        elif 'SB_SXD' in scipath:
-            orders = [3, 4, 5, 6, 7, 8]
-            stdMagnitudes = [config.getfloat(stdName,'stdMagnitude_order3'), \
-                config.getfloat(stdName,'stdMagnitude_order4'), config.getfloat(stdName,'stdMagnitude_order5'), \
-                config.getfloat(stdName,'stdMagnitude_order6'), config.getfloat(stdName,'stdMagnitude_order7'), \
-                config.getfloat(stdName,'stdMagnitude_order8')]
-        else:
-            logger.error("###################################################################################")
-            logger.error("#                                                                                 #")
-            logger.error("#     ERROR in flux calibrate: unknown GNIRS XD configuration. Exiting script.    #")
-            logger.error("#                                                                                 #")
-            logger.error("###################################################################################")
-            raise SystemExit
+        utils.pause(True, 'STOP HERE')
 
-        #########################################################################
-        #                                                                       #
-        #                 COMPLETE - OBSERVATION SPECIFIC SETUP                 #
-        #               BEGIN FLUX CALIBRATION FOR AN OBSERVATION               #
-        #                                                                       #
-        #########################################################################
+
+
 
         if fluxCalibrationMethod == 'fluxcalibrator':
-            # This block is not currently set up.
-            pass
+            logger.error('Method not implemented')
+            raise SystemExit
+
+
+
+
 
         elif fluxCalibrationMethod == 'telluricapproximate':
-            """
-            - Convert magnitude to flux density for the telluric.  
-            - Derived spectrum (FLambda) for the telluric for each order.
 
-            - Make a blackbody using the telluric temperature.
-            - A blackbody at the telluric temperature for each order.
+            # Convert magnitude to flux density for the telluric.
+            # Derived spectrum (FLambda) for the telluric for each order.
+            # Make a blackbody using the telluric temperature.
+            # A blackbody at the telluric temperature for each order.
+            # Get the scale for the blackbody to the telluric derived spectrum.
+            # Blackbody scale (float) at each order.
+            # Scale the blackbody to the telluric derived spectrum.
+            # Scaled blackbody at each order.
 
-            - Get the scale for the blackbody to the telluric derived spectrum.
-            - Blackbody scale (float) at each order.
+            utils.pause('About to start flux calibration')
 
-            - Scale the blackbody to the telluric derived spectrum.
-            - Scaled blackbody at each order.
-            """
-            if manualMode:
-                a = raw_input("About to enter flux calibration.\n")
-
-            stdTemperature = config.getfloat(stdName, 'stdTemperature')
+            stdTemperature = standard['Temperature']
 
             # EXPTIME keyword is the "Exposure time (s) for sum of all coadds"
             sciExptime = sci_header_info[os.path.basename(sci_telluricCorrected[0])]['EXPTIME']
@@ -477,14 +370,10 @@ def start(configfile):
         logger.info("#                                                                            #")
         logger.info("##############################################################################")
 
-    # Return to directory script was begun from.
-    os.chdir(path)
+
+    os.chdir(path)  # Return to directory script was begun from.
 
     return
-
-##################################################################################################################
-#                                                     ROUTINES                                                   #
-##################################################################################################################
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -492,7 +381,7 @@ def float_from_singleElementList(single_element_list):
     """
     Get the single element in a list and convert it into a float.
     """
-    logger = log.getLogger('gnirsFluxCalibration.getFloat_from_singleElementList')
+    logger = log.getLogger('getFloat_from_singleElementList')
     
     return float(single_element_list[0].replace("'", ""))
 
@@ -503,9 +392,9 @@ def fluxcalib_units_in_headers(image, abs_fluxcal):
     Add appropriate flux calibration units (whether absolute or relative flux calibration) to the image headers after
     flux calibration is done. 
     """
-    logger = log.getLogger('gnirsFluxCalibration.fluxcalib_units_in_headers')
+    logger = log.getLogger('fluxcalib_units_in_headers')
 
-    #This is so we know whether we did absolute or relative flux cal
+    # This is so we know whether we did absolute or relative flux cal
     if abs_fluxcal:
         iraf.hedit(images=image, fields='FUNITS', value='erg/cm^2/s/A', add='yes', addonly='no', delete='no',
             verify='no', show='no', update='yes')
