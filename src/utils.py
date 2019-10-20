@@ -7,6 +7,12 @@ import os
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+def band(order):
+    # Give the order to band mapping.  band[4] = H
+    return {1: 'M', 2: 'L', 3: 'K', 4: 'H', 5: 'J', 6: 'J', 7: 'J', 8: 'J'}[order]
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 def boxit(text, character='-', center=True):
     lines = text.split('\n')
     max_length = max([len(line) for line in lines])
