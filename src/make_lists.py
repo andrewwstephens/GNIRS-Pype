@@ -4,10 +4,10 @@ Create file lists
 """
 import collections
 import ConfigParser
+import header
 import log
 import obslog
 import os
-import gnirsHeaders
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ def start(configfile):
 
         logger.info('%s', path)
 
-        header = gnirsHeaders.info(path + '/Intermediate')
+        info = header.info(path + '/Intermediate')
 
         if not os.path.exists(path + '/Intermediate/obslog.csv'):
             pathparts = path.split('_')
@@ -48,8 +48,8 @@ def start(configfile):
         olog = obslog.readcsv(path + '/Intermediate/obslog.csv')
 
         all_exptimes = []
-        for f in header.keys():
-            all_exptimes.append(header[f]['EXPTIME'])
+        for f in info.keys():
+            all_exptimes.append(info[f]['EXPTIME'])
         logger.debug('all_exptimes: %s', all_exptimes)
 
         if len(list(set(all_exptimes))) == 1:
@@ -74,16 +74,16 @@ def start(configfile):
                 open(path + '/Intermediate/src.list', 'w') as src, \
                 open(path + '/Intermediate/sky.list', 'w') as sky:
 
-            for f in sorted(header.keys()):
-                if header[f]['EXPTIME'] == exptime:
+            for f in sorted(info.keys()):
+                if info[f]['EXPTIME'] == exptime:
                     all.write(f + '\n')
-                    if inslit(slit=header[f]['SLIT'], decker=header[f]['DECKER'], p=olog[f]['P'], q=olog[f]['Q']):
+                    if inslit(slit=info[f]['SLIT'], decker=info[f]['DECKER'], p=olog[f]['P'], q=olog[f]['Q']):
                         src.write(f + '\n')
                     else:
                         sky.write(f + '\n')
 
         all_offsets = []
-        for f in header.keys():
+        for f in info.keys():
             all_offsets.append(float(olog[f]['Q']))
         logger.debug('all_offsets: %s', all_offsets)
         unique_offsets = sorted(list(set(all_offsets)), key=abs)  # sort by abs value so nodA will be min(abs(offset))
@@ -93,8 +93,8 @@ def start(configfile):
             with    open(path + '/Intermediate/nodA.list', 'w') as nodA, \
                     open(path + '/Intermediate/nodB.list', 'w') as nodB:
 
-                for f in sorted(header.keys()):
-                    if header[f]['EXPTIME'] == exptime:
+                for f in sorted(info.keys()):
+                    if info[f]['EXPTIME'] == exptime:
                         if float(olog[f]['Q']) == unique_offsets[0]:
                             nodA.write(f + '\n')
                         else:
@@ -112,7 +112,7 @@ def start(configfile):
 
         logger.info('%s', path)
 
-        header = gnirsHeaders.info(path)
+        info = header.info(path)
 
         with    open(path + '/all.list', 'w') as all, \
                 open(path + '/arcs.list', 'w') as arcs, \
@@ -120,23 +120,23 @@ def start(configfile):
                 open(path + '/QHflats.list', 'w') as QHflats, \
                 open(path + '/pinholes.list', 'w') as pinholes:
 
-            for f in sorted(header.keys()):
+            for f in sorted(info.keys()):
 
                 all.write(f + '\n')
 
-                if header[f]['OBSTYPE'] == 'ARC':
+                if info[f]['OBSTYPE'] == 'ARC':
                     arcs.write(f + '\n')
 
-                elif 'Pinholes' in header[f]['SLIT']:
+                elif 'Pinholes' in info[f]['SLIT']:
                     pinholes.write(f + '\n')
 
-                elif header[f]['OBSTYPE'] == 'FLAT' and \
-                        header[f]['GCALLAMP'] == 'QH' and \
-                        'Pinholes' not in header[f]['SLIT']:
+                elif info[f]['OBSTYPE'] == 'FLAT' and \
+                        info[f]['GCALLAMP'] == 'QH' and \
+                        'Pinholes' not in info[f]['SLIT']:
                     QHflats.write(f + '\n')
 
-                elif header[f]['OBSTYPE'] == 'FLAT' and \
-                        header[f]['GCALLAMP'] == 'IRhigh':
+                elif info[f]['OBSTYPE'] == 'FLAT' and \
+                        info[f]['GCALLAMP'] == 'IRhigh':
                     IRflats.write(f + '\n')
 
     return

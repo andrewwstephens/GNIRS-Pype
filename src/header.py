@@ -18,7 +18,7 @@ def info(files_or_directory):
     Return a dictionary of relevant FITS header information.
     Input may be a single FITS file, a list of FITS files, or the path to a directory of FITS files.
     """
-    logger = log.getLogger('gnirsHeaders.info')
+    logger = log.getLogger('header.info')
 
     if isinstance(files_or_directory, list):
         files = files_or_directory
@@ -39,7 +39,7 @@ def info(files_or_directory):
 
     data = {}
     for filename in files:
-#        logger.debug('%s', filename)
+        # logger.debug('%s', filename)
         f = filename[filename.rfind('/')+1:]  # filename base to be used as output dictionary key
         data[f] = {}
 

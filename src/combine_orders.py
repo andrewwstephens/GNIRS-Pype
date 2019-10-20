@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import ConfigParser
-import gnirsHeaders
+import header
 import log
 import os
 from pyraf import iraf
@@ -109,7 +109,7 @@ def start(configfile):
 
         if utils.exists(sci_spectra, overwrite=False):
             logger.info("Found flux calibrated science spectra.")
-            sci_header_info = gnirsHeaders.info(sci_spectra[0])
+            sci_header_info = header.info(sci_spectra[0])
             sciName = sci_header_info[os.path.basename(sci_spectra[0])]['OBJECT']
         else:
             logger.warning("Could not find the flux calibrated science spectra.")

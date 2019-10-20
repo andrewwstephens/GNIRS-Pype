@@ -7,6 +7,12 @@ import os
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+def band(order):
+    # Give the order to band mapping.  band[4] = H
+    return {1: 'M', 2: 'L', 3: 'K', 4: 'H', 5: 'J', 6: 'J', 7: 'J', 8: 'J'}[order]
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 def boxit(text, character='-', center=True):
     lines = text.split('\n')
     max_length = max([len(line) for line in lines])
@@ -55,14 +61,19 @@ def clean(filelist, outputPrefix, overwrite):
 # ----------------------------------------------------------------------------------------------------------------------
 def dictify(itemlist, fmt='str'):
     # Convert a ConfigParser items list [(item1,value1),(item2,value2),...] to a dictionary {item1:value1,...}
+    # fmt specifies format of the KEY (not the value)
     logger = log.getLogger('dictify')
     logger.debug('itemlist: %s', itemlist)
     d = {}
     for key, value in itemlist:
+        try:
+            v = float(value)
+        except:
+            v = value
         if fmt == 'int':
-            d[int(key)] = value
+            d[int(key)] = v
         else:
-            d[key] = value
+            d[key] = v
     logger.debug('dict: %s', d)
     return d
 

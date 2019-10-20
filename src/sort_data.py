@@ -5,7 +5,7 @@ Sort GNIRS data into directories
 import os
 import shutil
 import ConfigParser
-import gnirsHeaders
+import header
 import log
 
 
@@ -28,7 +28,7 @@ def start(configfile):
     config.read(configfile)
     rawpath = config.get('DownloadData', 'RawDataDir')
 
-    info = gnirsHeaders.info(rawpath)
+    info = header.info(rawpath)
 
     path = os.getcwd()
     logger.info("Path to raw data: %s", rawpath)

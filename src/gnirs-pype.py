@@ -13,8 +13,8 @@ import reduce
 import combine_2d_spectra
 import extract_spectra
 import telluric_correct
-import gnirsGetTelluricInfo
-import gnirsFluxCalibrate
+import check_flux_calibrators
+import flux_calibrate
 import combine_orders
 import noise_spectrum
 import pdf_summary
@@ -87,8 +87,8 @@ def start(args):
 
     # STEP 9: Perform flux calibration
     if config.getboolean('gnirsPipeline', 'fluxCalibration'):
-        gnirsGetTelluricInfo.start(args.config)
-        gnirsFluxCalibrate.start(args.config)
+        check_flux_calibrators.start(args.config)
+        flux_calibrate.start(args.config)
 
     # STEP 10: Combine XD Orders
     if config.getboolean('gnirsPipeline', 'CombineOrders'):

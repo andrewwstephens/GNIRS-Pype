@@ -4,10 +4,10 @@ Associate and link GNIRS calibrations
 """
 import ConfigParser
 import datetime
+import header
 import log
 import numpy
 import os
-import gnirsHeaders
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -47,38 +47,38 @@ def start(configfile):
     for path, process in scipath:
         logger.debug('%s = %s', path, process)
         if process:
-            header = gnirsHeaders.info(path + '/Intermediate')
-            first_file = sorted(header.keys())[0]
+            info = header.info(path + '/Intermediate')
+            first_file = sorted(info.keys())[0]
             logger.debug('first_file = %s', first_file)
             alldirs.append(path)
             scidirs.append(path)
-            obsconf.append(header[first_file]['CONFIG'])
+            obsconf.append(info[first_file]['CONFIG'])
             obstype.append('science')
-            obstime.append(header[first_file]['AVETIME'])
+            obstime.append(info[first_file]['AVETIME'])
 
     for path, process in telpath:
         logger.debug('%s = %s', path, process)
         if process:
-            header = gnirsHeaders.info(path + '/Intermediate')
-            first_file = sorted(header.keys())[0]
+            info = header.info(path + '/Intermediate')
+            first_file = sorted(info.keys())[0]
             logger.debug('first_file = %s', first_file)
             alldirs.append(path)
             teldirs.append(path)
-            obsconf.append(header[first_file]['CONFIG'])
+            obsconf.append(info[first_file]['CONFIG'])
             obstype.append('telluric')
-            obstime.append(header[first_file]['AVETIME'])
+            obstime.append(info[first_file]['AVETIME'])
 
     for path, process in calpath:
         logger.debug('%s = %s', path, process)
         if process:
-            header = gnirsHeaders.info(path)
-            first_file = sorted(header.keys())[0]  # use the first file to avoid daytime pinholes
+            info = header.info(path)
+            first_file = sorted(info.keys())[0]  # use the first file to avoid daytime pinholes
             logger.debug('first_file = %s', first_file)
             alldirs.append(path)
             caldirs.append(path)
-            obsconf.append(header[first_file]['CONFIG'])
+            obsconf.append(info[first_file]['CONFIG'])
             obstype.append('calibration')
-            obstime.append(header[first_file]['AVETIME'])
+            obstime.append(info[first_file]['AVETIME'])
 
     obstime = numpy.array(obstime)
     obstype = numpy.array(obstype)
