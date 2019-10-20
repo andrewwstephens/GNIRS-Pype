@@ -13,7 +13,7 @@ import utils
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def start(configfile):
+def start(configfile, plot=False):
     """
     Do a Telluric correction using the IRAF TELLURIC task.
     """
@@ -96,7 +96,7 @@ def start(configfile):
         logger.info("Runtime data path: %s", runtimedata)
 
         sci_spec = scipath + '/' + extractRegularPrefix + combinedsrc
-        tel_spec = extractRegularPrefix + combinedsrc
+        tel_spec = telpath + '/' + extractRegularPrefix + combinedsrc
         vega_spec = runtimedata + 'vega_ext.fits'
         utils.requires([sci_spec, tel_spec, vega_spec])
 
@@ -132,20 +132,20 @@ def start(configfile):
                                     output=tel_h_corrected + '_order%d.fits' % orders[i], verbose='yes')
 
                 elif 'vega' in hLineMethod.lower():
-                    hcor_vega(tel_spec, vega_spec, tel_h_corrected, hLineRegions, orders, hLineInter)
+                    hcor_vega(tel_spec, vega_spec, tel_h_corrected, hLineRegions, orders, hLineInter, plot=plot)
 
                 elif 'lorentz' in hLineMethod.lower():
-                    hcor_lorentz(tel_spec, tel_h_corrected, orders, runtimedata)
+                    hcor_lorentz(tel_spec, tel_h_corrected, orders, runtimedata, plot=plot)
 
                 elif 'manual' in hLineMethod.lower():
-                    hcor_manual(tel_spec, tel_h_corrected, orders)
+                    hcor_manual(tel_spec, tel_h_corrected, orders, plot=plot)
 
                 else:
                     logger.error("Unrecognized H line removal method: %s", hLineMethod)
                     raise SystemExit
 
                 if 'tweak' in hLineMethod.lower():  # Vega-Tweak or Lorentz-Tweak
-                    hcor_manual(tel_h_corrected, tel_h_corrected, orders, tweak=True)
+                    hcor_manual(tel_h_corrected, tel_h_corrected, orders, tweak=True, plot=plot)
 
             elif valindex == 2:
                 logger.info(" ------------------------------------------ ")
@@ -156,7 +156,7 @@ def start(configfile):
                 utils.pause(manualMode)
 
                 normalize(tel_h_corrected, telluric_fitContinuum, telluric_dividedContinuum,
-                          continuumInter, orders, continuumRegions, telluricFitOrders, overwrite)
+                          continuumInter, orders, continuumRegions, telluricFitOrders, overwrite, plot=plot)
 
             elif valindex == 4:
                 logger.info(" -------------------------------------------- ")
@@ -166,7 +166,7 @@ def start(configfile):
                 utils.pause(manualMode)
 
                 telluricCorrect(sci_spec, telluric_dividedContinuum, science_dividedTelluricLines, telluricInter,
-                                orders, telluricRegions, 'science_telluricInfo.txt', overwrite)
+                                orders, telluricRegions, 'science_telluricInfo.txt', overwrite, plot=plot)
 
             elif valindex == 5:
                 logger.info(" -------------------------------------------- ")
@@ -176,7 +176,7 @@ def start(configfile):
                 utils.pause(manualMode)
 
                 reintroduceContinuum(science_dividedTelluricLines, telluric_fitContinuum,
-                                     science_correctedTelluric, orders, overwrite)
+                                     science_correctedTelluric, orders, overwrite, plot=plot)
 
         logger.info(" --------------------------------------------------- ")
         logger.info("| Telluric correction complete for this observation |")
@@ -188,7 +188,7 @@ def start(configfile):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def hcor_vega(infile, calfile, outfile, regions, order, interactive):
+def hcor_vega(infile, calfile, outfile, regions, order, interactive, plot=False):
     # Use IRAF TELLURIC to remove H absorption lines by scaling and shifting a Vega spectrum.
 
     logger = log.getLogger('hcor_vega')
@@ -216,9 +216,13 @@ def hcor_vega(infile, calfile, outfile, regions, order, interactive):
         iraf.hedit(images=inspec, fields='AIRMASS', value=airmass, add='yes', addonly='no', delete='no',
                    verify='no', show='no', update='yes')
 
+        if interactive:
+            print 'IRAF.TELLURIC HELP:'
+            print 'Type x to adjust the wavelength shift and y to adjust the scaling.'
+
         results = iraf.telluric(
             input=inspec, output=outspec, cal=calspec, sample=sample, ignoreaps='yes', xcorr='yes', tweakrms='yes',
-            interactive=interactive, threshold=0.1, lag=3, shift=0., dshift=0.05, scale=1., dscale=0.05, offset=0,
+            interactive=interactive, threshold=0.1, lag=3, shift=0., dshift=0.05, scale=1., dscale=0.05, offset=1,
             smooth=1, cursor='', answer='yes', mode='al', Stdout=1)
 
         logger.debug('iraf.telluric screen output: %s', results)
@@ -235,8 +239,9 @@ def hcor_vega(infile, calfile, outfile, regions, order, interactive):
             operand1=outspec, operand2=normalization, op='/', result=outspec, title='',
             divzero=0.0, hparams='', pixtype='', calctype='', verbose='yes', noact='no', mode='al')
 
-        # utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
-        #           title='Telluric before and after H-line removal')
+        if plot:
+            utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
+                       title='Telluric before and after H-line removal')
 
     info.close()
 
@@ -247,7 +252,7 @@ def hcor_vega(infile, calfile, outfile, regions, order, interactive):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def hcor_lorentz(infile, outfile, order, cursordir):
+def hcor_lorentz(infile, outfile, order, cursordir, plot=False):
     # Automatially fit Lorentz profiles to the hydrogen lines pre-defined in lorentz_orderN.cur files.
     logger = log.getLogger('hcor_lorentz')
     logger.debug('--------------------------------------------------')
@@ -280,8 +285,9 @@ def hcor_lorentz(infile, outfile, order, cursordir):
         iraf.bplot(images=inspec, cursor=cursor2, new_image=outspec, overwrite="yes",
                    StdoutG='/dev/null', Stdout=stdout)
 
-        #utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
-        #           title='Telluric before and after H-line removal')
+        if plot:
+            utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
+                       title='Telluric before and after H-line removal')
 
     return
 
@@ -348,7 +354,7 @@ def hcor_manual(infile, outfile, order, tweak=False):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def normalize(inroot, fitroot, outroot, interactive, orders, samples, fitorders, overwrite):
+def normalize(inroot, fitroot, outroot, interactive, orders, samples, fitorders, overwrite, plot=False):
     # Normalize the H line corrected Telluric 1D spectra using IRAF CONTINUUM.
     # inroot = file name root of spectra to be fit
     # fitroot = file name root of continuum fits
@@ -394,19 +400,21 @@ def normalize(inroot, fitroot, outroot, interactive, orders, samples, fitorders,
             inter=interactive, sample=sample, naverage=1, func='spline3', order=fitorder, low_reject=1.0,
             high_reject=3.0, niterate=2, grow=1.0, markrej='yes', graphics='stdgraph', cursor='', mode='ql')
 
-        #utils.plot(line1=inspec, line2=fitspec, label1='in', label2='fit', title='Telluric continuum and fit')
+        if plot:
+            utils.plot(line1=inspec, line2=fitspec, label1='in', label2='fit', title='Telluric continuum and fit')
 
         iraf.imarith(
             operand1=inspec, operand2=fitspec, op='/', result=outspec, title='', divzero=0.0, hparams='',
             pixtype='', calctype='', verbose='yes', noact='no', mode='al')
 
-        #utils.plot(line1=outspec, title='Normalized Telluric')
+        if plot:
+            utils.plot(line1=outspec, title='Normalized Telluric')
 
     return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def telluricCorrect(sci_input, telluric, sci_output, interactive, orders, regions, infofile, overwrite):
+def telluricCorrect(sci_input, telluric, sci_output, interactive, orders, regions, infofile, overwrite, plot=False):
     """
     Run IRAF telluric task on each order
     :param sci_input: input multi-extension fits file name
@@ -475,15 +483,16 @@ def telluricCorrect(sci_input, telluric, sci_output, interactive, orders, region
             operand1=outspec, operand2=normalization, op='/', result=outspec, title='', divzero=0.0,
             hparams='', pixtype='', calctype='', verbose='yes', noact='no', mode='al')
 
-        #utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
-        # title='Order %d with Telluric Correction' % orders[i])
+        if plot:
+            utils.plot(line1=inspec, line2=outspec, label1='in', label2='out',
+            title='Order %d with Telluric Correction' % orders[i])
 
     info.close()
     return
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def reintroduceContinuum(inroot, fitroot, outroot, orders, overwrite):
+def reintroduceContinuum(inroot, fitroot, outroot, orders, overwrite, plot=False):
     # Re-introduce telluric continuum shape into Telluric-corrected science spectra.
     logger = log.getLogger('reintroduceContinuum')
 
@@ -509,7 +518,8 @@ def reintroduceContinuum(inroot, fitroot, outroot, orders, overwrite):
             operand1=inspec, operand2=fitspec, op="/", result=outspec, title='', divzero=0.0,
             hparams='', pixtype='', calctype='', verbose='yes', noact='no', mode='al')
 
-        utils.plot(line1=outspec, title='Order %d with Telluric continuum' % o)
+        if plot:
+            utils.plot(line1=outspec, title='Order %d with Telluric continuum' % o)
 
     return
 
@@ -517,4 +527,4 @@ def reintroduceContinuum(inroot, fitroot, outroot, orders, overwrite):
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     log.configure('gnirs-pype.log', filelevel='INFO', screenlevel='DEBUG')
-    start('gnirs-pype.cfg')
+    start('gnirs-pype.cfg', plot=True)
