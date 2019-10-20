@@ -6,7 +6,7 @@ import ConfigParser
 import datetime
 import log
 import os
-import gnirsHeaders
+import header
 import shutil
 
 
@@ -44,7 +44,7 @@ def start(configfile):
 
             logger.info('Checking science directory %s...', sdir)
             sdir += '/Intermediate'
-            sci_info = gnirsHeaders.info(sdir)
+            sci_info = header.info(sdir)
             checklist('all.list', path=sdir, headerdict=sci_info)
             checklist('src.list', path=sdir, headerdict=sci_info)
             if os.path.exists(sdir + '/sky.list'):  # If there is a sky.list then check it too
@@ -56,7 +56,7 @@ def start(configfile):
             cal_match = False
             for cdir in caldirs:
                 logger.debug('...%s', cdir)
-                cal_info = gnirsHeaders.info(cdir)
+                cal_info = header.info(cdir)
                 cal_match = True
 
                 arcs = [k for k in cal_info.keys() if cal_info[k]['OBSTYPE'] == 'ARC']
@@ -94,7 +94,7 @@ def start(configfile):
             for tdir in teldirs:
                 logger.debug('...%s', tdir)
                 tdir += '/Intermediate'
-                tel_info = gnirsHeaders.info(tdir)
+                tel_info = header.info(tdir)
                 tfile = next(iter(tel_info))  # use the first Telluric file
                 if tel_info[tfile]['CONFIG'] == sci_info[sfile]['CONFIG'] and \
                         tel_info[tfile]['DATE-OBS'] == sci_info[sfile]['DATE-OBS']:
@@ -108,7 +108,7 @@ def start(configfile):
                 if dt[best] > datetime.timedelta(hours=1.5):
                     logger.warning('Telluric was taken %s from the science', dt[best])
                 if best != tdir:  # re-read the FITS headers if necessary
-                    tel_info = gnirsHeaders.info(best)
+                    tel_info = header.info(best)
                 checklist('all.list', path=tdir, headerdict=tel_info)
                 checklist('src.list', path=tdir, headerdict=tel_info)
             else:

@@ -12,7 +12,7 @@ This library provides methods to:
 We may want to provide some stand-alone obslog handling functionality.
 """
 import csv
-import gnirsHeaders
+import header
 import log
 import os
 import re
@@ -83,7 +83,7 @@ def writecsv(obsid, date, output='obslog.csv', rawpath=None):
         fitsfiles = [rawpath + '/' + f for f in ([last_acq] + sorted(output_data.keys()))]
     else:
         fitsfiles = [last_acq] + sorted(output_data.keys())
-    headerinfo = gnirsHeaders.info(fitsfiles)
+    headerinfo = header.info(fitsfiles)
 
     for f in output_data.keys():  # Add new keys for the absolute P and Q offsets:
         headerinfo[f]['P'] = headerinfo[f]['POFFSET'] - headerinfo[last_acq]['POFFSET']

@@ -3,6 +3,7 @@
 from astropy.io import fits
 import ConfigParser
 import glob
+import header
 import log
 from pyraf import iraf
 import obslog
@@ -98,37 +99,49 @@ def start(configfile):
         stdroot = stdpath + '/' + dividedTelContinuumPrefix + hLinePrefix + extractRegularPrefix + utils.nofits(combinedsrc)
         scifiles = ['%s_order%d.fits' % (sciroot, o) for o in orders]
         stdfiles = ['%s_order%d.fits' % (stdroot, o) for o in orders]
+        logger.debug('scifiles: %s', scifiles)
+        logger.debug('stdfiles: %s', stdfiles)
         utils.requires(scifiles + stdfiles)
 
-        olog = obslog.readcsv(stdpath + '/obslog.csv')
-        firstfile = olog.keys()[0]
+        std_obslog = obslog.readcsv(stdpath + '/obslog.csv')
+        firstfile = std_obslog.keys()[0]
         logger.debug('firstfile: %s', firstfile)
-        target = olog[firstfile]['OBJECT']
-        logger.debug('Target: %s', target)
-        standard = utils.dictify(config.items(target))
+        std_name = std_obslog[firstfile]['OBJECT']
+        logger.debug('Standard: %s', std_name)
+
+        std_pars = utils.dictify(config.items(std_name))
+        logger.debug('Standard pars: %s', std_pars)
+
+        sci_exptime = fits.getheader(scifiles[0])['EXPTIME']
+        std_exptime = fits.getheader(stdfiles[0])['EXPTIME']
+        logger.debug('Sci Exptime: %s', sci_exptime)
+        logger.debug('Std Exptime: %s', std_exptime)
+
+
+
+        # Well, that's not correct!
+        # The standard star exptime is showing as 300s, but the src_comb.fits shows it is really 5s.
+        # Oh, the science NGC4736 spectra are being written in the Telluric directory.  That's not good.
+
+
+
+
+
 
         # TODO:  if extractionStepwise:
 
 
-        utils.pause(True, 'STOP HERE')
-
-
-
+        utils.pause(True, 'STOP HERE *********************************************************************************')
 
         if fluxCalibrationMethod == 'fluxcalibrator':
             logger.error('Method not implemented')
             raise SystemExit
 
-
-
-
-
         elif fluxCalibrationMethod == 'telluricapproximate':
 
             # Convert magnitude to flux density for the telluric.
             # Derived spectrum (FLambda) for the telluric for each order.
-            # Make a blackbody using the telluric temperature.
-            # A blackbody at the telluric temperature for each order.
+            # Make a blackbody at the Telluric temperature for each order.
             # Get the scale for the blackbody to the telluric derived spectrum.
             # Blackbody scale (float) at each order.
             # Scale the blackbody to the telluric derived spectrum.
@@ -136,7 +149,7 @@ def start(configfile):
 
             utils.pause('About to start flux calibration')
 
-            stdTemperature = standard['Temperature']
+            stdTemperature = std_pars['Temperature']
 
             # EXPTIME keyword is the "Exposure time (s) for sum of all coadds"
             sciExptime = sci_header_info[os.path.basename(sci_telluricCorrected[0])]['EXPTIME']
