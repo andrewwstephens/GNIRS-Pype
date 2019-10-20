@@ -59,12 +59,12 @@ def start(configfile):
         # There are many ways to get the target name: FITS header, directory name, obslog...
         olog = obslog.readcsv(stdpath + '/obslog.csv')
         firstfile = olog.keys()[0]
-        logger.debug('firsfile: %s', firstfile)
+        logger.debug('firstfile: %s', firstfile)
         target = olog[firstfile]['OBJECT']
         logger.info("Checking for flux calibration parameters for %s", target)
 
         param = {'RA': None, 'DEC': None, 'SpectralType': None, 'Temperature': None,
-                 'Jmag': None, 'Hmag': None, 'Kmag': None}
+                 'J': None, 'H': None, 'K': None}
 
         if config.has_section(target):
             logger.info('Found section for the %s in the config file.', target)
@@ -140,8 +140,8 @@ def start(configfile):
                     logger.error("Please manually update the 'Temperature' in the config file.")
                     raise SystemExit
 
-            simbad_label = {'Jmag': 'FLUX_J', 'Hmag': 'FLUX_H', 'Kmag': 'FLUX_K'}
-            for mag in ['Jmag', 'Hmag', 'Kmag']:
+            simbad_label = {'J': 'FLUX_J', 'H': 'FLUX_H', 'K': 'FLUX_K'}
+            for mag in ['J', 'H', 'K']:
                 if param[mag] is None:
                     try:
                         param[mag] = simbad_table[simbad_label[mag]][0]
