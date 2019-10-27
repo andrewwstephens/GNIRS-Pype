@@ -63,29 +63,32 @@ def start(configfile):
         except:
             logger.warning('SIMBAD query failed for the redshift of %s', target)
             results = None
-
-        rvz = results['RVZ_RADVEL'][0]
-        typ = results['RVZ_TYPE'][0]
-        logger.debug('rvz: %s', rvz)
-        logger.debug('typ: %s', typ)
-
-        try:
-            rvz = float(rvz)
-        except:
-            logger.error('Could not parse redshift from: %s', rvz)
-
-        c = 299792.458  # km/s
-
-        if typ == 'z':
-            redshift = rvz
-        elif typ == 'v':   # velocity
-            v = rvz
-            redshift = math.sqrt((1.0 + v/c) / (1.0 - v/c)) - 1.0
-        elif typ == 'c':  # cz
-            redshift = rvz / c
-        else:
-            logger.error('Unknown SIMBAD RVZ_TYPE: %s', typ)
             redshift = None
+
+        if results:
+            radvel = results['RVZ_RADVEL'][0]
+            rvz_type = results['RVZ_TYPE'][0]
+            logger.debug('RADVEL: %s', radvel)
+            logger.debug('TYPE: %s', rvz_type)
+
+            try:
+                radvel = float(radvel)
+            except:
+                logger.error('Could not parse redshift from: %s', radvel)
+
+            c = 299792.458  # km/s
+
+            if rvz_type == 'z':    # redshift
+                redshift = radvel
+            elif rvz_type == 'v':  # velocity
+                v = radvel
+                redshift = math.sqrt((1.0 + v/c) / (1.0 - v/c)) - 1.0
+            elif rvz_type == 'c':  # cz
+                redshift = radvel / c
+            else:
+                logger.error('Unknown SIMBAD RVZ_TYPE: %s', rvz_type)
+                redshift = None
+
         logger.info('Redshift: %s', redshift)
 
         logger.info('Updating configuration file...')
