@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from astropy.io import fits
 import ConfigParser
 import log
 import obslog
@@ -42,7 +41,7 @@ def start(configfile):
     """
     logger = log.getLogger('extract_spectra')
 
-    path = os.getcwd() # Store current working directory for later use.
+    path = os.getcwd()  # Store current working directory for later use.
 
     # Set up/prepare IRAF.
     iraf.gemini()
@@ -57,7 +56,7 @@ def start(configfile):
 
     # Set clobber to 'yes' for the script. This still does not make the gemini tasks overwrite files, so: YOU WILL 
     # LIKELY HAVE TO REMOVE FILES IF YOU RE_RUN THE SCRIPT.
-    us_clobber=iraf.envget("clobber")
+    us_clobber = iraf.envget("clobber")
     iraf.reset(clobber='yes')
     
     config = ConfigParser.RawConfigParser()
@@ -69,25 +68,21 @@ def start(configfile):
 
     # Order of sections is important to later check for plausible peaks located for science targets by nsextract
     nsextractInter = config.getboolean('interactive', 'nsextractInter')
-    calculateSNR = config.getboolean('gnirsPipeline', 'CalculateSNR')
-    
     combinedsrc = config.get('runtimeFilenames', 'combinedsrc')
     combinedsky = config.get('runtimeFilenames', 'combinedsky')
     extractRegularPrefix = config.get('runtimeFilenames', 'extractRegularPrefix')
     extractFullSlitPrefix = config.get('runtimeFilenames', 'extractFullSlitPrefix')
     extractStepwiseTracePrefix = config.get('runtimeFilenames', 'extractStepwiseTracePrefix')
     extractStepwisePrefix = config.get('runtimeFilenames', 'extractStepwisePrefix')
-
-    # extract1Spectra1D specific config
     useApall = config.getboolean('extractSpectra1D', 'useApall')
     subtractBkg = config.get('extractSpectra1D', 'subtractBkg')
     extractApertureRadius = config.getfloat('extractSpectra1D', 'extractApertureRadius')
     checkPeaksMatch = config.getboolean('extractSpectra1D', 'checkPeaksMatch')
     toleranceOffset = config.getfloat('extractSpectra1D', 'toleranceOffset')
-    extractFullSlit = config.getboolean('extractSpectra1D','extractFullSlit')
-    extractStepwise = config.getboolean('extractSpectra1D','extractStepwise')
-    extractionStepSize = config.getfloat('extractSpectra1D','extractStepSize')
-    extractApertureWindow = config.getfloat('extractSpectra1D','extractApertureWindow')
+    extractFullSlit = config.getboolean('extractSpectra1D', 'extractFullSlit')
+    extractStepwise = config.getboolean('extractSpectra1D', 'extractStepwise')
+    extractionStepSize = config.getfloat('extractSpectra1D', 'extractStepSize')
+    extractApertureWindow = config.getfloat('extractSpectra1D', 'extractApertureWindow')
 
     # gnirsExtractSpectra1D will first check if the reduction truth value of the science and telluric directories is 
     # True -- if it is, it will then check if the required spectra to be extracted are available in the directories
@@ -113,9 +108,9 @@ def start(configfile):
             iraf.chdir(obspath) 
             utils.pause(manualMode)
 
-            logger.debug("Checking if required combined spectra available.")
             utils.requires([combinedsrc])
 
+            calculateSNR = config.getboolean('gnirsPipeline', 'CalculateSNR')
             if calculateSNR:
                 if not utils.exists([combinedsky], overwrite=False):
                     logger.warning('Could not find combined sky spectra.  Setting calculateSNR = False')
