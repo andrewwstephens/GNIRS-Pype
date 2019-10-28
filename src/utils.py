@@ -4,6 +4,7 @@ from astropy.io import fits
 import log
 from matplotlib import pyplot
 import os
+import re
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -134,7 +135,7 @@ def requires(filelist):
     logger.debug('Exist: %s', exist)
 
     if not all(exist):
-        logger.error('Some files required for the next step are missing.')
+        logger.error('Some required files are missing:')
         for f, e in zip(filelist, exist):
             if not e:
                 logger.error('Cannot find %s', f)
@@ -311,6 +312,16 @@ def plot(points1=None, points2=None, line1=None, line2=None, label1=None, label2
         pyplot.title(title)
     pyplot.show()
     return
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def get_target(fitsfile):
+    logger = log.getLogger('gettarget')
+    obj = fits.getheader(fitsfile)['OBJECT']
+    logger.debug('Object: %s', obj)
+    target = re.sub('[^a-zA-Z0-9]', '', obj)  # replace non-alphanumeric characters
+    logger.debug('Target: %s', target)
+    return target
 
 
 # ----------------------------------------------------------------------------------------------------------------------
