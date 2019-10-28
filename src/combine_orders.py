@@ -19,21 +19,9 @@ def start(configfile):
     """
     logger = log.getLogger('combine_orders')
 
-    ########################################################################
-    #                                                                      #
-    #                  BEGIN - GENERAL COMBINE 2D SETUP                    #
-    #                                                                      #
-    ########################################################################
-
     path = os.getcwd()  # Store current working directory for later use.
 
-    logger.info('#################################################')
-    logger.info('#                                               #')
-    logger.info('#       Start Combining GNIRS XD Orders         #')
-    logger.info('#                                               #')
-    logger.info('#################################################')
-
-# Set up/prepare IRAF.
+    # Set up/prepare IRAF.
     iraf.gemini()
     iraf.gemtools()
     iraf.gnirs()
@@ -43,7 +31,7 @@ def start(configfile):
 
     # Set clobber to 'yes' for the script. This still does not make the gemini tasks overwritewrite files, so: YOU WILL 
     # LIKELY HAVE TO REMOVE FILES IF YOU RE_RUN THE SCRIPT.
-    us_clobber=iraf.envget("clobber")
+    us_clobber = iraf.envget("clobber")
     iraf.reset(clobber='yes')
     
     config = ConfigParser.RawConfigParser()
@@ -61,28 +49,16 @@ def start(configfile):
     extractRegularPrefix = config.get('runtimeFilenames', 'extractRegularPrefix')
     extractFullSlitPrefix = config.get('runtimeFilenames', 'extractFullSlitPrefix')
     extractStepwisePrefix = config.get('runtimeFilenames', 'extractStepwisePrefix')
-    hLinePrefix = config.get('runtimeFilenames', 'hLinePrefix')
     dividedTelContinuumPrefix = config.get('runtimeFilenames', 'dividedTelContinuumPrefix')
     telluricPrefix = config.get('runtimeFilenames', 'telluricPrefix')
-    bb_unscaled = config.get('runtimeFilenames', 'bb_unscaled')
-    bb_scaled = config.get('runtimeFilenames', 'bb_scaled')
     fluxCalibPrefix = config.get('runtimeFilenames', 'fluxCalibPrefix')
     orderOffsetLog = config.get('runtimeFilenames', 'orderOffsetLog')
     finalPrefix = config.get('runtimeFilenames', 'finalPrefix')
     orderResampledSrc = config.get('runtimeFilenames', 'orderResampledSrc')
     orderResampledSky = config.get('runtimeFilenames', 'orderResampledSky')
-
-    redshift = config.get('CombineOrders', 'redshift')  # import this as string for check later
     shiftToRestframe = config.getboolean('CombineOrders', 'shiftToRestframe')
-    offsetCorrectionMethod = config.get('CombineOrders', 'offsetCorrectionMethod')
     orderScalingRegions = config.items('orderScalingRegions')
     orderResampling = config.getboolean('CombineOrders', 'orderResampling')
-
-    #########################################################################
-    #                                                                       #
-    #                 COMPLETE - GENERAL COMBINE 2D SETUP                   #
-    #                                                                       #
-    #########################################################################
 
     for scipath in config.options('ScienceDirectories'):
 
@@ -90,43 +66,32 @@ def start(configfile):
             logger.info('Skipping flux calibaration in %s', scipath)
             continue
 
-        #########################################################################
-        #                                                                       #
-        #                  BEGIN - OBSERVATION SPECIFIC SETUP                   #
-        #                                                                       #
-        #########################################################################
+        logger.info(' ------------------ ')
+        logger.info('| Combining Orders |')
+        logger.info(' ------------------ ')
 
         scipath += '/Intermediate'
-        logger.info("Moving to science directory: %s\n", scipath)
         iraf.chdir(scipath)
+        logger.info('%s', scipath)
         finalpath = '../Final/'
+        utils.pause(manualMode)
 
         orders = utils.get_orders(scipath)
 
-        logger.info('Checking if input science spectra exist...')
         prefix = fluxCalibPrefix + dividedTelContinuumPrefix + telluricPrefix + extractRegularPrefix
-        sci_spectra = utils.make_list(prefix + utils.nofits(combinedsrc), orders=orders, suffix='_MEF.fits')
+        infiles = ['%s%s_order%d.fits' % (prefix, utils.nofits(combinedsrc), o) for o in orders]
+        utils.requires(infiles)
 
-        if utils.exists(sci_spectra, overwrite=False):
-            logger.info("Found flux calibrated science spectra.")
-            sci_header_info = header.info(sci_spectra[0])
-            sciName = sci_header_info[os.path.basename(sci_spectra[0])]['OBJECT']
-        else:
-            logger.warning("Could not find the flux calibrated science spectra.")
-            logger.warning("Please run gnirsFluxCalibrate.py or manually put them in %s.", scipath)
-            raise SystemExit
+        target = utils.get_target(infiles[0])
+
+        #if utils.exists(outfiles, overwrite):
+        #    logger.info('All orders already combined.')
+        #    continue  # to the next science directory
 
         if calculate_snr:  # Check if extracted sky spectra available
             prefix = extractRegularPrefix
-            sky_spectra = ['%s%s_order%d_MEF.fits' % (prefix, utils.nofits(combinedsky), o) for o in orders]
-            exists = [os.path.exists(f) for f in sky_spectra]
-            logger.debug('Exists: %s', exists)
-            if all(exists):
-                logger.info('Found all the extracted sky spectra.')
-            else:
-                logger.warning("Could not find the extracted sky spectra in %s.", scipath)
-                logger.warning("Cannot calculate the S/N.")
-                calculate_snr = False
+            sky_spectra = ['%s%s_order%d.fits' % (prefix, utils.nofits(combinedsky), o) for o in orders]
+            utils.requires(sky_spectra)
 
         # TODO:  Read the filenames of all stepwise extracted sepctra.
         if extractFullSlit:
@@ -138,32 +103,17 @@ def start(configfile):
             # nsteps =
             pass
 
-        # If 'shiftToRestframe' is set, check if redshift is a real number; else set 'shiftToRestframe' to 'False'.
         if shiftToRestframe:
-            try:
-                redshift = float(redshift)
-                logger.info("The science spectra will be shifted to the restframe.")
-            except:
-                logger.warning("Cannot convert the redshift in the config file to a float.")
-                logger.warning("The science spectra cannot be shifted to the rest frame.")
+            redshift = config.get(target, 'Redshift')
+            if redshift is None:
+                logger.warning('No redshift available.  Spectra will not be shifted to the rest frame.')
                 shiftToRestframe = False
 
-        #########################################################################
-        #                                                                       #
-        #                 COMPLETE - OBSERVATION SPECIFIC SETUP                 #
-        #         BEGIN COMBINING XD ORDERS SPECTRA FOR AN OBSERVATION          #
-        #                                                                       #
-        #########################################################################
-
-        # First, get the "goodbits"(RM).  These are the range of pixels in each order that should be
-        # incorporated into the final, merged spectrum.  These are educated guesses and can be edited by user.
-        regions = {}
-        for order, r in orderScalingRegions:
-            regions[int(order)] = r
-        logger.debug('orderScalingRegions: %s', regions)
+        # Get the range of pixels in each order that should be incorporated into the final merged spectrum:
+        regions = utils.dictify(orderScalingRegions)
 
         if config.getboolean('interactive', 'combine_orders'):
-            # Allow the user to attempt to adjust the relative fluxes of each order before combining them
+            # Allow the user to adjust the relative fluxes of each order before combining them
             logger.info("Running specplot so that you can adjust scaling for different orders as necessary...")
             prefix = fluxCalibPrefix + dividedTelContinuumPrefix + telluricPrefix + extractRegularPrefix
             iraf.specplot(
@@ -183,28 +133,28 @@ def start(configfile):
                 scale = float(offsets[i+5].split()[5])
                 logger.debug('scale: %s', scale)
                 iraf.imarith(
-                    operand1=sci_spectra[i], op='*', operand2=scale,
-                    result=finalPrefix + sci_spectra[i],
+                    operand1=infiles[i], op='*', operand2=scale,
+                    result=finalPrefix + infiles[i],
                     title='', divzero=0.0, hparams='', pixtype='', calctype='', verbose='yes', noact='no')
 
         else:   # Do not attempt to make any correction for offsets between the orders
-            for s in sci_spectra:
-                iraf.copy(input=s, output=finalPrefix+s, verbose='yes')
+            for s in infiles:
+                iraf.copy(input=s, output=finalPrefix + s, verbose='yes')
 
-        # Construct lists of files to go into odcombine and the joinorders_noresampling
+        # Construct lists of files to go into odcombine and joinorders_noresampling.
         # For each extraction, combine the orders into a single spectrum and write out fits and text files
 
-        # NOTE:  You may simply use iraf.odcombine to combine the orders, but odcombine resamples to a linear 
+        # NOTE:  You may simply use iraf.odcombine to combine the orders, but odcombine resamples to a uniform linear
         # dispersion function, oversampling some of the spectrum.  To avoid this, you can use the 
         # joinorders_noresampling routine (by Daniel Duschel Rutra, UFRGS) to join the orders that uses 
         # output from odcombine to find wavelength limits of each order, so we still need to run odcombine.
         iraf.onedspec.interp = 'linear'
 
         # Set the name of the science as the name of the order combined output spectrum
-        finalSpectrum = sciName + '_src.fits'
-        finalSpectrum_fullslit = sciName + '_src_fullslit.fits'
-        finalSpectrum_stepwise = sciName + '_step'
-        finalSky = sciName + '_sky.fits'
+        finalSpectrum = target + '_src.fits'
+        finalSpectrum_fullslit = target + '_src_fullslit.fits'
+        finalSpectrum_stepwise = target + '_step'
+        finalSky = target + '_sky.fits'
 
         # Standard Extraction ------------------------------------------------------------------------------------------
         logger.info('Combining orders...')
